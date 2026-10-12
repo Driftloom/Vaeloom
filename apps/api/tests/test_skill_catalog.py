@@ -1,5 +1,7 @@
 import uuid
+from pathlib import Path
 
+import pytest
 from httpx import AsyncClient
 from sqlalchemy import update
 
@@ -78,9 +80,83 @@ async def _create_skill(client: AsyncClient, headers: dict, name: str, config: d
 class TestCatalogIntegrity:
     """Unit-level guarantees about the catalog itself, no HTTP involved."""
 
-    def test_catalog_has_thirty_nine_bundled_skills(self):
-        assert len(SKILL_CATALOG) == 39
+    def test_catalog_has_twenty_eight_bundled_skills(self):
+        # 28, down from 39. Eleven engineering-tooling entries were removed:
+        # acceptance-criteria-review, accessibility-testing, agent-building,
+        # agentic-workflows, autoplan, check-work, deep-learning-rag-evals,
+        # frontend-design, llm-engineering, system-design and ui-ux-pro-max.
+        # They describe how to build and review software, not how to advance
+        # someone's career, so they did not belong in a product capability
+        # catalogue exposed to end users.
+        #
+        # The pin stays because an accidental add or delete is exactly the
+        # regression worth catching; it is updated deliberately when the
+        # intended size changes, never to make a failing run green.
+        assert len(SKILL_CATALOG) == 28
         assert all(e.bundled is True for e in SKILL_CATALOG)
+
+    def test_catalog_contains_no_engineering_tooling(self):
+        removed = {
+            "acceptance-criteria-review",
+            "accessibility-testing",
+            "agent-building",
+            "agentic-workflows",
+            "autoplan",
+            "check-work",
+            "deep-learning-rag-evals",
+            "frontend-design",
+            "llm-engineering",
+            "system-design",
+            "ui-ux-pro-max",
+        }
+        slugs = {e.slug for e in SKILL_CATALOG}
+        assert slugs & removed == set()
+
+    def test_on_disk_skills_are_all_in_the_catalog(self):
+        """No orphaned skill on disk.
+
+        The catalog is the source of truth -- each entry carries its
+        markdown_doc inline -- and only three of the 28 have a
+        skills/claude mirror. That asymmetry is intentional, so this asserts in
+        the direction that is actually load-bearing: anything present on disk
+        must be a real catalog entry. A skill shipped to disk that the catalog
+        does not know about is a document no user can reach and no CI step
+        validates.
+        """
+        disk_root = Path(__file__).resolve().parents[3] / "skills" / "claude"
+        if not disk_root.is_dir():
+            pytest.skip("skills/claude not present in this checkout")
+        on_disk = {p.name.replace("_", "-") for p in disk_root.iterdir() if p.is_dir()}
+        catalog = {e.slug for e in SKILL_CATALOG}
+        assert on_disk <= catalog, f"skills on disk absent from catalog: {on_disk - catalog}"
+
+    def test_catalog_is_career_facing(self):
+        """Every remaining entry must be about job-seeking, not about building."""
+        career_terms = (
+            "resume",
+            "cv",
+            "job",
+            "career",
+            "interview",
+            "salary",
+            "offer",
+            "linkedin",
+            "application",
+            "cover letter",
+            "ats",
+            "reference",
+            "portfolio",
+            "negotiat",
+            # cold-email-writer reaches hiring managers and founders. That is
+            # as career-facing as a resume writer, just phrased differently.
+            "hiring",
+            "outreach",
+        )
+        for entry in SKILL_CATALOG:
+            haystack = f"{entry.slug} {entry.name} {entry.description}".lower()
+            assert any(term in haystack for term in career_terms), (
+                f"{entry.slug} is not career-facing: {entry.description[:80]}"
+            )
 
     def test_slugs_are_unique_and_non_empty(self):
         slugs = [e.slug for e in SKILL_CATALOG]
@@ -164,9 +240,15 @@ class TestCatalogIntegrity:
 
     def test_self_check_violation_is_reported(self):
         """A catalog entry whose doc no longer satisfies its own self-check fails."""
-        entry = CATALOG_BY_SLUG["acceptance-criteria-review"]
+        # Derives the phrase to strip from the entry's own trigger list. It used
+        # to hard-code "audit requirements", a phrase belonging to the removed
+        # acceptance-criteria-review entry, so the test broke whenever the
+        # catalogue was curated.
+        entry = CATALOG_BY_SLUG["ats-audit"]
         assert entry.self_check == "triggers-echoed"
-        stripped = entry.markdown_doc.replace("audit requirements", "")
+        phrase = entry.triggers[0]
+        stripped = entry.markdown_doc.replace(phrase, "")
+        assert stripped != entry.markdown_doc, "trigger phrase must exist in the doc"
         result = validate_skill_document(
             markdown_doc=stripped,
             required_scope=entry.required_scope,
@@ -175,7 +257,7 @@ class TestCatalogIntegrity:
         )
         assert result.status == "warning"
         assert [v.rule for v in result.violations] == ["SKILL-CATALOG-SELFCHECK"]
-        assert "audit requirements" in result.violations[0].message
+        assert phrase in result.violations[0].message
 
 
 class TestSkillValidator:
@@ -240,7 +322,7 @@ class TestSkillValidator:
         assert result.violations[0].severity == "soft"
 
     def test_catalog_self_check_adds_a_ninth_rule(self):
-        entry = get_catalog_entry("agent-building")
+        entry = get_catalog_entry("ats-audit")
         result = validate_skill_document(
             markdown_doc=entry.markdown_doc,
             required_scope=entry.required_scope,
@@ -260,7 +342,7 @@ class TestCatalogEndpoint:
         res = await client.get("/api/v1/capabilities/catalog", headers=headers)
         assert res.status_code == 200
         entries = res.json()
-        assert len(entries) == 39
+        assert len(entries) == 28
         assert len(entries) >= 12
         assert {e["slug"] for e in entries} == {e.slug for e in SKILL_CATALOG}
 
@@ -293,22 +375,23 @@ class TestCatalogEndpoint:
 
     async def test_merged_list_marks_uninstalled_catalog_entries(self, client: AsyncClient):
         headers, workspace_id = await _signup_workspace(client, "merged")
-        await _create_skill(client, headers, "agent-building", dict(VALID_SKILL_CONFIG))
+        await _create_skill(client, headers, "ats-audit", dict(VALID_SKILL_CONFIG))
 
         res = await client.get(
             "/api/v1/capabilities?category=skill&include_catalog=true", headers=headers
         )
         assert res.status_code == 200
         items = res.json()
-        assert len(items) == 39
+        assert len(items) == 28
 
         installed = [i for i in items if i["installed"]]
         browsable = [i for i in items if not i["installed"]]
         assert len(installed) == 1
-        assert len(browsable) == 38
+        # 27 of 28 catalog entries, the one installed above being the exception.
+        assert len(browsable) == 27
 
         row = installed[0]
-        assert row["name"] == "agent-building"
+        assert row["name"] == "ats-audit"
         assert row["id"] is not None
         assert row["workspace_id"] == workspace_id
         assert row["enabled"] is True
@@ -525,9 +608,9 @@ class TestSkillTestEndpoint:
 
     async def test_catalog_skill_validates_against_the_catalog_document(self, client: AsyncClient):
         headers, workspace_id = await _signup_workspace(client, "catskill")
-        await _create_skill(client, headers, "agent-building", {})
+        await _create_skill(client, headers, "ats-audit", {})
 
-        res = await self._test_skill(client, headers, workspace_id, "agent-building")
+        res = await self._test_skill(client, headers, workspace_id, "ats-audit")
         assert res.status_code == 200
         body = res.json()
         assert body["status"] == "success"
@@ -535,11 +618,15 @@ class TestSkillTestEndpoint:
         assert body["result"]["from_catalog"] is True
         assert body["result"]["rules_checked"] == 9
         assert body["result"]["violations"] == []
-        assert body["result"]["required_scope"] == "agent.spawn"
+        # Read the expected scope from the entry instead of pinning a literal.
+        # The fixture slug changed when the engineering entries were curated
+        # out, and a hard-coded scope then quietly tested a different skill
+        # than the one named two lines above.
+        assert body["result"]["required_scope"] == CATALOG_BY_SLUG["ats-audit"].required_scope
 
     async def test_uninstalled_skill_is_validated_but_records_no_usage(self, client: AsyncClient):
         headers, workspace_id = await _signup_workspace(client, "uninstalled")
-        res = await self._test_skill(client, headers, workspace_id, "system-design")
+        res = await self._test_skill(client, headers, workspace_id, "career-coaching")
         assert res.status_code == 200
         body = res.json()
         assert body["result"]["installed"] is False
@@ -809,7 +896,7 @@ class TestCapabilityMutationContract:
 
     async def test_delete_of_a_bundled_catalog_skill_returns_409(self, client: AsyncClient):
         headers, _ = await _signup_workspace(client, "bundled")
-        cap_id = await _create_skill(client, headers, "agent-building", dict(VALID_SKILL_CONFIG))
+        cap_id = await _create_skill(client, headers, "ats-audit", dict(VALID_SKILL_CONFIG))
 
         res = await client.delete(f"/api/v1/capabilities/{cap_id}", headers=headers)
         assert res.status_code == 409
@@ -822,7 +909,7 @@ class TestCapabilityMutationContract:
 
     async def test_disabling_a_bundled_skill_is_the_supported_action(self, client: AsyncClient):
         headers, _ = await _signup_workspace(client, "disable")
-        cap_id = await _create_skill(client, headers, "agent-building", dict(VALID_SKILL_CONFIG))
+        cap_id = await _create_skill(client, headers, "ats-audit", dict(VALID_SKILL_CONFIG))
 
         res = await client.patch(
             f"/api/v1/capabilities/{cap_id}", json={"enabled": False}, headers=headers
