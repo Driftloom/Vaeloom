@@ -88,8 +88,37 @@ Time SLA: <2 minutes (automated).
 |----------|-----------|-------------|
 | **Reversible migration** (drop column not yet used) | Run `down` migration | None (column was unused) |
 | **Irreversible migration** (data transformation) | Restore from pre-deployment backup | RPO <1 hour (data since backup lost) |
+| **Down migration refuses on existing data** (e.g. 0068/0069 re-adding a frozen memory-type CHECK over rows written by a second domain pack) | **Restoring a backup is NOT the response.** Run the preflight → read the offending values it names → then decide between forward-migrating those rows into the old vocabulary and accepting the new revision (fix forward). Never restore a backup to clear a refusal. | **None, if the decision tree is followed.** Restoring to clear a refusal deletes exactly the valid data that caused it, plus every write since the backup. |
 | **Migration added column** | Run `down` migration (drops column) | Column data lost (acceptable if unused) |
 | **Migration removed column** | Cannot reverse; restore from backup | RPO <1 hour |
+
+**Refusals are the migration working.** A `down` migration that reinstates a frozen
+vocabulary (0068 on `memories`, 0069 on `memory_records`) is validated by PostgreSQL
+against every existing row, so a second domain pack's rows make it refuse — and
+PostgreSQL reports `violated by some row` with **no DETAIL naming the value**. The
+rows in the way are legitimate data under the domain-pack registry, which is exactly
+why a backup restore is the wrong move: it destroys the thing the refusal was
+warning about.
+
+Run the preflight **before** attempting the rollback:
+
+```text
+python scripts/check_pg_downgrade.py --pg-url "$VAELOOM_TARGET_URL"
+
+  exit 0 -> both downgrades would proceed; go ahead
+  exit 1 -> at least one would refuse; the offending types are named in the report
+  exit 2 -> could not determine (no URL, or the read-only verification failed)
+```
+
+It is read-only — every statement runs inside a verified `BEGIN READ ONLY` — and it
+carries no `_proof`/`_test` database-name guard, because inspecting production
+before a rollback is the point. Decision tree for an exit 1:
+
+1. Read the offending types and the active `memory_type_packs` from the report.
+2. If the new types are wanted, **forward-migrate** those rows into the old
+   vocabulary (or accept the new revision and fix forward) and re-run the preflight.
+3. If they are wanted but not yet, decide explicitly — do not let a refusal route
+   you into a restore.
 
 ```sql
 -- Example reversible migration (with down)
