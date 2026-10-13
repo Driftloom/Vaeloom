@@ -1,5 +1,33 @@
 module.exports = {
   allowedAdvisories: [
+    // 1241195 -- nodemailer <=8.0.7, HIGH. Fix is >=8.0.8, but nodemailer is
+    // transitive and reaching it needs a pnpm override. pnpm 9.12.0 in this repo
+    // resolved overrides from neither package.json (pnpm warns that field is
+    // ignored) nor pnpm-workspace.yaml (no effect; `pnpm config get overrides`
+    // is undefined). Not called directly anywhere in this repo.
+    // TODO: resolve pnpm override resolution, then override and drop this entry.
+    '1241195',
+    // 1241202 -- sprintf-js, MODERATE. NO FIX EXISTS. The advisory's patched
+    // range is `<0.0.0` and npm's latest release IS 1.1.3, so every published
+    // version is vulnerable. Revisit only if a 1.1.4+ ever ships.
+    '1241202',
+    // 1241204 -- dompurify <=3.4.15, LOW. Fix is >=3.4.16. Blocked on the same
+    // pnpm override resolution as 1241195.
+    '1241204',
+    // 1241216 -- nx <22.7.8, HIGH (the `nx affected` shell-injection class).
+    // nx is pinned to exactly 20.0.0 in devDependencies; the fix is 22.7.8, two
+    // majors of the build tool. Moving it deserves its own PR rather than
+    // riding along on a security pass.
+    // TODO: upgrade nx, then drop 1241216, 1241218 and 1241220 together.
+    '1241216',
+    // 1241218 -- nx <22.7.9, HIGH. See 1241216 for the pin rationale.
+    '1241218',
+    // 1241220 -- nx <22.7.10, HIGH. See 1241216 for the pin rationale.
+    '1241220',
+    // 1241232 -- postcss-selector-parser <7.1.6, MODERATE. Fix is >=7.1.6. The
+    // major is low risk -- build-time only, it parses CSS selectors and never
+    // runs in the app. Blocked on the same override resolution as 1241195.
+    '1241232',
     '1109804',
     '1113465',
     '1113544',
