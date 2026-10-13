@@ -54,6 +54,21 @@ export interface CapabilityItem {
   lastUsedAt: string | null;
   /** Optional backward-compatible alias for lastUsedAt */
   lastUsed?: string | null;
+  /**
+   * True only for rows that came from SEED_CAPABILITIES rather than from a
+   * workspace API response.
+   *
+   * Separate from `source` on purpose. `source` describes what a capability
+   * *is* and drives user-facing labels ("bundled" vs "custom" in PluginsView),
+   * so overloading it with a provenance flag would relabel every seeded plugin
+   * as "custom" -- a different lie. Seed rows keep their real `source` and
+   * carry this flag instead.
+   *
+   * The workbench merges seeds into the server list rather than replacing them,
+   * so without this a hardcoded row is indistinguishable from one the API
+   * returned.
+   */
+  isSeed?: boolean;
   requiredScope?: string;
   trustClass?: CapabilityTrustClass;
   rateLimit?: string;
@@ -70,7 +85,7 @@ export interface CapabilityItem {
 
 export const SEED_CAPABILITIES: CapabilityItem[] = [
   // ──────────────────────────────────────────────────────────────────────────
-  // AGENTS (9 canonical & specialized agents)
+  // AGENTS (10 canonical & specialized agents)
   // ──────────────────────────────────────────────────────────────────────────
   {
     id: 'agent-organization',
@@ -323,6 +338,33 @@ Integrates Google Calendar and Temporal workflows to manage meeting prep agendas
 
 ## Mission
 Implements automated critique and RLAIF reflection loops over completed agent sessions to incrementally improve execution fidelity.
+`,
+  },
+  {
+    id: 'agent-slack',
+    name: 'slack',
+    category: 'agents',
+    tags: ['Communication', 'Slack', 'Approval-Gated'],
+    description:
+      'Coordinates Slack channel message dispatch, broadcasts, and team career update notifications with human-in-the-loop approval gating.',
+    enabled: true,
+    source: 'built-in',
+    usageCount: 0,
+    lastUsedAt: null,
+    requiredScope: 'connector.slack.write',
+    trustClass: 'core_trusted',
+    autonomy: 'approval_required',
+    toolsUsed: ['send_slack_message'],
+    version: '1.0.0',
+    author: 'Vaeloom Core Team',
+    markdownDoc: `# Slack Agent
+
+## Mission
+Dispatches career updates, interview announcements, and team milestone messages to Slack channels with approval gating.
+
+## Guardrails
+- External broadcasts require explicit human confirmation.
+- Default destination channel is configurable per workspace.
 `,
   },
 
@@ -2217,6 +2259,7 @@ class StorageFormatError extends Error {}
 function cloneSeed(): CapabilityItem[] {
   return SEED_CAPABILITIES.map((item) => ({
     ...item,
+    isSeed: true,
     tags: [...item.tags],
     triggers: item.triggers ? [...item.triggers] : undefined,
     toolsUsed: item.toolsUsed ? [...item.toolsUsed] : undefined,

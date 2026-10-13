@@ -68,9 +68,17 @@ export const AgentCard: React.FC<AgentCardProps> = ({
                 Canonical
               </Badge>
             )}
-            {catalogEntry === undefined && hasCatalogLoaded && (
+            {catalogEntry === undefined && hasCatalogLoaded && !agent.isSeed && (
               <Badge variant="warning" size="sm">
                 Not in registry
+              </Badge>
+            )}
+            {agent.isSeed && (
+              // A seeded row exists only in the client bundle. It is not in this
+              // workspace and the API never returned it, so it is labelled
+              // rather than presented as a real capability.
+              <Badge variant="default" size="sm">
+                Sample
               </Badge>
             )}
           </span>
@@ -92,11 +100,24 @@ export const AgentCard: React.FC<AgentCardProps> = ({
       </button>
 
       <div className="shrink-0 pt-0.5">
-        <Switch
-          checked={agent.enabled}
-          onChange={onToggle}
-          label={<span className="sr-only">{`Toggle ${agent.name}`}</span>}
-        />
+        <span
+          title={
+            agent.isSeed
+              ? 'Sample capability — not present in this workspace, so it cannot be enabled.'
+              : undefined
+          }
+        >
+          <Switch
+            checked={agent.enabled}
+            onChange={onToggle}
+            // Disabled rather than left clickable. Toggling a seeded row reaches
+            // the write path with no workspace capability row to update, so the
+            // click can only ever fail. The reason is carried by the Sample
+            // badge and this title rather than behind a click that always errors.
+            disabled={agent.isSeed === true}
+            label={<span className="sr-only">{`Toggle ${agent.name}`}</span>}
+          />
+        </span>
       </div>
     </div>
   );

@@ -307,6 +307,11 @@ function CapabilitiesContent() {
           usageCount: typeof row.usageCount === 'number' ? row.usageCount : 0,
           lastUsedAt: row.lastUsedAt ?? null,
           markdownDoc: capabilityConfigMarkdownDoc(row.config) ?? '',
+          // Explicitly false, not merely absent. A seed row can share an id with
+          // a real one (agent-organization), and the merge spreads `item` over
+          // the seed -- an omitted key would leave isSeed true and keep labelling
+          // a server-sourced capability as a sample.
+          isSeed: false,
         };
         const requiredScope = capabilityConfigRequiredScope(row.config);
         if (requiredScope) item.requiredScope = requiredScope;

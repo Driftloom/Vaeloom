@@ -311,6 +311,14 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
                     <Badge variant="default" size="sm">
                       {plugin.source === 'built-in' ? 'bundled' : 'custom'}
                     </Badge>
+                    {plugin.isSeed && (
+                      // "bundled" says the plugin ships with the product; it does
+                      // not say this workspace has it. Without this the seed list
+                      // reads identically to a real one.
+                      <Badge variant="default" size="sm">
+                        Sample
+                      </Badge>
+                    )}
                     {plugin.version && (
                       <Badge variant="default" size="sm">
                         v{plugin.version}
