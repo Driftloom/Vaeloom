@@ -66,6 +66,7 @@ from .middleware.csrf import CSRFMiddleware, create_csrf_token
 from .middleware.exception_handler import (
     PROBLEM_MEDIA_TYPE,
     generic_exception_handler,
+    llm_provider_exception_handler,
     problem_envelope,
     unified_exception_handler,
     validation_exception_handler,
@@ -131,6 +132,7 @@ from .services.approval import router as approval_router
 from .services.consent import router as consent_router
 from .services.encryption import router as encryption_router
 from .services.gdpr import router as gdpr_router
+from .services.llm_service import LLMProviderError
 from .services.scim import router as scim_router
 
 logger = get_logger(__name__)
@@ -429,6 +431,12 @@ app.add_middleware(
 app.add_exception_handler(StarletteHTTPException, unified_exception_handler)
 app.add_exception_handler(Exception, generic_exception_handler)
 app.add_exception_handler(RequestValidationError, validation_exception_handler)
+# Provider-down is not a bug: llm_service raises LLMProviderError from ~30
+# sites (missing key, connection refused, upstream 5xx, empty embedding) and
+# every one of them is a 503, not a 500. Registering once here keeps the
+# mapping central. LLMTransientError subclasses LLMProviderError, so a
+# retryable upstream 429/5xx lands on the same 503.
+app.add_exception_handler(LLMProviderError, llm_provider_exception_handler)
 
 
 from .temporal.client import TemporalUnavailableError as _TemporalUnavailableError  # noqa: E402

@@ -336,6 +336,12 @@ backups/
 *.bak
 *.dump
 *.sql
+# ...but container init scripts are source, not backups. postgres runs them on
+# first initialisation to create the roles the migration chain grants to, and a
+# compose file that mounts a file git will not track produces a stack that only
+# works on whoever's machine happens to have it. Scoped to init.sql by name:
+# a `*.sql` dump dropped in these directories would still be ignored.
+!infra/**/init.sql
 
 # Seed output
 seed_output/

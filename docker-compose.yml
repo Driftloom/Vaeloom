@@ -39,6 +39,16 @@ services:
       - '5432:5432'
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      # Creates the `postgres`, `authenticated` and `service_role` roles that
+      # 44 migration statements grant to. Without them `alembic upgrade head`
+      # aborts and the api service crash-loops. Same pattern as the temporal
+      # db below.
+      #
+      # Only runs when the volume is first initialised. An existing
+      # `postgres-data` volume predates this file and never picks the roles
+      # up; recreate the volume once (`docker compose down -v`) or run
+      # `infra/postgres/init.sql` by hand.
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/10-vaeloom-roles.sql:ro
     healthcheck:
       test: ['CMD-SHELL', 'pg_isready -U vaeloom']
       interval: 5s
