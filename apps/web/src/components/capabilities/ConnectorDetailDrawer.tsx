@@ -3,7 +3,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Badge, Button, Spinner, StatusDot, Tooltip, useFocusTrap } from '@vaeloom/ui-kit';
-import { connectorsApi, type ConnectorHealthResponse, type McpToolInfo } from '@/lib/api-client';
+import {
+  connectorsApi,
+  type ConnectorHealthResponse,
+  type ConnectorUsageResponse,
+  type McpToolInfo,
+} from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
 
 export interface CatalogRowData {
@@ -46,12 +51,37 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
   onRefresh,
 }) => {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState<'overview' | 'tools' | 'security'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'tools' | 'security' | 'activity'>(
+    'overview',
+  );
   const [tools, setTools] = useState<McpToolInfo[]>([]);
   const [loadingTools, setLoadingTools] = useState(false);
   const [syncingTools, setSyncingTools] = useState(false);
   const [healthStatus, setHealthStatus] = useState<ConnectorHealthResponse | null>(null);
   const [testingHealth, setTestingHealth] = useState(false);
+  const [usage, setUsage] = useState<ConnectorUsageResponse | null>(null);
+  const [loadingUsage, setLoadingUsage] = useState(false);
+  const [usageError, setUsageError] = useState<string | null>(null);
+  const [rollingBack, setRollingBack] = useState(false);
+
+  const TABS = [
+    { id: 'overview', label: 'Overview & Permissions' },
+    { id: 'tools', label: 'Tools & Schemas' },
+    { id: 'security', label: 'Zero-Trust & Health' },
+    { id: 'activity', label: 'Activity' },
+  ] as const;
+
+  // Arrow keys move between tabs. This row is visually a tab bar but was four
+  // bare buttons, so Tab visited each one and arrows did nothing.
+  const handleTabKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    e.preventDefault();
+    const index = TABS.findIndex((t) => t.id === activeTab);
+    const next = TABS[(index + (e.key === 'ArrowRight' ? 1 : -1) + TABS.length) % TABS.length];
+    if (!next) return;
+    setActiveTab(next.id);
+    document.getElementById(`connector-tab-${next.id}`)?.focus();
+  };
 
   // Escape plus Tab containment. This declared aria-modal="true" while trapping
   // nothing, so Tab walked out into the page behind the drawer.
@@ -77,6 +107,68 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
       void loadTools();
     }
   }, [isOpen, activeTab, connectorId, loadTools]);
+
+  // Lifecycle activity, aggregated server-side from audit_events.
+  //
+  // `connectorsApi.usage` has existed since the client method landed but had
+  // no caller, so nothing in the product ever displayed it. The error is kept
+  // separate from the data on purpose: a failed read must not render as
+  // "0 events", which would read as a connector that has never been used.
+  const loadUsage = useCallback(async () => {
+    if (!connectorId) return;
+    setLoadingUsage(true);
+    setUsageError(null);
+    try {
+      setUsage(await connectorsApi.usage(connectorId));
+    } catch (err) {
+      setUsage(null);
+      setUsageError(
+        err instanceof Error && err.message
+          ? err.message
+          : 'The activity summary could not be read.',
+      );
+    } finally {
+      setLoadingUsage(false);
+    }
+  }, [connectorId]);
+
+  useEffect(() => {
+    if (isOpen && activeTab === 'activity' && connectorId) {
+      void loadUsage();
+    }
+  }, [isOpen, activeTab, connectorId, loadUsage]);
+
+  const handleRollback = async () => {
+    if (!connectorId || !usage) return;
+    // `rollback_config` resolves `version` against config_history and 404s when
+    // the snapshot is absent, so the target is the version immediately before
+    // the current one. If no such snapshot exists the 404 surfaces below rather
+    // than silently restoring the wrong config.
+    const targetVersion = usage.config_version - 1;
+    const confirmed = window.confirm(
+      `Restore ${usage.name} to config version ${targetVersion}? ` +
+        'The stored config and credentials are replaced by that snapshot.',
+    );
+    if (!confirmed) return;
+    setRollingBack(true);
+    try {
+      await connectorsApi.rollback(connectorId, targetVersion);
+      toast({
+        tone: 'success',
+        title: `${usage.name} restored to version ${targetVersion}`,
+        detail: 'Config replaced from snapshot history.',
+      });
+      await loadUsage();
+    } catch (err) {
+      toast({
+        tone: 'error',
+        title: 'Rollback failed',
+        detail: err instanceof Error && err.message ? err.message : 'Nothing was changed.',
+      });
+    } finally {
+      setRollingBack(false);
+    }
+  };
 
   const handleTestHealth = async () => {
     if (!connectorId) return;
@@ -189,40 +281,33 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
           </div>
 
           {/* Subtabs Bar */}
-          <div className="flex border-b border-border bg-surface px-5 gap-1 shrink-0">
-            <button
-              type="button"
-              onClick={() => setActiveTab('overview')}
-              className={`py-2.5 px-3 text-xs font-medium border-b-2 transition-all rounded-t focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
-                activeTab === 'overview'
-                  ? 'border-primary text-primary font-semibold'
-                  : 'border-transparent text-text-secondary hover:text-text'
-              }`}
-            >
-              Overview &amp; Permissions
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('tools')}
-              className={`py-2.5 px-3 text-xs font-medium border-b-2 transition-all rounded-t focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
-                activeTab === 'tools'
-                  ? 'border-primary text-primary font-semibold'
-                  : 'border-transparent text-text-secondary hover:text-text'
-              }`}
-            >
-              Tools &amp; Schemas {tools.length > 0 ? `(${tools.length})` : ''}
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('security')}
-              className={`py-2.5 px-3 text-xs font-medium border-b-2 transition-all rounded-t focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
-                activeTab === 'security'
-                  ? 'border-primary text-primary font-semibold'
-                  : 'border-transparent text-text-secondary hover:text-text'
-              }`}
-            >
-              Zero-Trust &amp; Health
-            </button>
+          <div
+            role="tablist"
+            aria-label="Connector detail sections"
+            onKeyDown={handleTabKeyDown}
+            className="flex border-b border-border bg-surface px-5 gap-1 shrink-0"
+          >
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                id={`connector-tab-${tab.id}`}
+                type="button"
+                role="tab"
+                aria-selected={activeTab === tab.id}
+                aria-controls={`connector-panel-${tab.id}`}
+                tabIndex={activeTab === tab.id ? 0 : -1}
+                onClick={() => setActiveTab(tab.id)}
+                className={`py-2.5 px-3 text-xs font-medium border-b-2 transition-all rounded-t focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
+                  activeTab === tab.id
+                    ? 'border-primary text-primary font-semibold'
+                    : 'border-transparent text-text-secondary hover:text-text'
+                }`}
+              >
+                {tab.id === 'tools' && tools.length > 0
+                  ? `Tools & Schemas (${tools.length})`
+                  : tab.label}
+              </button>
+            ))}
           </div>
 
           {/* Body Content */}
@@ -378,6 +463,108 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
                         : 'Connect this integration to reflect its tools into the agent runtime.'}
                     </p>
                   </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'activity' && (
+              <div
+                role="tabpanel"
+                id="connector-panel-activity"
+                aria-labelledby="connector-tab-activity"
+                className="space-y-4"
+              >
+                {loadingUsage && !usage && (
+                  <p className="text-xs text-text-secondary" role="status">
+                    Reading lifecycle activity...
+                  </p>
+                )}
+
+                {usageError && (
+                  <div role="alert" className="rounded-xl border border-error/30 bg-error/5 p-4">
+                    <p className="text-xs font-semibold text-error">Activity could not be read</p>
+                    <p className="text-xs text-text-secondary mt-1">{usageError}</p>
+                    <button
+                      type="button"
+                      onClick={() => void loadUsage()}
+                      className="mt-2 text-xs text-primary underline underline-offset-2"
+                    >
+                      Retry
+                    </button>
+                  </div>
+                )}
+
+                {!loadingUsage && !usageError && usage && (
+                  <>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-xl border border-border bg-surface p-3">
+                        <p className="text-2xs font-mono uppercase tracking-wider text-text-muted">
+                          Total events
+                        </p>
+                        <p className="text-lg font-semibold text-text">{usage.total_events}</p>
+                      </div>
+                      <div className="rounded-xl border border-border bg-surface p-3">
+                        <p className="text-2xs font-mono uppercase tracking-wider text-text-muted">
+                          Config version
+                        </p>
+                        <p className="text-lg font-semibold text-text">{usage.config_version}</p>
+                      </div>
+                      <div className="rounded-xl border border-border bg-surface p-3">
+                        <p className="text-2xs font-mono uppercase tracking-wider text-text-muted">
+                          Last activity
+                        </p>
+                        <p className="text-xs text-text mt-1">
+                          {usage.last_activity_at
+                            ? new Date(usage.last_activity_at).toLocaleString()
+                            : 'Never'}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-border bg-surface p-3">
+                        <p className="text-2xs font-mono uppercase tracking-wider text-text-muted">
+                          Last synced
+                        </p>
+                        <p className="text-xs text-text mt-1">
+                          {usage.last_synced_at
+                            ? new Date(usage.last_synced_at).toLocaleString()
+                            : 'Never'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-border bg-surface p-4 space-y-2">
+                      <h3 className="text-xs font-semibold text-text">Events by action</h3>
+                      {usage.total_events === 0 ? (
+                        <p className="text-xs text-text-secondary">
+                          No lifecycle events recorded for this connector yet.
+                        </p>
+                      ) : (
+                        <dl className="space-y-1.5">
+                          {Object.entries(usage.events_by_action)
+                            .sort((a, b) => b[1] - a[1])
+                            .map(([action, count]) => (
+                              <div key={action} className="flex items-center justify-between gap-3">
+                                <dt className="text-xs font-mono text-text-secondary">{action}</dt>
+                                <dd className="text-xs font-mono text-text">{count}</dd>
+                              </div>
+                            ))}
+                        </dl>
+                      )}
+                    </div>
+
+                    {/* Rollback stays hidden at version 1: there is no earlier
+                        config to restore, so offering it invites a pointless
+                        round trip. */}
+                    {usage.config_version > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => void handleRollback()}
+                        disabled={rollingBack}
+                        className="text-xs text-error underline underline-offset-2 disabled:opacity-60"
+                      >
+                        {rollingBack ? 'Rolling back...' : 'Roll back to previous config version'}
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             )}

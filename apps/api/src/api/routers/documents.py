@@ -879,8 +879,9 @@ async def get_batch_document_versions(
 
     await _verify_workspace_access(str(dto.workspace_id), _user_id(current_user), db)
 
-    from ..models.schema import DocumentVersion
     from sqlalchemy import func
+
+    from ..models.schema import DocumentVersion
 
     doc_ids = dto.document_ids
     if not doc_ids:

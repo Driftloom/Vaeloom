@@ -10,11 +10,12 @@ from __future__ import annotations
 import logging
 import uuid
 from typing import Any
+
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..models.schema import ChatMessage, Conversation
 from ..infrastructure.context_budget import estimate_tokens
+from ..models.schema import ChatMessage, Conversation
 from ..orchestrator.context.context_assembler import _sanitize_xml_content
 from ..services.llm_service import llm_service
 
@@ -97,7 +98,7 @@ async def compact_conversation(
 ) -> dict[str, Any]:
     """
     Compact conversation history for a given thread.
-    
+
     1. Validates thread exists and has >= 5 turns.
     2. Quarantines turns 0 .. N-5 against injection.
     3. Summarizes turns into a consolidated episodic block.

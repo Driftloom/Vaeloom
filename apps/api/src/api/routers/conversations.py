@@ -267,6 +267,7 @@ async def pin_message_to_memory(
     await _verify_workspace_access(workspace_id, current_user, db)
 
     import uuid as _uuid
+
     from sqlalchemy import select as _sel
 
     from ..models.schema import ChatMessage

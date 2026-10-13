@@ -73,12 +73,19 @@ class ClamAVScanner:
 
     @property
     def is_circuit_open(self) -> bool:
-        if self._circuit_opened_at is None:
-            return False
-        if time.time() - self._circuit_opened_at > self.recovery_time_seconds:
-            # Half-open: allow a trial request
-            return False
-        return True
+        """Whether the breaker is currently refusing traffic.
+
+        Half-open once ``recovery_time_seconds`` has elapsed: the breaker stops
+        reporting open so a trial request can through, and that request's outcome
+        decides whether it re-opens or closes. The three explicit cases the
+        condition used to be written as were collapsed here to satisfy SIM103 --
+        the explanation moved into this docstring rather than being dropped along
+        with the branch it annotated.
+        """
+        return (
+            self._circuit_opened_at is not None
+            and time.time() - self._circuit_opened_at <= self.recovery_time_seconds
+        )
 
     def _record_success(self) -> None:
         self._consecutive_failures = 0
@@ -158,7 +165,7 @@ class ClamAVScanner:
             logger.error("ClamAV daemon returned unexpected response: %s", response_text)
             raise AntivirusException(f"ClamAV response error: {response_text}")
 
-        except (asyncio.TimeoutError, ConnectionRefusedError, OSError) as exc:
+        except (TimeoutError, ConnectionRefusedError, OSError) as exc:
             self._record_failure()
             logger.warning("ClamAV daemon connection error (%s:%d): %s", self.host, self.port, exc)
             raise AntivirusUnavailableException(

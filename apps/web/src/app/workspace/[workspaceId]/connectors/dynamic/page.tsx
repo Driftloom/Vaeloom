@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 
 interface DynamicConnectorsPageProps {
-  params: Promise<{ workspaceId: string }> | { workspaceId: string };
+  params: Promise<{ workspaceId: string }>;
 }
 
 export default async function DynamicConnectorsPage({ params }: DynamicConnectorsPageProps) {

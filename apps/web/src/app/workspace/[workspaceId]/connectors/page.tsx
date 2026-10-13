@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 
 interface ConnectorsPageProps {
-  params?: Promise<{ workspaceId: string }> | { workspaceId: string };
+  params?: Promise<{ workspaceId: string }>;
 }
 
 export default function ConnectorsPage(_props?: ConnectorsPageProps) {

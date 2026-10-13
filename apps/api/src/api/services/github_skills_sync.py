@@ -21,7 +21,8 @@ review before it is ever written. See ``POST /capabilities/sync-github`` in
 from __future__ import annotations
 
 import logging
-from typing import Any, Optional
+from typing import Any
+
 import httpx
 import yaml
 from pydantic import BaseModel, Field
@@ -148,7 +149,7 @@ def parse_remote_skill_md(
 async def sync_skills_from_github(
     repo: str = "Driftloom/vaeloom-skills",
     ref: str = "master",
-    auth_token: Optional[str] = None,
+    auth_token: str | None = None,
     timeout_sec: float = 15.0,
 ) -> GitHubSkillSyncResult:
     """Fetch, parse, and validate skills from a remote GitHub repository tree."""
