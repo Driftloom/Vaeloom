@@ -341,12 +341,22 @@ class RecommendationService:
     ):
         """Rebuild preference vectors from feedback.
 
-        ``workspace_id`` is required for the result to be meaningful: since 0069
-        a vector is per-workspace, so averaging feedback from every workspace into
-        one would rebuild the exact cross-workspace profile this scoping exists to
-        prevent. Callers that cannot supply one get the all-zero sentinel rather
-        than a contaminated vector.
+        ``workspace_id`` is required, and its absence is a no-op rather than a
+        sentinel. Since 0069 a vector is per-workspace, so one written without a
+        workspace cannot be read back by any workspace-scoped reader: it is an
+        orphan row that only costs storage and only looks like coverage in a
+        count. Previously this fell back to the all-zeros workspace, which
+        produced exactly such orphans.
+
+        Failing soft here is deliberate. A caller with no workspace context is
+        an ambiguous state to reject over -- the caller is authenticated and is
+        the owner of the subject -- and the correct workspace is recoverable by
+        repeating the request with one, whereas a rejected request is not
+        retryable by any other principal.
         """
+        if not workspace_id:
+            return []
+
         params: dict[str, Any] = {}
 
         user_clause = ""
@@ -394,10 +404,9 @@ class RecommendationService:
                     {
                         "uid": uid,
                         "tid": tenant_id or "default",
-                        # Per-workspace since 0069. A caller with no workspace
-                        # context learns nothing rather than writing a vector that
-                        # every workspace would then read.
-                        "wid": workspace_id or "00000000-0000-0000-0000-000000000000",
+                        # Guarded by the early return above, so this is never a
+                        # sentinel: every write lands on a real workspace.
+                        "wid": workspace_id,
                         "vector": avg_row[0],
                     },
                 )

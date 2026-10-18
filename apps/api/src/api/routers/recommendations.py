@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
-from ..dependencies import get_current_user, get_workspace_id
+from ..dependencies import get_current_user, get_tenant_id, get_workspace_id
 from ..schemas.recommendation import (
     FeedbackRequest,
     GenerateRecommendationRequest,
@@ -99,6 +99,7 @@ async def reindex(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
     workspace_id: str | None = Depends(get_workspace_id),
+    tenant_id: str | None = Depends(get_tenant_id),
 ):
     if not current_user:
         raise HTTPException(status_code=401)
@@ -109,9 +110,11 @@ async def reindex(
     current_uid = str(current_user.get("sub") or current_user.get("user_id", ""))
     if dto.user_id != current_uid:
         raise HTTPException(status_code=403, detail="Cannot reindex another user's preferences")
-    # From authenticated context, never the body: a client-supplied workspace id
-    # would be a way to aim the rebuild at a workspace the caller does not hold.
+    # From authenticated context, never the body. `dto.tenant_id` was previously
+    # forwarded straight into the rebuild, which let a caller aim the write at
+    # another tenant's preference vector -- the same cross-tenant steer the
+    # user_id check above blocks, one dimension over.
     results = await recommendation_service.reindex(
-        dto.user_id, dto.tenant_id, db, workspace_id=workspace_id
+        current_uid, tenant_id, db, workspace_id=workspace_id
     )
     return results
