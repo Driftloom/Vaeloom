@@ -1778,6 +1778,17 @@ async def _try_react_loop(
                         )
                         _fell_back = True
                         _rec.provider_fallbacks += 1
+                        # The downgrade is otherwise invisible: the hop happens
+                        # inside a bare except and the only prior line reports the
+                        # failure, not the fact that a different provider
+                        # answered. Log the hop with the run correlation so a
+                        # fallback can be attributed to the run that caused it
+                        # and not mistaken for a first-try success.
+                        logger.warning(
+                            "LLM provider downgraded mid-round; completed via "
+                            "cross-provider fallback chain (correlation_id=%s)",
+                            corr,
+                        )
                         _round_model = str(_fb.get("model") or _round_model)
                         try:
                             from ..services.llm_service import _infer_provider_from_model as _ipm
