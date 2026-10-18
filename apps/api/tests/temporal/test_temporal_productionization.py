@@ -42,6 +42,20 @@ pytestmark = pytest.mark.asyncio
 FINAL_ANSWER = '{"summary": "Temporal graph task complete.", "proposals": []}'
 TAG_RE = re.compile(r"\[TAG ([a-z0-9-]+)\]")
 SCRIPTS: dict[str, list] = {}
+# Bound here because _FakeAsyncClient.post takes a `json` parameter that shadows
+# the module name inside that method body.
+_JSON_DUMPS = json.dumps
+# Steps the buffered cross-provider fallback should return, keyed by tag.
+#
+# The scripted stream patches `generate_completion_with_tools_stream`, but the
+# fallback hop in loop.py calls `generate_completion_with_tools` instead, which
+# this fixture routes to _FakeAsyncClient. That fake always answered with a
+# text-only completion, so a fallback could never surface a tool call: the run
+# got its "answer" from the downgrade hop and the tool step in SCRIPTS was
+# unreachable. A test could not express "fallback, then call a tool" at all.
+#
+# Populate this to script the fallback hop separately from the stream.
+FALLBACK_SCRIPTS: dict[str, list] = {}
 
 
 def _tag_of(text: str) -> str:
@@ -115,7 +129,74 @@ class _FakeAsyncClient:
         return False
 
     async def post(self, url, headers=None, json=None):
-        return _Resp(200, _CHAT_OK)
+        return _Resp(200, self._payload_for(json))
+
+    @staticmethod
+    def _payload_for(request_json) -> dict:
+        """Answer the buffered fallback hop from FALLBACK_SCRIPTS when scripted.
+
+        Without this the fallback always returns text, so a downgrade silently
+        ends the run before any tool step in SCRIPTS is reached. Returning a
+        tool call here is what lets a test prove the fallback hop actually
+        participates in the tool loop rather than bypassing it.
+        """
+        tag = "default"
+        try:
+            for message in (request_json or {}).get("messages", []) or []:
+                if isinstance(message, dict) and message.get("role") == "user":
+                    tag = _tag_of(str(message.get("content", "")))
+                    break
+        except Exception:
+            pass
+
+        script = FALLBACK_SCRIPTS.get(tag)
+        if not script:
+            return _CHAT_OK
+
+        rounds = 0
+        try:
+            rounds = sum(
+                1
+                for m in (request_json or {}).get("messages", []) or []
+                if isinstance(m, dict) and m.get("role") == "assistant" and m.get("tool_calls")
+            )
+        except Exception:
+            pass
+        step = script[min(rounds, len(script) - 1)]
+        if not isinstance(step, dict):
+            return _CHAT_OK
+
+        if "tool" in step:
+            name, args = step["tool"]
+            return {
+                "choices": [
+                    {
+                        "message": {
+                            "role": "assistant",
+                            "content": None,
+                            "tool_calls": [
+                                {
+                                    "id": f"fbcall-{tag}-{rounds}",
+                                    "type": "function",
+                                    "function": {"name": name, "arguments": _JSON_DUMPS(args)},
+                                }
+                            ],
+                        },
+                        "finish_reason": "tool_calls",
+                    }
+                ],
+                "usage": {"prompt_tokens": 5, "completion_tokens": 7},
+            }
+
+        return {
+            "choices": [
+                {
+                    "message": {"role": "assistant", "content": step.get("text", FINAL_ANSWER)},
+                    "finish_reason": "stop",
+                }
+            ],
+            "usage": {"prompt_tokens": 5, "completion_tokens": 7},
+        }
 
 
 @pytest.fixture
@@ -1070,6 +1151,12 @@ async def test_TE25_full_combined(temporal_harness, monkeypatch, caplog):
     monkeypatch.setitem(_ex.TOOL_DISPATCH, "search_documents", _stub_search)
     SCRIPTS["t25"] = [
         LLMTransientError("Service Unavailable", 503),
+        {"text": '{"summary": "Full Temporal run: fallback plus tool.", "proposals": []}'},
+    ]
+    # The 503 fires on the streaming round; the buffered fallback hop is what
+    # must return the tool call, otherwise the run takes its answer from the
+    # downgrade and the tool step above is never reached.
+    FALLBACK_SCRIPTS["t25"] = [
         {"tool": ("search_documents", {"query": "full combined proof"})},
         {"text": '{"summary": "Full Temporal run: fallback plus tool.", "proposals": []}'},
     ]
