@@ -69,9 +69,9 @@ test.describe('memory honesty', () => {
     await expect(dialog.getByText(markerContent)).toBeVisible();
     expect(hits, 'the drawer never fetched /workspaces/{id}/memories').toBeGreaterThanOrEqual(1);
 
-    // The drawer is fed by the API, not the static seeds of the in-page
-    // "Memory Vault" tab (`MemoryVaultExplorer.tsx`): seed titles must not
-    // appear inside the drawer.
+    // The drawer is fed by the API, not by any fabricated content: the old
+    // seed titles of the in-page "Memory Vault" tab were removed entirely, and
+    // must never reappear in the drawer either.
     await expect(dialog.getByText('AI Multi-Agent Career Copilot Architecture')).toHaveCount(0);
 
     // The drawer's own client-side filter works over the fetched data.
