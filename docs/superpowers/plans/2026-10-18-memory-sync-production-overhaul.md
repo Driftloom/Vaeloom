@@ -454,7 +454,7 @@ Fixes made during V1 (all justified, recorded): `EXPECTED_ALEMBIC_HEAD` `"0057"`
 |---|---|---|
 | `/memory` notes | vault tile honest alert + "Try Again"; KPI cards render **invented zeros** | **F-memory-zeros-on-outage** |
 | `/memory` Corrections tab | honest alert + "Refresh Memories" | PASS |
-| `/memory/corrections` route | no alert; first-run empty state "No memories found" + All (0)/Active (0)/Superseded (0) | **F-corrections-silent-empty** |
+| `/memory/corrections` route | first-drill capture showed "No memories found" + All (0)/Active (0)/Superseded (0); **retracted** — see corrections below | **RETRACTED** (not a defect) |
 | `/memory/vault` | designed `ErrorState` + "Request sync" | PASS |
 | `/memory/scale` | "Failed to load SCALE memory nodes … Try Again" | PASS |
 | `/memory/graph` | "Failed to load graph … Try Again" (one retry pair, then stable) | PASS |
@@ -467,6 +467,7 @@ Fixes made during V1 (all justified, recorded): `EXPECTED_ALEMBIC_HEAD` `"0057"`
 **Amendments & corrections:**
 - **Amendment 9 (route enumeration):** `/memory/corrections` has a dedicated route (`workspace/[workspaceId]/memory/corrections/page.tsx`, h1 "Memory Corrections & Supersessions") that was missing from the original design route list. Drill traversed it.
 - First-drill "graph stuck on Loading workspace…" was a capture artifact (quiescence gate used ASCII `'...'` vs page's Unicode `'…'`, plus an expired browser session in the re-probe) — **retracted**; re-probed clean: honest error state within ~9 s.
+- **F-corrections-silent-empty retracted (2026-10-19):** the `/memory/corrections` empty-state capture was a drill-interception artifact. The drill's `**/api/v1/memories/**` glob cannot match the panel's `GET /api/v1/memories?workspace_id=…` request (a `/` is required after `memories`; the URL has `?`), so the panel's only fetch was never 503'd in that capture — and a rejection cannot render that empty state, because the panel's error branch (`MemoryCorrectionPanel.tsx:228`, present since `d648c5ea` 2026-10-05, unchanged through the capture) renders `ErrorState` whenever `loadError` is set. The capture is explained by the post-reseed window: the API was back up and the freshly reseeded workspace was still empty, so the request resolved to a genuine zero-row list and the empty state was the honest rendering. The same branch produced the tab's observed "honest alert + Refresh Memories" during the real kill window (plan row above), and a new negative-control test (`MemoryCorrectionPanel.test.tsx`: rejected list → `role="alert"`, `No memories found` absent) re-proves it on current HEAD. No code change; the final verification pass re-drills this surface with a pattern that matches the bare `/memories` request.
 
 Screenshots: `wave3-v1-*-apidown.png` (10 files, incl. vault-retry, chat-vault-tab, chat-drawer). Method note: full-API-down prevents surface-level walking (reload loop), so per-surface honesty was verified by family-level 503 interception with auth alive.
 

@@ -117,4 +117,16 @@ describe('MemoryCorrectionPanel — corrections ledger regressions', () => {
     const link = await screen.findByRole('link', { name: ANCESTOR_ID.slice(0, 8) });
     expect(link).toHaveAttribute('href', `/workspace/ws-1/memory/${ANCESTOR_ID}`);
   });
+
+  it('shows a retryable error, never a first-run empty state, when the list request fails', async () => {
+    // `/memory/corrections` must not read as "this workspace has no memories"
+    // while its one request is failing: that empty state is reserved for a
+    // resolved zero-row response.
+    listMock.mockRejectedValue(new Error('connection refused'));
+    renderPanel();
+
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toMatch(/could not load memories/i);
+    expect(screen.queryByText('No memories found')).toBeNull();
+  });
 });
