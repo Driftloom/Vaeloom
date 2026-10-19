@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { SWRConfig } from 'swr';
 import { MemoryCorrectionPanel } from '@/components/memory/MemoryCorrectionPanel';
@@ -128,5 +128,52 @@ describe('MemoryCorrectionPanel — corrections ledger regressions', () => {
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toMatch(/could not load memories/i);
     expect(screen.queryByText('No memories found')).toBeNull();
+  });
+});
+
+describe('MemoryCorrectionPanel — windowed loading past the page cap', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('says how much is shown and continues the window on Load more', async () => {
+    // The API caps page_size at 100. A workspace with more than that must not
+    // silently confine corrections to the first window: the correction surface
+    // exists precisely for rows (superseded ones) that can sit on any page.
+    const page1 = Array.from({ length: 100 }, (_, i) =>
+      supersededRow({ id: `id-p1-${i}`, title: `P1 row ${i}` }),
+    );
+    const page2 = Array.from({ length: 50 }, (_, i) =>
+      supersededRow({ id: `id-p2-${i}`, title: `P2 row ${i}` }),
+    );
+    listMock.mockImplementation((params?: { page?: number }) =>
+      Promise.resolve({
+        memories: params?.page === 2 ? page2 : page1,
+        total: 150,
+        page: params?.page ?? 1,
+        page_size: 100,
+      }),
+    );
+    renderPanel();
+
+    expect(await screen.findByText('Showing 100 of 150 memories')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Load more' }));
+
+    expect(await screen.findByText('Showing 150 of 150 memories')).toBeInTheDocument();
+    expect(listMock).toHaveBeenCalledWith(expect.objectContaining({ page: 2 }));
+    // The second window was appended, not swapped in: rows from both render.
+    expect(screen.getByText('P1 row 0')).toBeInTheDocument();
+    expect(screen.getByText('P2 row 0')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull();
+  });
+
+  it('offers no Load more once the reported total is reached', async () => {
+    mockList([supersededRow(), supersededRow({ id: 'second-id' })]);
+    renderPanel();
+
+    expect(await screen.findByText('Showing 2 of 2 memories')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull();
+    expect(listMock).toHaveBeenCalledTimes(1);
   });
 });

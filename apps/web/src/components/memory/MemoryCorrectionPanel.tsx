@@ -13,6 +13,11 @@ interface MemoryCorrectionPanelProps {
   workspaceId?: string;
 }
 
+// Correction windows are fetched in pages of this size; the API caps page_size
+// at 100. Superseded rows can sit on any page, so the footer continues the
+// window until the server-reported total is reached.
+const PANEL_PAGE_SIZE = 100;
+
 function readSupersedesId(memory: Memory): string {
   const raw = memory as unknown as Record<string, unknown>;
   const metadata = (raw['metadata'] ?? {}) as Record<string, unknown>;
@@ -33,27 +38,40 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'superseded'>('all');
   const [saving, setSaving] = useState(false);
+  const [loadedPages, setLoadedPages] = useState(1);
   const { toast } = useToast();
 
   // The Corrections view must include superseded rows - that is its entire job -
   // so it fetches with include_superseded=true under its own cache key. It cannot
   // share the active-memories key: SWR dedupes the two mismatched param sets and
-  // the superseded rows vanish. The params object is built separately because the
-  // client's list-params type does not declare include_superseded yet.
-  const listParams = {
-    page_size: 100,
-    ...(workspaceId ? { workspace_id: workspaceId } : {}),
-    include_superseded: true,
-  };
+  // the superseded rows vanish. Beyond the first window the server's total is
+  // kept so the footer can offer Load more, the same shape the memory list page
+  // uses. The params object is built here because this call carries the
+  // include_superseded flag the list page does not use.
+  const listKeyBase = workspaceId
+    ? `memories-${workspaceId}-with-superseded`
+    : 'memories-all-with-superseded';
   const {
     data: memoriesData,
     error: loadErrorRaw,
     isLoading: loading,
     mutate: reload,
-  } = useSWR(
-    workspaceId ? `memories-${workspaceId}-with-superseded` : 'memories-all-with-superseded',
-    () => memoryApi.list(listParams),
-  );
+  } = useSWR([listKeyBase, loadedPages], async () => {
+    const pages = await Promise.all(
+      Array.from({ length: loadedPages }, (_, i) =>
+        memoryApi.list({
+          page: i + 1,
+          page_size: PANEL_PAGE_SIZE,
+          ...(workspaceId ? { workspace_id: workspaceId } : {}),
+          include_superseded: true,
+        }),
+      ),
+    );
+    return {
+      memories: pages.flatMap((p) => (Array.isArray(p.memories) ? p.memories : [])),
+      total: pages[0]?.total ?? 0,
+    };
+  });
 
   const memories: Memory[] = useMemo(() => {
     if (!memoriesData) return [];
@@ -64,6 +82,16 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
         []);
     return rows.filter((m) => m.status !== 'deleted');
   }, [memoriesData]);
+
+  // The server-reported corpus size, kept separately from the fetched rows so a
+  // truncated window never reads as the whole workspace.
+  const memoriesTotal = useMemo(() => {
+    if (!memoriesData || Array.isArray(memoriesData)) return memories.length;
+    const total = (memoriesData as { total?: number }).total;
+    return typeof total === 'number' ? total : memories.length;
+  }, [memoriesData, memories]);
+
+  const loadMoreMemories = useCallback(() => setLoadedPages((p) => p + 1), []);
 
   const loadError: string | null = loadErrorRaw
     ? loadErrorRaw instanceof ApiError
@@ -237,70 +265,82 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
           }
         />
       ) : (
-        <ul
-          role="list"
-          className="divide-y divide-border rounded-lg border border-border overflow-hidden"
-        >
-          {filteredMemories.map((m) => {
-            const isSuperseded =
-              (m.status as string) === 'superseded' ||
-              (m.metadata?.['status'] as string) === 'superseded';
-            const supersedesId = readSupersedesId(m);
+        <div className="space-y-3">
+          <ul
+            role="list"
+            className="divide-y divide-border rounded-lg border border-border overflow-hidden"
+          >
+            {filteredMemories.map((m) => {
+              const isSuperseded =
+                (m.status as string) === 'superseded' ||
+                (m.metadata?.['status'] as string) === 'superseded';
+              const supersedesId = readSupersedesId(m);
 
-            return (
-              <li
-                key={m.id}
-                className="p-4 bg-surface hover:bg-surface-hover transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <Badge variant={isSuperseded ? 'warning' : 'primary'} size="sm">
-                      {m.type || 'note'}
-                    </Badge>
-                    {isSuperseded && (
-                      <Badge variant="warning" size="sm">
-                        SUPERSEDED
+              return (
+                <li
+                  key={m.id}
+                  className="p-4 bg-surface hover:bg-surface-hover transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <Badge variant={isSuperseded ? 'warning' : 'primary'} size="sm">
+                        {m.type || 'note'}
                       </Badge>
-                    )}
-                    <h3 className="truncate text-sm font-semibold text-text">
-                      {m.title || 'Untitled Memory'}
-                    </h3>
+                      {isSuperseded && (
+                        <Badge variant="warning" size="sm">
+                          SUPERSEDED
+                        </Badge>
+                      )}
+                      <h3 className="truncate text-sm font-semibold text-text">
+                        {m.title || 'Untitled Memory'}
+                      </h3>
+                    </div>
+                    <p className="text-xs text-text-secondary mt-1 line-clamp-2">
+                      {typeof m.summary === 'string' ? m.summary : 'No summary'}
+                    </p>
+                    <div className="flex items-center gap-3 mt-1.5 text-[11px] text-text-muted font-mono">
+                      <span>ID: {m.id.slice(0, 8)}</span>
+                      {supersedesId && (
+                        <span>
+                          Supersedes:{' '}
+                          {workspaceId ? (
+                            <Link
+                              href={`/workspace/${workspaceId}/memory/${supersedesId}`}
+                              className="text-accent hover:underline"
+                            >
+                              {supersedesId.slice(0, 8)}
+                            </Link>
+                          ) : (
+                            supersedesId.slice(0, 8)
+                          )}
+                        </span>
+                      )}
+                      {Array.isArray(m.tags) && m.tags.length > 0 && (
+                        <span>Tags: {m.tags.join(', ')}</span>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-xs text-text-secondary mt-1 line-clamp-2">
-                    {typeof m.summary === 'string' ? m.summary : 'No summary'}
-                  </p>
-                  <div className="flex items-center gap-3 mt-1.5 text-[11px] text-text-muted font-mono">
-                    <span>ID: {m.id.slice(0, 8)}</span>
-                    {supersedesId && (
-                      <span>
-                        Supersedes:{' '}
-                        {workspaceId ? (
-                          <Link
-                            href={`/workspace/${workspaceId}/memory/${supersedesId}`}
-                            className="text-accent hover:underline"
-                          >
-                            {supersedesId.slice(0, 8)}
-                          </Link>
-                        ) : (
-                          supersedesId.slice(0, 8)
-                        )}
-                      </span>
-                    )}
-                    {Array.isArray(m.tags) && m.tags.length > 0 && (
-                      <span>Tags: {m.tags.join(', ')}</span>
-                    )}
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button variant="secondary" size="sm" onClick={() => openEditor(m)}>
-                    {isSuperseded ? 'Re-Correct' : 'Correct'}
-                  </Button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button variant="secondary" size="sm" onClick={() => openEditor(m)}>
+                      {isSuperseded ? 'Re-Correct' : 'Correct'}
+                    </Button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-text-muted">
+              {`Showing ${filteredMemories.length} of ${memoriesTotal} memories`}
+            </p>
+            {memories.length < memoriesTotal && (
+              <Button variant="secondary" size="sm" onClick={loadMoreMemories}>
+                Load more
+              </Button>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Interactive Correction Modal with Live Diff */}
