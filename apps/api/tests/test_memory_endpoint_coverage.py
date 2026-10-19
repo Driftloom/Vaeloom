@@ -521,3 +521,66 @@ class TestMemoryStatusWrites:
             ws, "quokka migration", db_session
         )
         assert all(item["id"] != memory_id for item in after)
+
+
+class TestMemorySearchContentCoverage:
+    async def test_keyword_search_matches_content_beyond_the_scan_window(
+        self, client: AsyncClient
+    ):
+        """``memories.content`` is Fernet-encrypted at rest, so the SQL keyword
+        fallback can only match title/summary; content-only hits come from the
+        decrypted in-Python scan. That scan used to stop after an arbitrary,
+        unordered first 100 rows, so once a workspace had more than that, a
+        phrase recorded only in a later memory was silently unreachable."""
+        headers = await _signup(client)
+        ws = await _create_workspace(client, headers, name="Search Coverage WS")
+
+        phrase = "zephyr-quilt salvage route"
+        fillers = [
+            {
+                "type": "note",
+                "title": f"Routine entry {i}",
+                "summary": "Boilerplate summary with nothing notable",
+                "content": "Nothing of interest is recorded here",
+            }
+            for i in range(100)
+        ]
+        needle = {
+            "type": "note",
+            "title": "Field notes",
+            "summary": "Observations from the site visit",
+            "content": f"The {phrase} was logged only in this body text",
+        }
+        imp = await client.post(
+            "/api/v1/memories/import",
+            json={
+                "workspace_id": ws,
+                "deduplicate_by_hash": False,
+                "memories": fillers + [needle],
+            },
+            headers=headers,
+        )
+        assert imp.status_code == 200
+        body = imp.json()
+        assert body["imported_count"] == 101
+        needle_id = body["imported_ids"][-1]
+
+        res = await client.post(
+            "/api/v1/memories/search",
+            json={"workspace_id": ws, "query": phrase, "strategy": "keyword"},
+            headers=headers,
+        )
+        assert res.status_code == 200
+        assert needle_id in [item["memory"]["id"] for item in res.json()]
+
+        miss = await client.post(
+            "/api/v1/memories/search",
+            json={
+                "workspace_id": ws,
+                "query": "absent-phrase-that-is-nowhere",
+                "strategy": "keyword",
+            },
+            headers=headers,
+        )
+        assert miss.status_code == 200
+        assert miss.json() == []

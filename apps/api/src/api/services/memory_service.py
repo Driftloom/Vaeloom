@@ -649,20 +649,22 @@ class MemoryService:
         if strategy == "vector" and vector_results:
             return vector_results
 
-        # Keyword text search across title/summary/content for precision & SQLite parity
+        # Keyword text search across the indexed textual columns (title/summary).
+        # ``Memory.content`` is Fernet-encrypted at rest (non-deterministic IV per
+        # write), so an ILIKE bind against it can never match — the content arm
+        # that used to sit here was silently dead. Content-only hits come from
+        # the decrypted scan below.
         pattern = f"%{dto.query}%"
         words = [w.strip() for w in dto.query.split() if len(w.strip()) > 2]
         match_expr = or_(
             Memory.title.ilike(pattern),
             Memory.summary.ilike(pattern),
-            Memory.content.ilike(pattern),
         )
         if words and len(words) > 1:
             word_conditions = [
                 or_(
                     Memory.title.ilike(f"%{w}%"),
                     Memory.summary.ilike(f"%{w}%"),
-                    Memory.content.ilike(f"%{w}%"),
                 )
                 for w in words
             ]
@@ -684,12 +686,19 @@ class MemoryService:
         fb_res = await db.execute(fallback_stmt)
         fb_mems = list(fb_res.scalars().all())
 
-        # Check decrypted content for memory records in workspace if matches are below top_k
+        # Content matching is done here, on decrypted rows, because the column is
+        # ciphertext in SQL. The scan is ordered recent-first and is deliberately
+        # not truncated: the old unordered ``limit(100)`` window silently dropped
+        # every content-only match past the workspace's first 100 rows.
         if len(fb_mems) < dto.top_k and target_ws:
-            content_stmt = select(Memory).where(
-                *status_filter,
-                Memory.workspace_id == _to_uuid(target_ws),
-            ).limit(100)
+            content_stmt = (
+                select(Memory)
+                .where(
+                    *status_filter,
+                    Memory.workspace_id == _to_uuid(target_ws),
+                )
+                .order_by(Memory.updated_at.desc(), Memory.id)
+            )
             if tenant_id:
                 content_stmt = content_stmt.where(Memory.tenant_id == tenant_id)
             if dto.type:

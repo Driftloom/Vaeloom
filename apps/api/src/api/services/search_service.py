@@ -123,11 +123,14 @@ class SearchService:
             return {"results": [], "total": 0, "facet_counts": {}, "provenance_required": True}
 
         if not sources or "memory" in sources:
+            # ``Memory.content`` is Fernet-encrypted at rest, so ILIKE against it
+            # can never match; these are the textual columns SQL can search.
+            # Content-only matching lives in the memory search path
+            # (``MemoryService.search_memories``' decrypted scan).
             memory_stmt = select(Memory).where(
                 or_(
                     Memory.title.ilike(pattern),
                     Memory.summary.ilike(pattern),
-                    Memory.content.ilike(pattern),
                 )
             )
             if ws_uuid:
