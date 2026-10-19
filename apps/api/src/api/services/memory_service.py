@@ -36,6 +36,37 @@ def _to_uuid(value: str | uuid.UUID | None) -> uuid.UUID | None:
         return None
 
 
+# The status vocabulary the system itself writes (``active`` from create,
+# ``READY``/``PROCESSING`` from ingestion stages, ``superseded`` from the
+# supersede path, ``deleted`` from every delete path) plus ``archived``, the one
+# status only a user chooses (bulk archive on the memory page). Membership is
+# exact-match: ``"ACTIVE"`` is the *documents* vocabulary and on a memory would
+# render it invisible to every filtered view, whose default admits only
+# ``active``/``READY``/``PROCESSING`` -- a typo here is silent data loss, not a
+# bad label.
+MEMORY_STATUSES: frozenset[str] = frozenset(
+    {"active", "archived", "deleted", "superseded", "READY", "PROCESSING"}
+)
+
+
+class MemoryStatusRejected(ValueError):
+    """A caller-supplied memory status outside ``MEMORY_STATUSES``.
+
+    Mirrors ``MemoryTypeRejected`` (``memory_type_packs.py:70``): a dedicated
+    class so ``except MemoryStatusRejected -> 422`` is honest rather than a
+    catch-all for every ``ValueError`` the write paths can raise.
+    """
+
+
+def _validate_status(value: str) -> str:
+    if value not in MEMORY_STATUSES:
+        raise MemoryStatusRejected(
+            f"Unknown memory status {value!r}; expected one of: "
+            + ", ".join(sorted(MEMORY_STATUSES))
+        )
+    return value
+
+
 class MemoryService:
     async def _record_taxonomy_change(
         self,
@@ -154,7 +185,7 @@ class MemoryService:
         if not derived_summary and dto.content:
             derived_summary = dto.content[:240].strip()
 
-        initial_status = getattr(dto, "status", None) or "active"
+        initial_status = _validate_status(getattr(dto, "status", None) or "active")
         memory = Memory(
             id=uuid.uuid4(),
             type=dto.type,
@@ -176,6 +207,10 @@ class MemoryService:
             source_label=dto.source_label,
             connector_id=dto.connector_id,
             supersedes_id=dto.supersedes_id,
+            # `deleted_at` stays an exact function of the status on every write
+            # path that admits one: the grounding dossier filters on this column
+            # alone, so a row created as deleted without it would ground answers.
+            deleted_at=datetime.now(UTC) if initial_status == "deleted" else None,
             # Provenance from the pack that legalised the type -- never a literal
             # slug, or every row would be attributed to the career pack after the
             # second domain ships.
@@ -384,6 +419,16 @@ class MemoryService:
         }
 
         update_data = dto.model_dump(exclude_unset=True)
+
+        # Status is a closed vocabulary and `deleted_at` an exact function of it.
+        # Only enforced when `status` is actually carried: `exclude_unset` again,
+        # for the same reason as the type check below -- a row whose stored status
+        # predates this vocabulary must stay editable.
+        if update_data.get("status") is not None:
+            _validate_status(update_data["status"])
+            update_data["deleted_at"] = (
+                datetime.now(UTC) if update_data["status"] == "deleted" else None
+            )
 
         # 0068 dropped `ck_memories_type_valid`, so this is the only guard on the
         # update path as well -- a PATCH carrying an unrepresentable type would
@@ -1042,6 +1087,7 @@ class MemoryService:
         tenant_id: str | None,
     ) -> list[uuid.UUID]:
         """Atomically update status across multiple workspace memories."""
+        _validate_status(status)
         ws_uuid = _to_uuid(workspace_id)
         if not ws_uuid or not memory_ids:
             return []
@@ -1058,8 +1104,10 @@ class MemoryService:
         for m in mems:
             m.status = status
             m.updated_at = now
-            if status == "deleted":
-                m.deleted_at = now
+            # Exact function of the status, both directions: a restore that left
+            # the stamp behind kept the row invisible to the grounding dossier
+            # (the only reader of this column) forever.
+            m.deleted_at = now if status == "deleted" else None
             updated.append(m.id)
         await db.flush()
         return updated

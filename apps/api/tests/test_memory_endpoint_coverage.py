@@ -361,3 +361,163 @@ class TestMemoryChunks:
             res.json()["detail"]
             == "Forbidden: User does not have access to specified workspace"
         )
+
+
+class TestMemoryStatusWrites:
+    """Caller-facing status writes are validated and keep ``deleted_at`` honest.
+
+    The status vocabulary is the set the system itself writes
+    (``active``/``READY``/``PROCESSING``/``superseded``/``deleted``) plus
+    ``archived``, the one status only a user picks (bulk archive on the memory
+    page). Membership is exact: ``ACTIVE`` is the documents vocabulary and on a
+    memory would render it invisible to every filtered view, whose default
+    admits only ``active``/``READY``/``PROCESSING``. And because the grounding
+    dossier filters on ``deleted_at`` alone, ``deleted_at`` must be an exact
+    function of the status -- set on ``deleted``, cleared on the way back out.
+    """
+
+    async def test_create_rejects_unknown_status(self, client: AsyncClient):
+        headers = await _signup(client)
+        ws = await _create_workspace(client, headers)
+
+        # ``ACTIVE`` is real vocabulary -- for documents. On memories it is a
+        # typo that no filter ever matches.
+        res = await client.post(
+            "/api/v1/memories",
+            json={
+                "type": "profile",
+                "title": "Capitalised status",
+                "content": "Would be invisible under ?status=ACTIVE",
+                "workspace_id": ws,
+                "status": "ACTIVE",
+            },
+            headers=headers,
+        )
+        assert res.status_code == 422
+
+        # Positive control: the documented in-flight status stays creatable.
+        ok = await client.post(
+            "/api/v1/memories",
+            json={
+                "type": "profile",
+                "title": "In-flight import",
+                "content": "Still being processed",
+                "workspace_id": ws,
+                "status": "PROCESSING",
+            },
+            headers=headers,
+        )
+        assert ok.status_code == 201
+
+    async def test_update_rejects_unknown_status(self, client: AsyncClient):
+        headers = await _signup(client)
+        ws = await _create_workspace(client, headers)
+        memory_id = await _create_memory(client, headers, ws)
+
+        res = await client.put(
+            f"/api/v1/memories/{memory_id}",
+            json={"status": "actve"},
+            headers=headers,
+        )
+        assert res.status_code == 422
+
+        # The typo must not have landed: the row is still in the default list.
+        listing = await client.get(
+            f"/api/v1/memories?workspace_id={ws}", headers=headers
+        )
+        assert listing.status_code == 200
+        assert memory_id in [m["id"] for m in listing.json()["memories"]]
+
+    async def test_bulk_status_rejects_unknown_status(self, client: AsyncClient):
+        headers = await _signup(client)
+        ws = await _create_workspace(client, headers)
+        memory_id = await _create_memory(client, headers, ws)
+
+        res = await client.post(
+            "/api/v1/memories/bulk-status",
+            json={"memory_ids": [memory_id], "status": "Archived", "workspace_id": ws},
+            headers=headers,
+        )
+        assert res.status_code == 422
+
+        listing = await client.get(
+            f"/api/v1/memories?workspace_id={ws}", headers=headers
+        )
+        assert listing.status_code == 200
+        assert memory_id in [m["id"] for m in listing.json()["memories"]]
+
+    async def test_update_delete_stamps_deleted_at(self, client: AsyncClient):
+        headers = await _signup(client)
+        ws = await _create_workspace(client, headers)
+        memory_id = await _create_memory(client, headers, ws)
+
+        res = await client.put(
+            f"/api/v1/memories/{memory_id}",
+            json={"status": "deleted"},
+            headers=headers,
+        )
+        assert res.status_code == 200
+        assert res.json()["deleted_at"] is not None
+
+        default_list = await client.get(
+            f"/api/v1/memories?workspace_id={ws}", headers=headers
+        )
+        assert memory_id not in [m["id"] for m in default_list.json()["memories"]]
+
+    async def test_restore_clears_deleted_at(self, client: AsyncClient):
+        headers = await _signup(client)
+        ws = await _create_workspace(client, headers)
+        memory_id = await _create_memory(client, headers, ws)
+
+        deleted = await client.post(
+            "/api/v1/memories/bulk-status",
+            json={"memory_ids": [memory_id], "status": "deleted", "workspace_id": ws},
+            headers=headers,
+        )
+        assert deleted.status_code == 200
+
+        restored = await client.post(
+            "/api/v1/memories/bulk-status",
+            json={"memory_ids": [memory_id], "status": "active", "workspace_id": ws},
+            headers=headers,
+        )
+        assert restored.status_code == 200
+        detail = await client.get(f"/api/v1/memories/{memory_id}", headers=headers)
+        assert detail.status_code == 200
+        assert detail.json()["deleted_at"] is None
+
+    async def test_updated_deleted_memory_no_longer_grounds(
+        self, client: AsyncClient, db_session
+    ):
+        """The grounding dossier filters on ``deleted_at`` alone, so a status
+        write of ``deleted`` that skipped the timestamp kept the memory in
+        every chat's context (``retrieve_grounding_dossier``)."""
+        from api.services.memory_service import retrieve_grounding_dossier
+
+        headers = await _signup(client)
+        ws = await _create_workspace(client, headers)
+        memory_id = await _create_memory(
+            client,
+            headers,
+            ws,
+            title="Quokka migration plan",
+            content="Quokka migration rollout schedule",
+        )
+
+        _, before = await retrieve_grounding_dossier(
+            ws, "quokka migration", db_session
+        )
+        assert any(item["id"] == memory_id for item in before)
+
+        res = await client.put(
+            f"/api/v1/memories/{memory_id}",
+            json={"status": "deleted"},
+            headers=headers,
+        )
+        assert res.status_code == 200
+        assert res.json()["deleted_at"] is not None
+
+        _, after = await retrieve_grounding_dossier(
+            ws, "quokka migration", db_session
+        )
+        assert all(item["id"] != memory_id for item in after)
