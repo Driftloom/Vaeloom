@@ -8,6 +8,7 @@ test that expected 404 would be asserting a fiction.
 """
 
 import uuid
+from datetime import datetime, timedelta
 
 import pytest
 from httpx import AsyncClient
@@ -173,6 +174,69 @@ class TestMemoryExport:
         assert body["total_count"] == 1
         assert body["memories"][0]["title"] == "Untagged"
         assert body["memories"][0]["tags"] == []
+
+
+class TestMemoryTimestampWireFormat:
+    """F-timestamp-skew: wire timestamps must carry an explicit UTC offset.
+
+    SQLite-backed environments (local dev, the e2e launchers) hand SQLAlchemy
+    naive datetimes, and a naive ISO string is parsed as *local* time by
+    JavaScript -- the chat drawer and memory cards then rendered stored times
+    offset by the viewer's UTC offset. The wire contract must be unambiguous
+    regardless of which database backend served the request.
+    """
+
+    async def test_memory_timestamps_are_utc_on_the_wire(self, client: AsyncClient):
+        headers = await _signup(client)
+        ws = await _create_workspace(client, headers)
+
+        created = await client.post(
+            "/api/v1/memories",
+            json={"type": "profile", "title": "Stamped", "content": "c", "workspace_id": ws},
+            headers=headers,
+        )
+        assert created.status_code == 201
+        memory_id = created.json()["id"]
+
+        listed = await client.get(f"/api/v1/memories?workspace_id={ws}", headers=headers)
+        assert listed.status_code == 200
+        listed_memory = next(m for m in listed.json()["memories"] if m["id"] == memory_id)
+
+        detail = await client.get(f"/api/v1/memories/{memory_id}", headers=headers)
+        assert detail.status_code == 200
+
+        for payload in (created.json(), listed_memory, detail.json()):
+            for field in ("created_at", "updated_at"):
+                parsed = datetime.fromisoformat(payload[field])
+                assert parsed.tzinfo is not None, (
+                    f"{field} must be timezone-explicit on the wire: {payload[field]!r}"
+                )
+                assert parsed.utcoffset() == timedelta(0), (
+                    f"{field} must be UTC on the wire: {payload[field]!r}"
+                )
+
+    async def test_export_timestamps_are_utc_on_the_wire(self, client: AsyncClient):
+        headers = await _signup(client)
+        ws = await _create_workspace(client, headers)
+        await _create_memory(client, headers, ws)
+
+        res = await client.get(f"/api/v1/memories/export?workspace_id={ws}", headers=headers)
+        assert res.status_code == 200
+        body = res.json()
+        assert body["total_count"] == 1
+
+        exported = datetime.fromisoformat(body["exported_at"])
+        assert exported.tzinfo is not None and exported.utcoffset() == timedelta(0)
+
+        item = body["memories"][0]
+        for field in ("created_at", "updated_at"):
+            parsed = datetime.fromisoformat(item[field])
+            assert parsed.tzinfo is not None, (
+                f"{field} must be timezone-explicit on the wire: {item[field]!r}"
+            )
+            assert parsed.utcoffset() == timedelta(0), (
+                f"{field} must be UTC on the wire: {item[field]!r}"
+            )
 
 
 class TestMemoryHistory:

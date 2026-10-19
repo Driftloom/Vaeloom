@@ -1,10 +1,25 @@
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_serializer, field_validator, model_validator
 
 from ..services.memory_type_packs import CAREER_TYPES
+
+
+def _ensure_utc_iso(value: datetime | None) -> str | None:
+    """Serialize a timestamp with an explicit UTC offset.
+
+    SQLite-backed environments (local dev, the e2e launchers) hand SQLAlchemy
+    naive datetimes, and a naive ISO string is parsed as *local* time by
+    JavaScript -- the chat drawer and memory cards then rendered stored times
+    offset by the viewer's UTC offset. Stamping UTC at the wire boundary
+    removes the ambiguity regardless of which backend served the request.
+    """
+    if value is None:
+        return None
+    value = value.replace(tzinfo=UTC) if value.tzinfo is None else value.astimezone(UTC)
+    return value.isoformat()
 
 # Memory types are no longer a frozen literal here. Migration 0027 froze them
 # into a CHECK constraint and 0068 moved that constraint into the
@@ -133,6 +148,10 @@ class MemoryResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+    @field_serializer("deleted_at", "created_at", "updated_at", when_used="json")
+    def _serialize_timestamps(self, value: datetime | None) -> str | None:
+        return _ensure_utc_iso(value)
+
     model_config = {"from_attributes": True}
 
 
@@ -209,6 +228,10 @@ class MemoryExportItem(BaseModel):
         # promises a list -- which made the whole export a 500.
         return value or []
 
+    @field_serializer("created_at", "updated_at", when_used="json")
+    def _serialize_timestamps(self, value: datetime) -> str | None:
+        return _ensure_utc_iso(value)
+
     model_config = {"from_attributes": True}
 
 
@@ -218,6 +241,10 @@ class MemoryExportResponse(BaseModel):
     exported_at: datetime
     total_count: int
     memories: list[MemoryExportItem]
+
+    @field_serializer("exported_at", when_used="json")
+    def _serialize_exported_at(self, value: datetime) -> str | None:
+        return _ensure_utc_iso(value)
 
 
 class MemoryImportItem(BaseModel):
