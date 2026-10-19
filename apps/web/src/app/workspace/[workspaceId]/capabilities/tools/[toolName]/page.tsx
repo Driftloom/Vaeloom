@@ -2,11 +2,9 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import useSWR from 'swr';
 import {
   Badge,
-  Breadcrumb,
   Button,
   EmptyState,
   FormField,
@@ -25,8 +23,9 @@ import {
   suiteKeyForScope,
   suiteLabelForKey,
 } from '@/lib/tool-definitions-catalog';
+import { capabilityKeys, invalidateCapabilities } from '@/lib/queries/capability-keys';
 import { useToast } from '@/components/shared/Toast';
-import { PageHeader } from '@/components/shared/Page';
+import { CapabilityDetailLayout } from '@/components/capabilities/CapabilityDetailLayout';
 import { CapabilitySubpageSkeleton } from '@/components/capabilities/CapabilitySubpageSkeleton';
 
 type SubTab = 'contract' | 'schema' | 'test';
@@ -63,18 +62,14 @@ export default function ToolSubpage() {
     if (!record) return null;
     return {
       ...definitionFromRecord(record),
-      // The subpage header renders this as "<suiteId> Suite", so it carries
-      // the readable suite label rather than the raw scope prefix.
+      // The contract tab and rail badges surface the readable suite label
+      // rather than the raw scope prefix.
       suiteId: suiteLabelForKey(suiteKeyForScope(record.requiredScope)),
     };
   }, [definitions, decodedToolName]);
 
-  const {
-    data: workspaceRows,
-    isLoading: loadingWorkspaceRows,
-    mutate: mutateWorkspaceRows,
-  } = useSWR(
-    workspaceId ? ['workspace-capabilities', workspaceId] : null,
+  const { data: workspaceRows, isLoading: loadingWorkspaceRows } = useSWR(
+    workspaceId ? capabilityKeys.list(workspaceId) : null,
     () => capabilitiesApi.list(undefined, workspaceId),
     { revalidateOnFocus: false, shouldRetryOnError: false },
   );
@@ -126,7 +121,7 @@ export default function ToolSubpage() {
             config: { enabled: nextState },
           });
         }
-        void mutateWorkspaceRows();
+        invalidateCapabilities(workspaceId, 'list');
         toast({
           tone: nextState ? 'success' : 'warning',
           title: `${nextState ? 'Enabled' : 'Disabled'} ${tool.name}`,
@@ -140,7 +135,7 @@ export default function ToolSubpage() {
         });
       }
     },
-    [tool, disabledToolRow, mutateWorkspaceRows, toast],
+    [tool, disabledToolRow, workspaceId, toast],
   );
 
   const handleExecuteTest = useCallback(async () => {
@@ -201,235 +196,214 @@ export default function ToolSubpage() {
   ];
 
   return (
-    <div className="flex flex-col h-full min-h-0 bg-background text-text antialiased overflow-hidden">
-      <div className="shrink-0 px-4 sm:px-6 pt-4 border-b border-border bg-surface">
-        <PageHeader
-          title={tool?.name ?? decodedToolName}
-          description={
-            tool?.description ||
-            'Inspect signature, parameter schemas, and test invocation contracts for this tool.'
-          }
-          eyebrow="Tool Capability"
-          breadcrumb={<Breadcrumb items={breadcrumbItems} />}
-          actions={
-            <div className="flex items-center gap-3">
-              <Link
-                href={breadcrumbsBackUrl}
-                className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-lg"
-              >
-                <Button variant="secondary" size="sm">
-                  Back to Tools
+    <CapabilityDetailLayout
+      eyebrow="Tool Capability"
+      title={tool?.name ?? decodedToolName}
+      description={
+        tool?.description ||
+        'Inspect signature, parameter schemas, and test invocation contracts for this tool.'
+      }
+      backHref={breadcrumbsBackUrl}
+      backLabel="Back to Tools"
+      breadcrumbs={breadcrumbItems}
+      rail={
+        tool && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-text-muted">Enabled:</span>
+            <Switch
+              checked={isEnabled}
+              onChange={(next) => void handleToggle(next)}
+              label={`Enable ${tool.name}`}
+            />
+          </div>
+        )
+      }
+      meta={
+        tool && (
+          <>
+            <div className="flex items-center gap-2">
+              <StatusDot status={isEnabled ? 'active' : 'idle'} />
+              <span className="text-sm font-semibold font-mono text-text">{tool.name}</span>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="primary" size="sm">
+                Scope: {tool.requiredScope || 'none'}
+              </Badge>
+              <Badge variant={tool.approvalGated ? 'warning' : 'default'} size="sm">
+                {tool.approvalGated ? 'Approval Gated' : 'Direct Call'}
+              </Badge>
+              <Badge variant={isEnabled ? 'success' : 'default'} size="sm">
+                {isEnabled ? 'Active' : 'Disabled'}
+              </Badge>
+            </div>
+          </>
+        )
+      }
+      tabs={
+        <Tabs
+          ariaLabel="Tool Inspection Subtabs"
+          size="sm"
+          tabs={subTabs}
+          activeTab={activeTab}
+          onTabChange={(id) => setActiveTab(id as SubTab)}
+        />
+      }
+    >
+      {!tool && (loadingWorkspaceRows || loadingDefinitions) ? (
+        <CapabilitySubpageSkeleton eyebrow="Tool Capability" />
+      ) : !tool ? (
+        <div className="max-w-xl mx-auto py-12">
+          <EmptyState
+            title={`Tool "${decodedToolName}" not found`}
+            description="No definition with this name exists in the backend tool registry, so there is no served contract to inspect."
+            action={{
+              label: 'View all Tools',
+              onClick: () => router.push(breadcrumbsBackUrl),
+            }}
+          />
+        </div>
+      ) : (
+        <>
+          <TabPanel id="contract" activeTab={activeTab}>
+            <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-4">
+              <h3 className="text-base font-semibold text-text">Execution Contract</h3>
+              <p className="text-sm text-text-secondary leading-relaxed">{tool.description}</p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-border-subtle text-xs">
+                <div>
+                  <span className="text-text-muted">Suite:</span>
+                  <span className="ml-2 font-medium text-text">{tool.suiteId}</span>
+                </div>
+                <div>
+                  <span className="text-text-muted">Required Scope:</span>
+                  <span className="ml-2 font-mono text-text">{tool.requiredScope || 'none'}</span>
+                </div>
+                <div>
+                  <span className="text-text-muted">Human Approval Required:</span>
+                  <span className="ml-2 font-medium text-text">
+                    {tool.approvalGated ? 'Yes' : 'No'}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-text-muted">Trust Class:</span>
+                  {tool.trustClass ? (
+                    <span className="ml-2 font-mono text-text">{tool.trustClass}</span>
+                  ) : (
+                    <span className="ml-2 text-text-muted">not reported by the registry</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </TabPanel>
+
+          <TabPanel id="schema" activeTab={activeTab}>
+            <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-4">
+              <h3 className="text-base font-semibold text-text">Parameter Definitions</h3>
+
+              {tool.parameters && tool.parameters.length > 0 ? (
+                <div className="border border-border-subtle rounded-lg overflow-hidden">
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-surface-elevated border-b border-border-subtle text-text-muted">
+                      <tr>
+                        <th className="p-2.5 font-semibold">Parameter</th>
+                        <th className="p-2.5 font-semibold">Type</th>
+                        <th className="p-2.5 font-semibold">Required</th>
+                        <th className="p-2.5 font-semibold">Description</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border-subtle">
+                      {tool.parameters.map((param) => (
+                        <tr key={param.name} className="hover:bg-surface-elevated/50">
+                          <td className="p-2.5 font-mono font-medium text-text">{param.name}</td>
+                          <td className="p-2.5 font-mono text-text-muted">{param.type ?? 'any'}</td>
+                          <td className="p-2.5">
+                            {param.required ? (
+                              <Badge variant="warning" size="sm">
+                                Required
+                              </Badge>
+                            ) : (
+                              <span className="text-text-dim">Optional</span>
+                            )}
+                          </td>
+                          <td className="p-2.5 text-text-secondary">{param.description ?? '-'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="text-xs text-text-muted">This tool requires no input parameters.</p>
+              )}
+
+              <div className="pt-4 border-t border-border-subtle">
+                <h4 className="text-xs font-semibold text-text-muted uppercase mb-2">
+                  Raw JSON Schema
+                </h4>
+                <pre className="p-4 rounded-lg bg-surface-elevated border border-border text-xs font-mono text-text-secondary overflow-x-auto max-h-72">
+                  {JSON.stringify(tool.inputSchema, null, 2)}
+                </pre>
+              </div>
+            </div>
+          </TabPanel>
+
+          <TabPanel id="test" activeTab={activeTab}>
+            <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-4">
+              <h3 className="text-base font-semibold text-text">
+                Validate Schema & Dry-Run Invocation
+              </h3>
+              <p className="text-xs text-text-muted">
+                Test parameter contract compliance. Dry-run probes validate schema conformance
+                without executing live side effects.
+              </p>
+
+              <FormField label="JSON Input Payload">
+                <Textarea
+                  value={testPayload}
+                  onChange={(e) => setTestPayload(e.target.value)}
+                  rows={6}
+                  className="font-mono text-xs"
+                />
+              </FormField>
+
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  disabled={testRunning}
+                  onClick={() => void handleExecuteTest()}
+                >
+                  {testRunning ? <Spinner size="sm" /> : 'Run Schema Probe'}
                 </Button>
-              </Link>
-              {tool && (
-                <div className="flex items-center gap-2 pl-2 border-l border-border-subtle">
-                  <span className="text-xs text-text-muted">Enabled:</span>
-                  <Switch
-                    checked={isEnabled}
-                    onChange={(next) => void handleToggle(next)}
-                    label={`Enable ${tool.name}`}
-                  />
+              </div>
+
+              {testError && (
+                <div className="p-3 rounded-lg bg-danger/10 border border-danger/20 text-danger text-xs">
+                  {testError}
+                </div>
+              )}
+
+              {testResult && (
+                <div className="p-4 rounded-lg border border-border-subtle bg-surface-elevated space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-text">Validation Response:</span>
+                    <Badge
+                      variant={testResult.status === 'success' ? 'success' : 'warning'}
+                      size="sm"
+                    >
+                      {testResult.executionDurationMs == null
+                        ? 'no duration reported'
+                        : `${testResult.executionDurationMs}ms`}
+                    </Badge>
+                  </div>
+                  <pre className="p-3 rounded bg-surface border border-border text-xs font-mono overflow-x-auto">
+                    {JSON.stringify(testResult, null, 2)}
+                  </pre>
                 </div>
               )}
             </div>
-          }
-        />
-      </div>
-
-      <div className="flex-1 min-h-0 min-w-0 overflow-y-auto p-4 sm:p-6">
-        {!tool && (loadingWorkspaceRows || loadingDefinitions) ? (
-          <CapabilitySubpageSkeleton eyebrow="Tool Capability" />
-        ) : !tool ? (
-          <div className="max-w-xl mx-auto py-12">
-            <EmptyState
-              title={`Tool "${decodedToolName}" not found`}
-              description="No definition with this name exists in the backend tool registry, so there is no served contract to inspect."
-              action={{
-                label: 'View all Tools',
-                onClick: () => router.push(breadcrumbsBackUrl),
-              }}
-            />
-          </div>
-        ) : (
-          <div className="max-w-5xl mx-auto space-y-6">
-            {/* Metadata Card */}
-            <div className="p-4 rounded-xl border border-border-subtle bg-surface flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <StatusDot status={isEnabled ? 'active' : 'idle'} />
-                <div>
-                  <div className="text-sm font-semibold font-mono text-text">{tool.name}</div>
-                  <div className="text-xs text-text-muted">{tool.suiteId} Suite</div>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="primary" size="sm">
-                  Scope: {tool.requiredScope || 'none'}
-                </Badge>
-                <Badge variant={tool.approvalGated ? 'warning' : 'default'} size="sm">
-                  {tool.approvalGated ? 'Approval Gated' : 'Direct Call'}
-                </Badge>
-                <Badge variant={isEnabled ? 'success' : 'default'} size="sm">
-                  {isEnabled ? 'Active' : 'Disabled'}
-                </Badge>
-              </div>
-            </div>
-
-            {/* Navigation Tabs */}
-            <div className="border-b border-border-subtle">
-              <Tabs
-                ariaLabel="Tool Inspection Subtabs"
-                size="sm"
-                tabs={subTabs}
-                activeTab={activeTab}
-                onTabChange={(id) => setActiveTab(id as SubTab)}
-              />
-            </div>
-
-            <TabPanel id="contract" activeTab={activeTab}>
-              <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-4">
-                <h3 className="text-base font-semibold text-text">Execution Contract</h3>
-                <p className="text-sm text-text-secondary leading-relaxed">{tool.description}</p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-border-subtle text-xs">
-                  <div>
-                    <span className="text-text-muted">Suite:</span>
-                    <span className="ml-2 font-medium text-text">{tool.suiteId}</span>
-                  </div>
-                  <div>
-                    <span className="text-text-muted">Required Scope:</span>
-                    <span className="ml-2 font-mono text-text">{tool.requiredScope || 'none'}</span>
-                  </div>
-                  <div>
-                    <span className="text-text-muted">Human Approval Required:</span>
-                    <span className="ml-2 font-medium text-text">
-                      {tool.approvalGated ? 'Yes' : 'No'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-text-muted">Trust Class:</span>
-                    {tool.trustClass ? (
-                      <span className="ml-2 font-mono text-text">{tool.trustClass}</span>
-                    ) : (
-                      <span className="ml-2 text-text-muted">not reported by the registry</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </TabPanel>
-
-            <TabPanel id="schema" activeTab={activeTab}>
-              <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-4">
-                <h3 className="text-base font-semibold text-text">Parameter Definitions</h3>
-
-                {tool.parameters && tool.parameters.length > 0 ? (
-                  <div className="border border-border-subtle rounded-lg overflow-hidden">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-surface-elevated border-b border-border-subtle text-text-muted">
-                        <tr>
-                          <th className="p-2.5 font-semibold">Parameter</th>
-                          <th className="p-2.5 font-semibold">Type</th>
-                          <th className="p-2.5 font-semibold">Required</th>
-                          <th className="p-2.5 font-semibold">Description</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border-subtle">
-                        {tool.parameters.map((param) => (
-                          <tr key={param.name} className="hover:bg-surface-elevated/50">
-                            <td className="p-2.5 font-mono font-medium text-text">{param.name}</td>
-                            <td className="p-2.5 font-mono text-text-muted">
-                              {param.type ?? 'any'}
-                            </td>
-                            <td className="p-2.5">
-                              {param.required ? (
-                                <Badge variant="warning" size="sm">
-                                  Required
-                                </Badge>
-                              ) : (
-                                <span className="text-text-dim">Optional</span>
-                              )}
-                            </td>
-                            <td className="p-2.5 text-text-secondary">
-                              {param.description ?? '-'}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p className="text-xs text-text-muted">This tool requires no input parameters.</p>
-                )}
-
-                <div className="pt-4 border-t border-border-subtle">
-                  <h4 className="text-xs font-semibold text-text-muted uppercase mb-2">
-                    Raw JSON Schema
-                  </h4>
-                  <pre className="p-4 rounded-lg bg-surface-elevated border border-border text-xs font-mono text-text-secondary overflow-x-auto max-h-72">
-                    {JSON.stringify(tool.inputSchema, null, 2)}
-                  </pre>
-                </div>
-              </div>
-            </TabPanel>
-
-            <TabPanel id="test" activeTab={activeTab}>
-              <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-4">
-                <h3 className="text-base font-semibold text-text">
-                  Validate Schema & Dry-Run Invocation
-                </h3>
-                <p className="text-xs text-text-muted">
-                  Test parameter contract compliance. Dry-run probes validate schema conformance
-                  without executing live side effects.
-                </p>
-
-                <FormField label="JSON Input Payload">
-                  <Textarea
-                    value={testPayload}
-                    onChange={(e) => setTestPayload(e.target.value)}
-                    rows={6}
-                    className="font-mono text-xs"
-                  />
-                </FormField>
-
-                <div className="flex items-center gap-3">
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    disabled={testRunning}
-                    onClick={() => void handleExecuteTest()}
-                  >
-                    {testRunning ? <Spinner size="sm" /> : 'Run Schema Probe'}
-                  </Button>
-                </div>
-
-                {testError && (
-                  <div className="p-3 rounded-lg bg-danger/10 border border-danger/20 text-danger text-xs">
-                    {testError}
-                  </div>
-                )}
-
-                {testResult && (
-                  <div className="p-4 rounded-lg border border-border-subtle bg-surface-elevated space-y-2 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-text">Validation Response:</span>
-                      <Badge
-                        variant={testResult.status === 'success' ? 'success' : 'warning'}
-                        size="sm"
-                      >
-                        {testResult.executionDurationMs == null
-                          ? 'no duration reported'
-                          : `${testResult.executionDurationMs}ms`}
-                      </Badge>
-                    </div>
-                    <pre className="p-3 rounded bg-surface border border-border text-xs font-mono overflow-x-auto">
-                      {JSON.stringify(testResult, null, 2)}
-                    </pre>
-                  </div>
-                )}
-              </div>
-            </TabPanel>
-          </div>
-        )}
-      </div>
-    </div>
+          </TabPanel>
+        </>
+      )}
+    </CapabilityDetailLayout>
   );
 }
