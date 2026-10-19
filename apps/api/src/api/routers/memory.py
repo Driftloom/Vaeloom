@@ -243,19 +243,19 @@ async def get_agentic_feed(
     # Page slice already applied to memories; truncate feed to page_size for consistency
     feed = feed[:page_size]
 
-    # Stats for header
-    total_memories = total
-    superseded_count = sum(1 for m in memories if m.status == "superseded")
-    agent_created = sum(1 for m in memories if (m.source_type or "").startswith("agent") or m.source_type in ("memory_agent", "organization"))
+    # Stats for header -- corpus-wide SQL counts, not sums over the page slice
+    # (F-slice-stats): the slice only ever described itself while the header
+    # claimed to describe the workspace.
+    stats = await memory_service.count_memory_stats(db, tenant_id, workspace_id)
     return {
         "feed": feed,
-        "total": total_memories,
+        "total": total,
         "page": page,
         "page_size": page_size,
         "stats": {
-            "total_memories": total_memories,
-            "superseded": superseded_count,
-            "agent_created": agent_created,
+            "total_memories": total,
+            "superseded": stats["superseded"],
+            "agent_created": stats["agent_created"],
             "recent_actions": len(actions),
         },
     }

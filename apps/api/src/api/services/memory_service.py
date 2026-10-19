@@ -219,19 +219,23 @@ class MemoryService:
                 logger.debug(f"Vector store upsert bypassed or failed: {e}")
         return memory
 
-    async def list_memories(
+    def _memory_conditions(
         self,
-        db: AsyncSession,
         query: MemoryQuery,
         tenant_id: str | None,
-        workspace_id: str | None = None,
+        workspace_id: str | None,
         allow_tenant_wide: bool = False,
-    ) -> tuple[list[Memory], int]:
-        stmt = select(Memory)
-        count_stmt = select(func.count(Memory.id))
+    ) -> tuple[list[Any], uuid.UUID | None]:
+        """Shared WHERE builder for reads of ``memories``.
+
+        The list and the feed's corpus counts must resolve "this workspace"
+        identically -- a stat header that silently disagreed with the list it
+        sits above would be invisible in both. Returns the conditions plus the
+        enforced workspace UUID so callers can set the RLS session vars.
+        """
+        conditions: list[Any] = []
 
         # Status handling: default "active" means exclude superseded/deleted unless requested
-        conditions: list[Any] = []
         if query.status and query.status != "all":
             if query.status == "active":
                 if query.include_superseded:
@@ -256,14 +260,31 @@ class MemoryService:
         enforced_ws = workspace_id or query.workspace_id
         if not enforced_ws and not allow_tenant_wide:
             raise ValueError("workspace_id is required for memory operations")
+        ws_uuid: uuid.UUID | None = None
         if enforced_ws:
             ws_uuid = _to_uuid(enforced_ws)
             if ws_uuid is not None:
                 conditions.append(Memory.workspace_id == ws_uuid)
-                from ..middleware.tenant import set_rls_session_vars
-                await set_rls_session_vars(db, workspace_id=str(ws_uuid))
         if query.tags:
             conditions.append(Memory.tags.overlap(query.tags))
+
+        return conditions, ws_uuid
+
+    async def list_memories(
+        self,
+        db: AsyncSession,
+        query: MemoryQuery,
+        tenant_id: str | None,
+        workspace_id: str | None = None,
+        allow_tenant_wide: bool = False,
+    ) -> tuple[list[Memory], int]:
+        stmt = select(Memory)
+        count_stmt = select(func.count(Memory.id))
+
+        conditions, ws_uuid = self._memory_conditions(query, tenant_id, workspace_id, allow_tenant_wide)
+        if ws_uuid is not None:
+            from ..middleware.tenant import set_rls_session_vars
+            await set_rls_session_vars(db, workspace_id=str(ws_uuid))
 
         stmt = stmt.where(*conditions).order_by(Memory.created_at.desc())
         count_stmt = count_stmt.where(*conditions)
@@ -278,6 +299,37 @@ class MemoryService:
         memories = list(result.scalars().all())
 
         return memories, total
+
+    async def count_memory_stats(
+        self,
+        db: AsyncSession,
+        tenant_id: str | None,
+        workspace_id: str | None,
+    ) -> dict[str, int]:
+        """Corpus-wide feed stats (F-slice-stats).
+
+        Same universe as the feed's ``total`` (every row, ``status="all"``):
+        summing the page slice undercounted superseded/agent-sourced rows
+        silently whenever the workspace held more memories than one page.
+        """
+        query = MemoryQuery(workspace_id=workspace_id, status="all", page=1, page_size=1)
+        conditions, ws_uuid = self._memory_conditions(query, tenant_id, workspace_id)
+        if ws_uuid is not None:
+            from ..middleware.tenant import set_rls_session_vars
+            await set_rls_session_vars(db, workspace_id=str(ws_uuid))
+
+        superseded_stmt = select(func.count(Memory.id)).where(
+            *conditions, Memory.status == "superseded"
+        )
+        agent_stmt = select(func.count(Memory.id)).where(
+            *conditions,
+            (Memory.source_type.like("agent%"))
+            | (Memory.source_type.in_(["memory_agent", "organization"])),
+        )
+
+        superseded = (await db.execute(superseded_stmt)).scalar_one()
+        agent_created = (await db.execute(agent_stmt)).scalar_one()
+        return {"superseded": int(superseded), "agent_created": int(agent_created)}
 
     async def get_memory(
         self,

@@ -42,6 +42,7 @@ async def _create_memory(
     title: str = "Before",
     content: str = "Initial content",
     source_uri: str | None = None,
+    source_type: str | None = None,
 ) -> str:
     payload: dict = {
         "type": "profile",
@@ -51,6 +52,8 @@ async def _create_memory(
     }
     if source_uri is not None:
         payload["source_uri"] = source_uri
+    if source_type is not None:
+        payload["source_type"] = source_type
     res = await client.post("/api/v1/memories", json=payload, headers=headers)
     assert res.status_code == 201
     return res.json()["id"]
@@ -93,6 +96,49 @@ class TestMemoryFeed:
 
         assert set(page1).isdisjoint(page2)
         assert set(page1) | set(page2) == created
+
+    async def test_feed_stats_count_the_corpus_not_the_page_slice(self, client: AsyncClient):
+        """F-slice-stats: the header stats describe the workspace, not the page.
+
+        The two newest rows (the slice for ``page_size=2``) are both plain
+        active memories, yet the corpus holds one superseded and one
+        agent-sourced row. Summing the page slice therefore reports 0/0; a
+        corpus count must report 1/1.
+        """
+        headers = await _signup(client)
+        ws = await _create_workspace(client, headers)
+        original_id = await _create_memory(client, headers, ws, title="Slice Stats Original")
+        await _create_memory(
+            client, headers, ws, title="Slice Stats Agent Note", source_type="agent"
+        )
+        filler_id = await _create_memory(client, headers, ws, title="Slice Stats Filler")
+
+        superseded = await client.post(
+            f"/api/v1/memories/{original_id}/supersede",
+            json={"reason": "Correction: the original note was wrong"},
+            headers=headers,
+        )
+        assert superseded.status_code == 201
+        successor_id = superseded.json()["id"]
+
+        res = await client.get(
+            f"/api/v1/memories/feed?workspace_id={ws}&page=1&page_size=2",
+            headers=headers,
+        )
+        assert res.status_code == 200
+        body = res.json()
+
+        # Premise: the slice is exactly the two newest rows (active successor +
+        # filler), so no superseded or agent-sourced row is on the page.
+        slice_ids = [item["memory"]["id"] for item in body["feed"]]
+        assert slice_ids == [successor_id, filler_id]
+
+        assert body["stats"] == {
+            "total_memories": 4,
+            "superseded": 1,
+            "agent_created": 1,
+            "recent_actions": 0,
+        }
 
     async def test_feed_rejects_foreign_workspace(self, client: AsyncClient):
         """Negative control: user B cannot read a feed scoped to user A's workspace."""
