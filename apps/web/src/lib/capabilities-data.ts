@@ -4,9 +4,11 @@
  * WHY the seed below exists at all: it is a FALLBACK. The server catalog
  * (`GET /capabilities/catalog`, landing with the 0062 migration) is
  * authoritative for the Skills tab. This array only keeps SSR and offline
- * renders from rendering an empty page, so it is deliberately small and every
- * value in it is either verified against the backend registry or explicitly
- * marked unknown.
+ * renders from rendering an empty page. Tool rows are generated: they come
+ * from `TOOL_FALLBACK` (`tool-fallback.generated.ts`), rendered by
+ * `scripts/gen_tool_fallback.py` from `ALL_TOOLS`. The hand-written remainder
+ * stays deliberately small and every value in it is either verified against
+ * the backend registry or explicitly marked unknown.
  *
  * Every `usageCount` is 0 and every `lastUsedAt` is null because there is no
  * backend column and no write path for either. The previous build shipped
@@ -15,17 +17,20 @@
  * never executed has never been used; stamping a count on it is a lie that the
  * UI renders as fact.
  *
- * `requiredScope` values below are taken from `apps/api/src/api/tools/definitions.py`
- * (static tools), `services/mcp_client_service.py` (bridged MCP tools) and
- * `routers/capabilities.py` (custom tools, which get `tool.<name>`). Do not add
- * a scope here that the backend does not emit — an unrecognised scope fails
- * closed at execution time with a permission error the user cannot act on.
+ * `requiredScope` values are backend facts, never invented: tool rows carry
+ * theirs straight from `ALL_TOOLS` via the generated manifest, MCP rows from
+ * `services/mcp_client_service.py`, custom tools get `tool.<name>`
+ * (`routers/capabilities.py`). Do not add a scope here that the backend does
+ * not emit — an unrecognised scope fails closed at execution time with a
+ * permission error the user cannot act on.
  *
  * `trustClass` mirrors what the backend emits: `core_trusted` for static tools,
  * `mcp.read` / `mcp.workspace.write` for bridged MCP servers. `community` marks
  * third-party-sourced skills, which are never first-party regardless of how
  * they are bundled.
  */
+
+import { TOOL_FALLBACK } from './tool-fallback.generated';
 
 export type CapabilityCategory = 'agents' | 'skills' | 'tools' | 'mcp' | 'plugins' | 'connectors';
 
@@ -1757,225 +1762,16 @@ Produces an interview preparation package with 5 STAR stories, anticipated tough
   },
 
   // ──────────────────────────────────────────────────────────────────────────
-  // TOOLS (6 typed execution tools)
+  // TOOLS (generated, not hand-written)
+  //
+  // Every tool row comes from `TOOL_FALLBACK` in `tool-fallback.generated.ts`,
+  // rendered by `scripts/gen_tool_fallback.py` from `ALL_TOOLS` in
+  // `apps/api/src/api/tools/definitions.py`. Editing tool rows by hand here is
+  // NOT ALLOWED: hand-written rows once drifted from the registry (a scope
+  // that exists nowhere, contradictory prompt text, a trust class the backend
+  // does not assign). Change the backend definitions and regenerate instead.
   // ──────────────────────────────────────────────────────────────────────────
-  {
-    id: 'tool-search-documents',
-    name: 'search_documents',
-    category: 'tools',
-    tags: ['Memory', 'First-Party', 'Search'],
-    description:
-      'Search across user documents using dense semantic vector search with keyword fallback.',
-    enabled: true,
-    source: 'built-in',
-    usageCount: 0,
-    lastUsedAt: null,
-    requiredScope: 'memory.read',
-    trustClass: 'core_trusted',
-    rateLimit: '200/min',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        query: { type: 'string', description: 'Semantic search query string' },
-        limit: { type: 'integer', default: 10, description: 'Maximum items to retrieve' },
-      },
-      required: ['query'],
-    },
-    outputSchema: {
-      type: 'array',
-      items: { $ref: 'Document' },
-    },
-    markdownDoc: `# search_documents
-
-Executes hybrid semantic cosine vector search across all indexed workspace documents, PDF extractions, and notes.
-
-### Permissions
-Requires \`memory.read\` scope within the calling workspace.
-`,
-  },
-  {
-    id: 'tool-query-graph',
-    name: 'query_graph',
-    category: 'tools',
-    tags: ['Memory', 'First-Party', 'Graph'],
-    description: 'Query knowledge graph for entities, typed attributes, and relational edges.',
-    enabled: true,
-    source: 'built-in',
-    usageCount: 0,
-    lastUsedAt: null,
-    requiredScope: 'memory.read',
-    trustClass: 'core_trusted',
-    rateLimit: '150/min',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        query: { type: 'string', description: 'Target entity label or relationship description' },
-        entity_type: {
-          type: 'string',
-          default: 'any',
-          description: 'Filter by entity type (person, skill, company, etc.)',
-        },
-        limit: { type: 'integer', default: 20, description: 'Maximum edges to traverse' },
-      },
-      required: ['query'],
-    },
-    outputSchema: {
-      type: 'array',
-      items: { $ref: 'GraphNode' },
-    },
-    markdownDoc: `# query_graph
-
-Performs relational subgraph traversal on the sovereign knowledge graph, returning node clusters and weighted connecting edges.
-`,
-  },
-  {
-    id: 'tool-calculate-semantic-ats-score',
-    name: 'calculate_semantic_ats_score',
-    category: 'tools',
-    tags: ['Career', 'First-Party', 'ATS'],
-    description:
-      'Calculate cosine embedding similarity score between resume text and a job requisition.',
-    enabled: true,
-    source: 'built-in',
-    usageCount: 0,
-    lastUsedAt: null,
-    requiredScope: 'memory.read',
-    trustClass: 'core_trusted',
-    rateLimit: '60/min',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        resume_text: { type: 'string' },
-        job_description: { type: 'string' },
-        target_title: { type: 'string' },
-      },
-      required: ['resume_text', 'job_description'],
-    },
-    outputSchema: {
-      type: 'object',
-      properties: {
-        score: { type: 'number' },
-        semantic_similarity: { type: 'number' },
-        keyword_match_pct: { type: 'number' },
-        matched_keywords: { type: 'array', items: { type: 'string' } },
-        missing_keywords: { type: 'array', items: { type: 'string' } },
-      },
-    },
-    markdownDoc: `# calculate_semantic_ats_score
-
-Generates embedding representations of resume sections and requisition requirements, calculating sectional and overall similarity match scores.
-`,
-  },
-  {
-    id: 'tool-browse-job-page',
-    name: 'browse_job_page',
-    category: 'tools',
-    tags: ['Browser', 'First-Party', 'SSRF-Guarded'],
-    description:
-      'Browse an external job posting URL and extract structured job requirements via headless Chromium.',
-    enabled: true,
-    source: 'built-in',
-    usageCount: 0,
-    lastUsedAt: null,
-    requiredScope: 'system.browser.read',
-    trustClass: 'core_trusted',
-    rateLimit: '20/hour',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        url: { type: 'string', description: 'Public https URL of target job posting' },
-      },
-      required: ['url'],
-    },
-    outputSchema: {
-      type: 'object',
-      properties: {
-        title: { type: 'string' },
-        company: { type: 'string' },
-        description: { type: 'string' },
-        requirements: { type: 'array', items: { type: 'string' } },
-        skills_mentioned: { type: 'array', items: { type: 'string' } },
-      },
-    },
-    markdownDoc: `# browse_job_page
-
-Headless Chromium browser tool guarded by SSRF filters and workspace quotas. Parses title, company, requirements, and compensation fields.
-`,
-  },
-  {
-    id: 'tool-execute-code-sandbox',
-    name: 'execute_code_sandbox',
-    category: 'tools',
-    tags: ['Code', 'Approval-Gated'],
-    description:
-      'Approval-gated Python/JavaScript execution in a same-host subprocess with a pattern filter and timeout.',
-    enabled: true,
-    source: 'built-in',
-    usageCount: 0,
-    lastUsedAt: null,
-    requiredScope: 'system.sandbox_exec',
-    trustClass: 'core_trusted',
-    rateLimit: '30/min',
-    autonomy: 'approval_required',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        code: { type: 'string' },
-        language: { type: 'string', enum: ['python', 'javascript'], default: 'python' },
-        input_data: { type: 'string' },
-        timeout: { type: 'integer', default: 5 },
-      },
-      required: ['code'],
-    },
-    outputSchema: {
-      type: 'object',
-      properties: {
-        stdout: { type: 'string' },
-        stderr: { type: 'string' },
-        exit_code: { type: 'integer' },
-      },
-    },
-    markdownDoc: `# execute_code_sandbox
-
-### Security posture
-This is **not** an OS sandbox. It runs a same-host subprocess guarded by a pattern
-filter, a timeout and a temporary working directory. Treat its output as untrusted:
-it must never be evaluated, rendered as instructions, or granted tool access.
-
-Network access is **not** disabled by this tool. Do not describe it as offline or
-isolated execution.
-
-Approval is required before every call.
-`,
-  },
-  {
-    id: 'tool-draft-email',
-    name: 'draft_email',
-    category: 'tools',
-    tags: ['Email', 'Approval-Gated', 'First-Party'],
-    description: 'Prepare an outbound draft email for human approval before sending.',
-    enabled: true,
-    source: 'built-in',
-    usageCount: 0,
-    lastUsedAt: null,
-    requiredScope: 'connector.gmail.write',
-    trustClass: 'core_trusted',
-    rateLimit: '40/min',
-    autonomy: 'approval_required',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        to: { type: 'string', description: 'Recipient email address' },
-        subject: { type: 'string', description: 'Email subject header' },
-        body: { type: 'string', description: 'Email body text or markdown' },
-      },
-      required: ['to', 'subject', 'body'],
-    },
-    markdownDoc: `# draft_email
-
-Generates an email draft in the connected Gmail account and registers a pending approval ticket in the Approvals Center. It never sends.
-`,
-  },
+  ...TOOL_FALLBACK,
 
   // ──────────────────────────────────────────────────────────────────────────
   // MCP (4 Model Context Protocol servers)

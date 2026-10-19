@@ -25,4 +25,10 @@ docs/
 # order, not bytes -- and fail only `--check`, which nothing runs yet. Ignoring it
 # here keeps the committed file byte-identical to its generator's output.
 *.generated.ts
+# Same drift mode as the glob above, pinned explicitly by name so the file
+# cannot be renamed under the glob without losing the rule: the tool-fallback
+# manifest is rendered byte-for-byte by scripts/gen_tool_fallback.py and a
+# prettier reformat would pass its --check gate only by breaking the byte
+# contract it is checked with.
+apps/web/src/lib/tool-fallback.generated.ts
 

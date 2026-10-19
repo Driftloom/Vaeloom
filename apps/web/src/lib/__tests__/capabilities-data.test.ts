@@ -146,6 +146,7 @@ describe('SEED_CAPABILITIES telemetry honesty', () => {
       'scrape_company_insights',
       'search_documents',
       'search_gmail',
+      'send_slack_message',
       'verify_application_link',
     ]);
 
@@ -156,6 +157,51 @@ describe('SEED_CAPABILITIES telemetry honesty', () => {
       }
     }
     expect(offenders).toEqual([]);
+  });
+});
+
+describe('generated tool fallback manifest', () => {
+  // The tool rows in SEED_CAPABILITIES are generated, not hand-written: they
+  // must be exactly what scripts/gen_tool_fallback.py renders from ALL_TOOLS.
+  // These tests fail if the manifest and the seed grow apart in either
+  // direction -- a hand-edited row sneaking back in, or a generated row being
+  // filtered out of the seed.
+  it('renders the seed tool rows from TOOL_FALLBACK, not hand-written literals', async () => {
+    const data = await load();
+    const { TOOL_FALLBACK } = await import('@/lib/tool-fallback.generated');
+
+    const manifestNames = TOOL_FALLBACK.map((row) => row.name);
+    expect(new Set(manifestNames).size).toBe(manifestNames.length);
+
+    const seedToolRows = data.SEED_CAPABILITIES.filter((c) => c.category === 'tools');
+    expect(seedToolRows.length).toBeGreaterThan(0);
+    const seedToolNames = new Set(seedToolRows.map((c) => c.name));
+    for (const row of TOOL_FALLBACK) {
+      expect(seedToolNames.has(row.name)).toBe(true);
+    }
+    // The seed spreads the whole manifest; a filtered-out row would orphan a
+    // generated tool silently.
+    expect(seedToolRows.length).toBe(TOOL_FALLBACK.length);
+  });
+
+  it('carries no requiredScope the manifest does not declare', async () => {
+    const data = await load();
+    const { TOOL_FALLBACK } = await import('@/lib/tool-fallback.generated');
+    const manifestScopes = new Set(TOOL_FALLBACK.map((row) => row.requiredScope));
+    const offenders = data.SEED_CAPABILITIES.filter(
+      (c) => c.category === 'tools' && c.requiredScope && !manifestScopes.has(c.requiredScope),
+    ).map((c) => `${c.id} -> ${c.requiredScope}`);
+    expect(offenders).toEqual([]);
+  });
+
+  it('keeps manifest telemetry honest', async () => {
+    const { TOOL_FALLBACK } = await import('@/lib/tool-fallback.generated');
+    expect(TOOL_FALLBACK.length).toBeGreaterThan(0);
+    for (const row of TOOL_FALLBACK) {
+      expect(row.usageCount).toBe(0);
+      expect(row.lastUsedAt).toBeNull();
+      expect(row.isSeed).toBe(true);
+    }
   });
 });
 
