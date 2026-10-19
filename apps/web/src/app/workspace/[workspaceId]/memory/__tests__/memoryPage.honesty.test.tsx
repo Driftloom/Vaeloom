@@ -329,4 +329,27 @@ describe('memory page rendering honesty', () => {
     await waitFor(() => expect(input.value).toBe('architecture'));
     await waitFor(() => expect(searchMock).toHaveBeenCalled(), { timeout: 3000 });
   });
+
+  it('never renders invented KPI zeros when the feed request fails', async () => {
+    // The cards used to fall back to `?? 0` / `?? memItems.length`, painting a
+    // confident "0 memories" dashboard over an API that never answered.
+    feedMock.mockRejectedValue(new Error('feed down'));
+    renderPage();
+    await screen.findByText('Memory stats unavailable');
+    expect(screen.getByText('feed down')).toBeTruthy();
+    expect(screen.queryByText('Indexed knowledge items')).toBeNull();
+    expect(screen.queryByText('Autonomous background extractions')).toBeNull();
+    expect(screen.queryByText('Immutable version audit trail')).toBeNull();
+    const callsBefore = feedMock.mock.calls.length;
+    fireEvent.click(screen.getByRole('button', { name: /try again/i }));
+    await waitFor(() => expect(feedMock.mock.calls.length).toBeGreaterThan(callsBefore));
+  });
+
+  it('marks KPI captions as not refreshed when a background feed refresh fails', async () => {
+    renderPage();
+    await screen.findByText('Indexed knowledge items');
+    feedMock.mockImplementation(() => Promise.reject(new Error('feed refresh down')));
+    fireEvent.click(screen.getByRole('button', { name: /^refresh$/i }));
+    await screen.findByText('Indexed knowledge items · not refreshed');
+  });
 });

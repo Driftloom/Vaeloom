@@ -211,6 +211,14 @@ function MemoryGraphPageContent() {
     return vaultStatusError ? `${base} · status not refreshed` : base;
   }, [vaultStatus, vaultStatusError]);
 
+  // KPI captions must not imply fresh numbers: mark stale values when a
+  // refresh failed over loaded data, and say so while the first load runs.
+  const kpiCaption = (caption: string) =>
+    !feedData ? 'Loading…' : feedError ? `${caption} · not refreshed` : caption;
+
+  // Never stringify `undefined` into a fake reading; a missing stat shows '…'.
+  const statValue = (n: number | undefined): string => (typeof n === 'number' ? String(n) : '…');
+
   // Type filtering is server-side now; the client only drops soft-deleted rows
   // that list pages may still return.
   const filteredMemories = useMemo(() => {
@@ -617,23 +625,41 @@ function MemoryGraphPageContent() {
         }
       />
 
-      {/* Top Metric Stats */}
+      {/* Top Metric Stats. Every value comes from the feed's own stats payload:
+          the old `?? 0` / `?? memItems.length` fallbacks rendered confident zeros
+          during an API outage (and a page-slice length as a corpus "total"). */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard
-          label="Total Memories"
-          value={String(feedData?.stats?.totalMemories ?? memItems.length)}
-          caption="Indexed knowledge items"
-        />
-        <StatCard
-          label="Agent Synthesized"
-          value={String(feedData?.stats?.agentCreated ?? 0)}
-          caption="Autonomous background extractions"
-        />
-        <StatCard
-          label="Superseded / Corrected"
-          value={String(feedData?.stats?.superseded ?? 0)}
-          caption="Immutable version audit trail"
-        />
+        {feedError && !feedData ? (
+          <ErrorState
+            className="col-span-2 md:col-span-3"
+            title="Memory stats unavailable"
+            message={
+              feedError instanceof Error ? feedError.message : 'Could not load memory statistics.'
+            }
+            onRetry={() => {
+              void mutateFeed();
+              void mutateMemories();
+            }}
+          />
+        ) : (
+          <>
+            <StatCard
+              label="Total Memories"
+              value={statValue(feedData?.stats?.totalMemories)}
+              caption={kpiCaption('Indexed knowledge items')}
+            />
+            <StatCard
+              label="Agent Synthesized"
+              value={statValue(feedData?.stats?.agentCreated)}
+              caption={kpiCaption('Autonomous background extractions')}
+            />
+            <StatCard
+              label="Superseded / Corrected"
+              value={statValue(feedData?.stats?.superseded)}
+              caption={kpiCaption('Immutable version audit trail')}
+            />
+          </>
+        )}
         {vaultStatusError && !vaultStatus ? (
           <ErrorState
             title="Vault status unavailable"
