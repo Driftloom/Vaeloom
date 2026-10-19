@@ -1,6 +1,6 @@
 # Vaeloom Architecture Decision Records (ADR Index)
 
-> **Status:** 45 ADRs, all `Accepted` unless noted. Generated 2026-09-15
+> **Status:** 47 ADRs, all `Accepted` unless noted. Generated 2026-09-15
 > (CONT-P18 DEL-03). Titles sourced from file H1s — this index is a map, not a
 > substitute; read the ADR for context, consequences, and supersession.
 
@@ -46,7 +46,7 @@
 | [ADR-031](ADR-031-input-sanitization-retrieved-content.md) | Input Sanitization for Retrieved Content                   |
 | [ADR-032](ADR-032-migration-system-unification.md)         | Migration System Unification                               |
 
-## Agentic & Enterprise (033–044)
+## Agentic & Enterprise (033–047)
 
 | ID                                                              | Title                                                                            |
 | --------------------------------------------------------------- | -------------------------------------------------------------------------------- |
@@ -63,6 +63,8 @@
 | [ADR-043](ADR-043-strangler-adapter.md)                         | Strangler Adapter (MVP Monolith → Cell)                                          |
 | [ADR-044](ADR-044-zero-trust-p1-hardening.md)                   | Zero-Trust P1 Hardening (Hybrid RAG, Model Routing, Observability, Concurrency)  |
 | [ADR-045](ADR-045-transactional-outbox.md)                      | Transactional Outbox for DB+Broker Dual-Write Safety (slice 1)                   |
+| [ADR-046](ADR-046-capabilities-ownership-authorization.md)      | Capabilities Authorization is Workspace-Ownership, Not Role-Based                |
+| [ADR-047](ADR-047-vault-sync-conflict-history-record-only.md)   | Vault-Sync Conflict Resolution is Record-Only; Reports Merge a Device Registry   |
 
 ## Ownership & Cadence
 
