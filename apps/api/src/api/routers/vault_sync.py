@@ -29,6 +29,7 @@ from ..models.schema import (
     Folder,
     Memory,
     Relationship,
+    VaultSyncConflictHistory,
     Workspace,
     WorkspaceUser,
 )
@@ -340,6 +341,12 @@ async def get_vault_sync_status(
     conflicts = vault_meta.get("conflicts", []) or []
     outstanding = [c for c in conflicts if not c.get("resolved")]
 
+    # One entry per machine that has ever reported, newest heartbeat first. The
+    # registry is upserted by /report; this endpoint only reads it back.
+    devices_map = vault_meta.get("devices", {}) or {}
+    devices = [{"machine": machine, **entry} for machine, entry in devices_map.items()]
+    devices.sort(key=lambda d: d.get("last_heartbeat") or "", reverse=True)
+
     return {
         "workspace_id": str(workspace_id),
         "status": vault_meta.get("status", "unknown"),
@@ -347,6 +354,10 @@ async def get_vault_sync_status(
         "installed": daemon_status != "not_connected",
         "daemon_status": daemon_status,
         "last_client_heartbeat": heartbeat,
+        # The machine that produced the top-level fields below, plus every
+        # machine that has ever reported. Both are observed, never assumed.
+        "machine": vault_meta.get("machine"),
+        "devices": devices,
         "branch": vault_meta.get("branch", "main"),
         "remote_url": vault_meta.get("remote_url"),
         "vault_path": vault_meta.get("vault_path"),
@@ -990,7 +1001,13 @@ async def report_vault_client_state(
     from "everything is fine".
 
     Only unresolved conflicts are retained, so a client that clears its queue
-    visibly empties the server's view.
+    visibly empties the server's view. Conflicts already recorded as resolved in
+    the history table are filtered out too: a client's ledger is a snapshot, its
+    queue can still hold entries the server has adjudicated, and a stale re-report
+    must not resurrect them.
+
+    Each report also upserts this machine into the device registry, so /status can
+    show every machine that syncs this workspace rather than only the last one.
     """
     user_id = uuid.UUID(current_user["sub"])
     await _verify_workspace_access(body.workspace_id, user_id, db)
@@ -1013,19 +1030,40 @@ async def report_vault_client_state(
     if body.vault_path:
         cfg["vault_path"] = body.vault_path
 
+    resolved_res = await db.execute(
+        select(VaultSyncConflictHistory.conflict_id).where(
+            VaultSyncConflictHistory.connector_id == connector.id,
+        )
+    )
+    resolved_ids = {row[0] for row in resolved_res.all()}
+    fresh_conflicts = [c for c in body.conflicts if c.id not in resolved_ids]
+
     # Replace, never merge: the client is the source of truth for its own ledger.
-    cfg["conflicts"] = [c.model_dump() for c in body.conflicts]
+    cfg["conflicts"] = [c.model_dump() for c in fresh_conflicts]
     cfg["sync_logs"] = [log.model_dump() for log in body.logs][-50:]
 
     # Derive the coarse status from what the client actually reported.
     if body.last_error:
         cfg["status"] = "error"
-    elif body.conflicts:
+    elif fresh_conflicts:
         cfg["status"] = "conflict"
     elif body.sync_state == "syncing":
         cfg["status"] = "syncing"
     else:
         cfg["status"] = "in_sync"
+
+    # Upsert by machine key so a second machine joins the first rather than
+    # replacing it. A machine that never reports one is keyed "unknown".
+    devices = dict(cfg.get("devices", {}) or {})
+    devices[body.machine or "unknown"] = {
+        "client_version": body.client_version,
+        "last_heartbeat": cfg["last_client_heartbeat"],
+        "status": cfg["status"],
+        "last_pull_time": body.last_pull_time,
+        "last_push_time": body.last_push_time,
+        "last_error": body.last_error,
+    }
+    cfg["devices"] = devices
 
     connector.config = cfg
     await db.commit()
@@ -1058,6 +1096,66 @@ async def list_vault_conflicts(
     return connector.config.get("conflicts", []) or []
 
 
+@router.get("/conflicts/history", response_model=dict[str, Any])
+async def list_vault_conflict_history(
+    workspace_id: uuid.UUID = Query(..., description="Workspace ID"),
+    limit: int = Query(50, ge=1, le=200, description="Max rows to return"),
+    offset: int = Query(0, ge=0, description="Rows to skip"),
+    db: AsyncSession = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+) -> dict[str, Any]:
+    """Resolutions recorded for this workspace's connector, newest first.
+
+    The active ledger (/conflicts) forgets: resolving removes the entry and the
+    next client report replaces the rest. This is the durable record — one row
+    per conflict ever resolved here, echoed back so the Corrections UI can show
+    what happened after the queue drained.
+    """
+    user_id = uuid.UUID(current_user["sub"])
+    await _verify_workspace_access(workspace_id, user_id, db)
+    connector = await _get_or_create_vault_connector(workspace_id, db)
+
+    total_res = await db.execute(
+        select(func.count(VaultSyncConflictHistory.id)).where(
+            VaultSyncConflictHistory.connector_id == connector.id,
+        )
+    )
+    total = total_res.scalar() or 0
+
+    rows_res = await db.execute(
+        select(VaultSyncConflictHistory)
+        .where(VaultSyncConflictHistory.connector_id == connector.id)
+        .order_by(
+            VaultSyncConflictHistory.resolved_at.desc(),
+            VaultSyncConflictHistory.conflict_id.desc(),
+        )
+        .limit(limit)
+        .offset(offset)
+    )
+    rows = rows_res.scalars().all()
+
+    # Built key by key rather than via model_dump: the response is a contract,
+    # and workspace_id must not leak into it just because the column exists.
+    return {
+        "items": [
+            {
+                "id": str(row.id),
+                "connector_id": str(row.connector_id),
+                "conflict_id": row.conflict_id,
+                "file": row.file,
+                "conflict_file": row.conflict_file,
+                "local_head": row.local_head,
+                "remote_head": row.remote_head,
+                "detected_at": row.detected_at,
+                "resolved_at": row.resolved_at.isoformat(),
+                "resolution": row.resolution,
+            }
+            for row in rows
+        ],
+        "total": total,
+    }
+
+
 @router.post("/conflicts/{conflict_id}/resolve", response_model=dict[str, Any])
 async def resolve_vault_conflict(
     conflict_id: str,
@@ -1066,7 +1164,18 @@ async def resolve_vault_conflict(
     db: AsyncSession = Depends(get_db),
     current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
-    """Mark a conflict resolved using either 'keep-local' or 'accept-incoming' strategy."""
+    """Record a resolution for a conflict, then clear it from the active ledger.
+
+    The recorded row is insert-once, keyed by (connector_id, conflict_id): the
+    first resolution wins, and a repeated resolve echoes the recorded one instead
+    of overwriting it. The local client applies the recorded resolution to its
+    ledger on its next sync — the server has no git engine and does not pretend
+    to apply it here.
+
+    A conflict id that is neither in the ledger nor in the history is a 404:
+    recording a resolution for a conflict the server never saw would fabricate
+    an audit trail.
+    """
     user_id = uuid.UUID(current_user["sub"])
     await _verify_workspace_access(workspace_id, user_id, db)
 
@@ -1074,7 +1183,38 @@ async def resolve_vault_conflict(
     cfg = dict(connector.config or {})
     conflicts: list[dict[str, Any]] = cfg.get("conflicts", [])
 
-    # Filter out or mark resolved
+    existing_res = await db.execute(
+        select(VaultSyncConflictHistory).where(
+            VaultSyncConflictHistory.connector_id == connector.id,
+            VaultSyncConflictHistory.conflict_id == conflict_id,
+        )
+    )
+    existing = existing_res.scalar_one_or_none()
+
+    if existing is not None:
+        resolution = existing.resolution
+    else:
+        ledger_entry = next((c for c in conflicts if c.get("id") == conflict_id), None)
+        if ledger_entry is None:
+            raise HTTPException(
+                status_code=404, detail="Conflict not found in the active ledger"
+            )
+        db.add(
+            VaultSyncConflictHistory(
+                connector_id=connector.id,
+                workspace_id=workspace_id,
+                conflict_id=conflict_id,
+                file=ledger_entry.get("file", ""),
+                conflict_file=ledger_entry.get("conflict_file", ""),
+                local_head=ledger_entry.get("local_head"),
+                remote_head=ledger_entry.get("remote_head"),
+                detected_at=ledger_entry.get("detected_at"),
+                resolved_at=datetime.now(UTC),
+                resolution=body.strategy,
+            )
+        )
+        resolution = body.strategy
+
     updated_conflicts = [c for c in conflicts if c.get("id") != conflict_id]
     cfg["conflicts"] = updated_conflicts
     connector.config = cfg
@@ -1083,7 +1223,9 @@ async def resolve_vault_conflict(
     return {
         "success": True,
         "conflict_id": conflict_id,
-        "strategy": body.strategy,
+        # The recorded resolution, not merely the requested one: on a repeat the
+        # client learns what was actually recorded.
+        "resolution": resolution,
         "remaining_conflicts": len(updated_conflicts),
     }
 

@@ -1891,4 +1891,43 @@ class AuditEvent(Base):
     )
 
 
+class VaultSyncConflictHistory(Base):
+    """Durable record of conflict resolutions recorded for a vault connector.
 
+    The active conflict ledger lives in ``connectors.config["conflicts"]`` and is
+    replaced wholesale on every client report, so it cannot answer "what did I do
+    with this conflict?" once the entry is gone. This table can: one insert-once
+    row per ``(connector_id, conflict_id)``, first recorded resolution wins, and a
+    repeated resolve echoes the recorded row instead of mutating it.
+    """
+
+    __tablename__ = "vault_sync_conflict_history"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    connector_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("connectors.id", ondelete="CASCADE"), nullable=False
+    )
+    workspace_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="CASCADE"), nullable=False
+    )
+    conflict_id: Mapped[str] = mapped_column(String(200), nullable=False)
+    file: Mapped[str] = mapped_column(String(1000), nullable=False)
+    conflict_file: Mapped[str] = mapped_column(String(1000), nullable=False)
+    local_head: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    remote_head: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    detected_at: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    resolved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    resolution: Mapped[str] = mapped_column(String(20), nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint(
+            "connector_id",
+            "conflict_id",
+            name="uq_vault_sync_conflict_history_connector_conflict",
+        ),
+        Index(
+            "idx_vault_sync_conflict_history_connector_detected",
+            "connector_id",
+            "detected_at",
+        ),
+    )

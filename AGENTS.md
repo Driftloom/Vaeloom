@@ -379,16 +379,16 @@ plugins/
 
 **Where to look**
 
-| Thing                            | Path                                                                        |
-| -------------------------------- | --------------------------------------------------------------------------- |
-| Phase contracts (governing spec) | `specs/phase-contracts/` — start `00-master-index.md`                       |
-| Execution status                 | `specs/phase-contracts/EXECUTION-STATUS.md`                                 |
-| Phase evidence, gates, handoffs  | `evidence/phases/<track>/<track>-pXX/`                                      |
-| Architecture decisions           | `docs/adr/ADR-001…ADR-045`                                                  |
-| Coding guidelines                | `docs/coding-guidelines/GUIDELINES.md` & `EXAMPLES.md`                      |
-| Language standards               | `docs/engineering/Coding-Standards.md`                                      |
-| OpenAPI (generated, committed)   | `specs/api/openapi.yaml`, `docs/backend/openapi.yaml`                       |
-| Migrations                       | `apps/api/alembic/versions/` — head is `0069_memory_workspace_isolation.py` |
+| Thing                            | Path                                                                         |
+| -------------------------------- | ---------------------------------------------------------------------------- |
+| Phase contracts (governing spec) | `specs/phase-contracts/` — start `00-master-index.md`                        |
+| Execution status                 | `specs/phase-contracts/EXECUTION-STATUS.md`                                  |
+| Phase evidence, gates, handoffs  | `evidence/phases/<track>/<track>-pXX/`                                       |
+| Architecture decisions           | `docs/adr/ADR-001…ADR-045`                                                   |
+| Coding guidelines                | `docs/coding-guidelines/GUIDELINES.md` & `EXAMPLES.md`                       |
+| Language standards               | `docs/engineering/Coding-Standards.md`                                       |
+| OpenAPI (generated, committed)   | `specs/api/openapi.yaml`, `docs/backend/openapi.yaml`                        |
+| Migrations                       | `apps/api/alembic/versions/` — head is `0070_vault_sync_conflict_history.py` |
 
 A knowledge graph of the codebase lives in `graphify-out/` — useful for "who
 calls this" / "what depends on that" before you grep.
