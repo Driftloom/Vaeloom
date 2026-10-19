@@ -101,12 +101,34 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
     : null;
 
   // The definitions registry is workspace-independent, so it fetches under its
-  // own shared key; the `[toolName]` subpage reads the same entry. A failed
-  // definitions fetch leaves `suites` empty — the tab renders nothing rather
-  // than falling back to client-fabricated rows.
-  const { data: definitions } = useSWR(TOOL_DEFINITIONS_SWR_KEY, () =>
-    capabilitiesApi.listToolDefinitions(),
-  );
+  // own shared key; the `[toolName]` subpage reads the same entry. Its failure
+  // states are surfaced the same way the workspace-rows gate reports its own —
+  // a failed fetch must never degrade into the accordion's "The tool catalog
+  // is empty." copy, which claims the server answered and holds nothing.
+  const {
+    data: definitions,
+    error: definitionsFetchError,
+    isLoading: definitionsLoading,
+  } = useSWR(TOOL_DEFINITIONS_SWR_KEY, () => capabilitiesApi.listToolDefinitions(), {
+    revalidateOnFocus: false,
+    shouldRetryOnError: false,
+  });
+
+  // Same shape the gate computes for its rows: error without data is `failed`
+  // (nothing on screen can be trusted), error with data is `stale` (rows stay
+  // operable, notice shown).
+  const definitionsStatus: GateStatus = definitionsFetchError
+    ? definitions
+      ? 'stale'
+      : 'failed'
+    : definitionsLoading || !definitions
+      ? 'loading'
+      : 'ready';
+  const definitionsError = definitionsFetchError
+    ? definitionsFetchError instanceof Error
+      ? definitionsFetchError.message
+      : 'The served tool definitions could not be read.'
+    : null;
 
   const [pendingTools, setPendingTools] = useState<ReadonlySet<string>>(() => new Set());
 
@@ -324,6 +346,8 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
         gateStatus={gateStatus}
         gateError={gateError}
         pendingTools={pendingTools}
+        definitionsStatus={definitionsStatus}
+        definitionsError={definitionsError}
         sortBy={sortBy}
         onSortChange={handleSortChange}
         searchQuery={searchQuery}

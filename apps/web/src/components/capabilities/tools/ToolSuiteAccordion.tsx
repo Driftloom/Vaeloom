@@ -19,6 +19,15 @@ export interface ToolSuiteAccordionProps {
   gateStatus: GateStatus;
   gateError: string | null;
   pendingTools: ReadonlySet<string>;
+  /**
+   * State of the served-definitions fetch behind the suite list. `failed`
+   * means the tab knows nothing about the catalog and renders no suites — the
+   * empty-catalog copy "The tool catalog is empty." is only ever truthful
+   * after a successful response that genuinely holds nothing, so it is
+   * reserved for that case.
+   */
+  definitionsStatus: GateStatus;
+  definitionsError: string | null;
   sortBy: ToolSort;
   onSortChange: (sort: ToolSort) => void;
   searchQuery?: string;
@@ -33,6 +42,8 @@ export const ToolSuiteAccordion: React.FC<ToolSuiteAccordionProps> = ({
   gateStatus,
   gateError,
   pendingTools,
+  definitionsStatus,
+  definitionsError,
   sortBy,
   onSortChange,
   searchQuery = '',
@@ -92,17 +103,35 @@ export const ToolSuiteAccordion: React.FC<ToolSuiteAccordionProps> = ({
             switches still write to the server.
           </p>
         )}
+        {definitionsStatus === 'failed' && (
+          <p role="alert" className="text-2xs font-mono text-error leading-relaxed">
+            The served tool definitions could not be loaded: {definitionsError}. No suites are shown
+            because rendering any would mean guessing what the server holds.
+          </p>
+        )}
+        {definitionsStatus === 'stale' && (
+          <p role="status" className="text-2xs font-mono text-warning leading-relaxed">
+            A refresh of the served tool definitions failed: {definitionsError}. Showing the last
+            known state; the suite switches still write to the server.
+          </p>
+        )}
       </div>
 
       <ul className="flex-1 overflow-y-auto overscroll-y-contain p-2 pb-12 space-y-1.5 min-h-0">
         {filteredSuites.length === 0 && (
           <li className="p-1">
             <EmptyState
-              title="No tool suites match"
+              title={
+                definitionsStatus === 'failed' ? 'No tool suites shown' : 'No tool suites match'
+              }
               description={
-                searchQuery.trim()
-                  ? `Nothing in the tool catalog matches “${searchQuery.trim()}”.`
-                  : 'The tool catalog is empty.'
+                definitionsStatus === 'failed'
+                  ? 'The served tool definitions could not be loaded, so no suites are shown. This is a fetch failure, not an empty catalog.'
+                  : definitionsStatus === 'loading'
+                    ? 'Loading the served tool definitions…'
+                    : searchQuery.trim()
+                      ? `Nothing in the tool catalog matches “${searchQuery.trim()}”.`
+                      : 'The tool catalog is empty.'
               }
             />
           </li>

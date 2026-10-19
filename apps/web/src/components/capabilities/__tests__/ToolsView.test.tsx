@@ -25,9 +25,11 @@
 
 import React from 'react';
 import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
+import { SWRConfig, mutate as globalMutate } from 'swr';
 
 import { ToolsView } from '../ToolsView';
 import { invalidateCapabilities } from '@/lib/queries/capability-keys';
+import { TOOL_DEFINITIONS_SWR_KEY } from '@/lib/tool-definitions-catalog';
 import type { CapabilityItem } from '@/lib/capabilities-data';
 
 // ─── Server doubles ──────────────────────────────────────────────────────────
@@ -284,10 +286,28 @@ function reapplyDefaults(): void {
  */
 let workspaceSeq = 0;
 
-function renderView(props: Partial<React.ComponentProps<typeof ToolsView>> = {}) {
+/**
+ * `swrCache` starts a test from an empty SWR cache.
+ *
+ * The module-level default cache shares the definitions key across every test
+ * ("its data is static across tests" only holds while every test gets the
+ * success answer). The failure tests need a cache that starts empty — one that
+ * has never seen a definition — so a failing fetch cannot be papered over by
+ * rows an earlier test happened to cache.
+ */
+function renderView(
+  props: Partial<React.ComponentProps<typeof ToolsView>> & {
+    swrCache?: () => Map<string, unknown>;
+  } = {},
+) {
   workspaceSeq += 1;
   const tools: CapabilityItem[] = [];
-  return render(<ToolsView tools={tools} workspaceId={`ws-tools-${workspaceSeq}`} {...props} />);
+  const { swrCache, tools: toolsProp, ...rest } = props;
+  return render(
+    <SWRConfig value={{ provider: swrCache }}>
+      <ToolsView tools={toolsProp ?? tools} workspaceId={`ws-tools-${workspaceSeq}`} {...rest} />
+    </SWRConfig>,
+  );
 }
 
 /** The suite card for a suite by its rendered name. The suite name is a span
@@ -570,6 +590,74 @@ describe('ToolsView suite data source', () => {
         expect(text).not.toContain(phantom);
       }
     }
+  });
+});
+
+// ─── Definitions fetch failure: never a false "empty catalog" claim ─────────
+
+/**
+ * `GET /capabilities/tools/definitions` failing is a statement about the
+ * network, not about the tool catalog. Rendering "The tool catalog is empty."
+ * in that state claims the server answered and holds nothing — a claim about
+ * server state that is false. These tests mirror the workspace-rows gate
+ * design: no cached data → failure alert, no suites; cached data → rows plus a
+ * stale notice, switches operable.
+ */
+describe('ToolsView definitions fetch failure', () => {
+  it('renders a failure alert instead of suites, and never the empty-catalog copy', async () => {
+    const mocked = jest.requireMock('@/lib/api-client') as {
+      capabilitiesApi: { listToolDefinitions: jest.Mock };
+    };
+    mocked.capabilitiesApi.listToolDefinitions.mockImplementation(async () => {
+      throw new Error('502 Bad Gateway');
+    });
+
+    // An empty SWR cache: nothing about the catalog can be known from history.
+    renderView({ swrCache: () => new Map() });
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent('502 Bad Gateway');
+    expect(alert).toHaveTextContent('could not be loaded');
+
+    // The empty-catalog copy is a claim about server state that is false here.
+    expect(screen.queryByText('The tool catalog is empty.')).toBeNull();
+    // No cached data and no successful fetch: no suite may be guessed either.
+    expect(screen.queryByText('Memory Graph')).toBeNull();
+    expect(mockToast).not.toHaveBeenCalled();
+  });
+
+  it('keeps served rows operable under a stale notice when a refresh fails', async () => {
+    // Rendered on the module default SWR cache: `mutate` imported from `swr`
+    // only reaches that cache, unlike the scoped provider this file uses for
+    // the failed-mount test above. The cache already holds the fixture the
+    // earlier loads stored — the same definitions every test caches.
+    renderView();
+    await waitForGateLoaded();
+
+    expect(suiteCard('Memory Graph').textContent).toContain('search_documents');
+
+    const mocked = jest.requireMock('@/lib/api-client') as {
+      capabilitiesApi: { listToolDefinitions: jest.Mock };
+    };
+    mocked.capabilitiesApi.listToolDefinitions.mockImplementation(async () => {
+      throw new Error('502 Bad Gateway');
+    });
+    // Trigger the refetch the way production would after a background
+    // revalidation — global mutate on the shared definitions key keeps the
+    // cached rows and revalidates through the mounted fetcher.
+    await act(async () => {
+      await globalMutate(TOOL_DEFINITIONS_SWR_KEY);
+    });
+
+    const notice = screen.getByRole('status');
+    expect(notice).toHaveTextContent('502 Bad Gateway');
+    expect(notice).toHaveTextContent('last known state');
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByText('The tool catalog is empty.')).toBeNull();
+
+    // The retained rows still read truthfully — and stay operable.
+    expect(suiteCard('Memory Graph').textContent).toContain('search_documents');
+    expect(suiteSwitch('Memory Graph')).not.toBeDisabled();
   });
 });
 
