@@ -319,7 +319,9 @@ describe('AgentsView ReAct round budget: writing', () => {
     expect(mocked.capabilitiesApi.update.mock.calls[0][1]).toEqual({
       config: { max_react_rounds: 4 },
     });
-    expect(roundsBadge()).not.toHaveTextContent('Saved: 4');
+    // No element of the settled render — badge or otherwise — may name the
+    // operator's number as saved.
+    expect(document.body.textContent).not.toContain('Saved:');
   });
 
   it('shows the server error and keeps the previous value when the write is rejected', async () => {

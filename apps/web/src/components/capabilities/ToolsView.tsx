@@ -17,6 +17,7 @@ import {
   type ToolRow,
   type ToolSort,
   type ToolSuite,
+  type GateStatus,
 } from './tools/types';
 import { ToolSuiteAccordion } from './tools/ToolSuiteAccordion';
 import { ToolDetailDrawer } from './tools/ToolDetailDrawer';
@@ -76,8 +77,13 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
     return next;
   }, [serverRows]);
 
-  const gateStatus: 'loading' | 'ready' | 'failed' = gateFetchError
-    ? 'failed'
+  // A failed refetch does not brick the view: SWR retains the last good
+  // response, so error + data is `stale` (rows stay operable, notice shown),
+  // while error without data is `failed` (nothing on screen can be trusted).
+  const gateStatus: GateStatus = gateFetchError
+    ? serverRows
+      ? 'stale'
+      : 'failed'
     : gateLoading || !serverRows
       ? 'loading'
       : 'ready';

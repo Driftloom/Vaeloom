@@ -23,15 +23,21 @@ type CapabilityArrayKey = readonly ['capabilities', string, CapabilityCacheScope
 /**
  * SWR treats each array literal as a new key; a stable identity per
  * workspace+scope keeps re-renders on one cache entry instead of refetching.
+ * Nested maps (`wsId` → `scope` → key) so no workspace id can collide with a
+ * scope name or another id through string concatenation.
  */
-const keyCache = new Map<string, CapabilityArrayKey>();
+const keyCache = new Map<string, Map<CapabilityCacheScope, CapabilityArrayKey>>();
 
 function canonicalKey(wsId: string, scope: CapabilityCacheScope): CapabilityArrayKey {
-  const id = `${wsId} ${scope}`;
-  const cached = keyCache.get(id);
+  let scopes = keyCache.get(wsId);
+  if (!scopes) {
+    scopes = new Map<CapabilityCacheScope, CapabilityArrayKey>();
+    keyCache.set(wsId, scopes);
+  }
+  const cached = scopes.get(scope);
   if (cached) return cached;
   const key = ['capabilities', wsId, scope] as const;
-  keyCache.set(id, key);
+  scopes.set(scope, key);
   return key;
 }
 
@@ -52,10 +58,14 @@ const ALL_SCOPES: readonly CapabilityCacheScope[] = [
 ];
 
 /**
- * Revalidate registered keys through SWR's global mutate. `all` (the default)
- * sweeps every canonical scope plus the connectors list; a named scope touches
- * exactly one key. Without a workspace id it is a no-op, so callers with an
- * optional workspace need no guard of their own.
+ * Revalidate registered keys through SWR's global mutate in its single-argument
+ * form — a pure revalidation that does not touch the cached value. Passing
+ * `undefined` as the data argument would instead run SWR's clear-the-cache
+ * idiom, wiping retained rows before the refetch answers (and leaving them
+ * wiped when that refetch fails). `all` (the default) sweeps every canonical
+ * scope plus the connectors list; a named scope touches exactly one key.
+ * Without a workspace id it is a no-op, so callers with an optional workspace
+ * need no guard of their own.
  */
 export async function invalidateCapabilities(
   workspaceId: string,
@@ -65,13 +75,11 @@ export async function invalidateCapabilities(
   if (scope !== 'all') {
     const key =
       scope === 'connectors' ? connectorsKey(workspaceId) : canonicalKey(workspaceId, scope);
-    await mutate(key, undefined, { revalidate: true });
+    await mutate(key);
     return;
   }
   await Promise.all([
-    ...ALL_SCOPES.map((entry) =>
-      mutate(canonicalKey(workspaceId, entry), undefined, { revalidate: true }),
-    ),
-    mutate(connectorsKey(workspaceId), undefined, { revalidate: true }),
+    ...ALL_SCOPES.map((entry) => mutate(canonicalKey(workspaceId, entry))),
+    mutate(connectorsKey(workspaceId)),
   ]);
 }

@@ -19,9 +19,10 @@
  */
 
 import React from 'react';
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
 
 import { ToolsView } from '../ToolsView';
+import { invalidateCapabilities } from '@/lib/queries/capability-keys';
 import type { CapabilityItem } from '@/lib/capabilities-data';
 
 // ─── Server doubles ──────────────────────────────────────────────────────────
@@ -351,6 +352,37 @@ describe('ToolsView tool enable gate', () => {
     // An empty map after a failure is indistinguishable from "no row means
     // enabled", which is exactly the confusion the disabled state prevents.
     expect(suiteSwitch('memory-graph')).toBeDisabled();
+  });
+
+  it('keeps stale rows operable and says so when a background refresh fails', async () => {
+    // One row on the server (query_graph denied) answers the first fetch; the
+    // NEXT fetch fails while the view still holds the earlier rows.
+    server.toolRows = [toolRow('query_graph', { id: 'row-query_graph', enabled: false })];
+    renderView({ workspaceId: 'ws-tools-stale-refresh' });
+    await waitForGateLoaded();
+
+    server.failures.list = new Error('502 Bad Gateway');
+    // Trigger the refetch the way production does — through the shared
+    // invalidation helper, whose single-arg mutate keeps the cached rows.
+    await act(async () => {
+      await invalidateCapabilities('ws-tools-stale-refresh', 'list');
+    });
+
+    // Honest notice about the failed refresh — not the failed-state copy,
+    // because the rows are on screen and the "nothing" claim would be false.
+    const notice = screen.getByRole('status');
+    expect(notice).toHaveTextContent('502 Bad Gateway');
+    expect(notice).toHaveTextContent('last known state');
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByText('The switches are disabled')).toBeNull();
+
+    // The retained rows still read truthfully — and stay operable.
+    expect(screen.getByText('1 of 3 denied')).toBeInTheDocument();
+    expect(suiteSwitch('memory-graph')).toHaveAttribute('aria-checked', 'true');
+    expect(suiteSwitch('memory-graph')).not.toBeDisabled();
+    fireEvent.click(screen.getByRole('button', { name: 'query_graph' }));
+    expect(toolSwitch('query_graph')).toHaveAttribute('aria-checked', 'false');
+    expect(toolSwitch('query_graph')).not.toBeDisabled();
   });
 });
 

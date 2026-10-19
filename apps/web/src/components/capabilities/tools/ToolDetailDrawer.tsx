@@ -4,7 +4,13 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Badge, Button, EmptyState, ErrorState, Tabs, TabPanel, Textarea } from '@vaeloom/ui-kit';
 import { capabilitiesApi } from '@/lib/api-client';
-import { type DetailSubTab, type ToolGateRow, type ToolRow, type ToolSuite } from './types';
+import {
+  type DetailSubTab,
+  type GateStatus,
+  type ToolGateRow,
+  type ToolRow,
+  type ToolSuite,
+} from './types';
 import { ToolRowItem } from './ToolRowItem';
 
 export interface ToolDetailDrawerProps {
@@ -12,7 +18,7 @@ export interface ToolDetailDrawerProps {
   selectedSuite: ToolSuite | null;
   activeRow: ToolRow | null;
   gateRows: ReadonlyMap<string, ToolGateRow>;
-  gateStatus: 'loading' | 'ready' | 'failed';
+  gateStatus: GateStatus;
   pendingTools: ReadonlySet<string>;
   detailSubTab: DetailSubTab;
   onDetailSubTabChange: (tab: DetailSubTab) => void;

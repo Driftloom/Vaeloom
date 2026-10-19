@@ -6,6 +6,7 @@ import { SuiteIcon } from './SuiteIcon';
 import {
   GATE_ENFORCEMENT,
   suiteGate,
+  type GateStatus,
   type ToolGateRow,
   type ToolSort,
   type ToolSuite,
@@ -15,7 +16,7 @@ export interface ToolSuiteAccordionProps {
   filteredSuites: ToolSuite[];
   selectedSuite: ToolSuite | null;
   gateRows: ReadonlyMap<string, ToolGateRow>;
-  gateStatus: 'loading' | 'ready' | 'failed';
+  gateStatus: GateStatus;
   gateError: string | null;
   pendingTools: ReadonlySet<string>;
   sortBy: ToolSort;
@@ -83,6 +84,12 @@ export const ToolSuiteAccordion: React.FC<ToolSuiteAccordionProps> = ({
           <p role="alert" className="text-2xs font-mono text-error leading-relaxed">
             The tool rows could not be read: {gateError}. The switches are disabled because nothing
             here can tell an enabled tool from a denied one.
+          </p>
+        )}
+        {gateStatus === 'stale' && (
+          <p role="status" className="text-2xs font-mono text-warning leading-relaxed">
+            A refresh of the tool rows failed: {gateError}. Showing the last known state; the
+            switches still write to the server.
           </p>
         )}
       </div>
@@ -201,7 +208,7 @@ export const ToolSuiteAccordion: React.FC<ToolSuiteAccordionProps> = ({
                     <div>
                       <Switch
                         checked={checked}
-                        disabled={gateStatus !== 'ready' || busy}
+                        disabled={gateStatus === 'loading' || gateStatus === 'failed' || busy}
                         onChange={(next: boolean) => void onToggleSuite(suite, next)}
                         label={
                           <span className="sr-only">

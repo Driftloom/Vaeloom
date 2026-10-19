@@ -2,12 +2,12 @@
 
 import React from 'react';
 import { Badge, Switch } from '@vaeloom/ui-kit';
-import { activeGateState, type ToolGateRow, type ToolRow } from './types';
+import { activeGateState, type GateStatus, type ToolGateRow, type ToolRow } from './types';
 
 export interface ToolRowItemProps {
   activeRow: ToolRow;
   gateRows: ReadonlyMap<string, ToolGateRow>;
-  gateStatus: 'loading' | 'ready' | 'failed';
+  gateStatus: GateStatus;
   pendingTools: ReadonlySet<string>;
   onSetToolEnabled: (row: ToolRow, enabled: boolean) => void;
 }
@@ -71,7 +71,7 @@ export const ToolRowItem: React.FC<ToolRowItemProps> = ({
             </Badge>
             <Switch
               checked={!gateState.denied}
-              disabled={gateStatus !== 'ready' || isPending}
+              disabled={gateStatus === 'loading' || gateStatus === 'failed' || isPending}
               onChange={(next: boolean) => void onSetToolEnabled(activeRow, next)}
               label={<span className="sr-only">{`Allow ${activeRow.name} in this workspace`}</span>}
             />

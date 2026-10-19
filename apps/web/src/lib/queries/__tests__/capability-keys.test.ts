@@ -5,8 +5,11 @@
  *  - The connectors suite is keyed by its existing URL key, not an array;
  *    the registry owns its definition so useWorkspaceConnectors and the sweep
  *    can never disagree on spelling again.
- *  - invalidateCapabilities(global mutate, revalidate: true) fires one
- *    revalidate per registered key for 'all' — and exactly one key for a scope.
+ *  - invalidateCapabilities(global mutate, no data write) fires one
+ *    revalidation per registered key for 'all' — and exactly one key for a
+ *    scope. Single-arg mutate: passing `undefined` as the data argument is
+ *    SWR's clear-the-cache idiom, which would wipe retained rows on every
+ *    invalidation before the refetch answers.
  */
 
 import { capabilityKeys, connectorsKey, invalidateCapabilities } from '../capability-keys';
@@ -18,8 +21,6 @@ jest.mock('swr', () => {
 });
 
 const mutateMock = globalMutate as unknown as jest.Mock;
-
-const REVALIDATE_ARGS = [undefined, { revalidate: true }] as const;
 
 beforeEach(() => {
   mutateMock.mockClear();
@@ -65,64 +66,46 @@ describe('invalidateCapabilities', () => {
     await invalidateCapabilities('ws-1');
 
     expect(mutateMock).toHaveBeenCalledTimes(5);
-    expect(mutateMock).toHaveBeenNthCalledWith(1, capabilityKeys.list('ws-1'), ...REVALIDATE_ARGS);
-    expect(mutateMock).toHaveBeenNthCalledWith(
-      2,
-      capabilityKeys.skills('ws-1'),
-      ...REVALIDATE_ARGS,
-    );
-    expect(mutateMock).toHaveBeenNthCalledWith(
-      3,
-      capabilityKeys.agentCatalog('ws-1'),
-      ...REVALIDATE_ARGS,
-    );
-    expect(mutateMock).toHaveBeenNthCalledWith(
-      4,
-      capabilityKeys.pluginRegistry('ws-1'),
-      ...REVALIDATE_ARGS,
-    );
-    expect(mutateMock).toHaveBeenNthCalledWith(5, connectorsKey('ws-1'), ...REVALIDATE_ARGS);
+    expect(mutateMock).toHaveBeenNthCalledWith(1, capabilityKeys.list('ws-1'));
+    expect(mutateMock).toHaveBeenNthCalledWith(2, capabilityKeys.skills('ws-1'));
+    expect(mutateMock).toHaveBeenNthCalledWith(3, capabilityKeys.agentCatalog('ws-1'));
+    expect(mutateMock).toHaveBeenNthCalledWith(4, capabilityKeys.pluginRegistry('ws-1'));
+    expect(mutateMock).toHaveBeenNthCalledWith(5, connectorsKey('ws-1'));
   });
 
   it("scope 'list' touches only the list key", async () => {
     await invalidateCapabilities('ws-1', 'list');
 
     expect(mutateMock).toHaveBeenCalledTimes(1);
-    expect(mutateMock).toHaveBeenCalledWith(capabilityKeys.list('ws-1'), ...REVALIDATE_ARGS);
+    expect(mutateMock).toHaveBeenCalledWith(capabilityKeys.list('ws-1'));
   });
 
   it("scope 'skills' touches only the skills key", async () => {
     await invalidateCapabilities('ws-1', 'skills');
 
     expect(mutateMock).toHaveBeenCalledTimes(1);
-    expect(mutateMock).toHaveBeenCalledWith(capabilityKeys.skills('ws-1'), ...REVALIDATE_ARGS);
+    expect(mutateMock).toHaveBeenCalledWith(capabilityKeys.skills('ws-1'));
   });
 
   it("scope 'agent-catalog' touches only the agent rows key", async () => {
     await invalidateCapabilities('ws-1', 'agent-catalog');
 
     expect(mutateMock).toHaveBeenCalledTimes(1);
-    expect(mutateMock).toHaveBeenCalledWith(
-      capabilityKeys.agentCatalog('ws-1'),
-      ...REVALIDATE_ARGS,
-    );
+    expect(mutateMock).toHaveBeenCalledWith(capabilityKeys.agentCatalog('ws-1'));
   });
 
   it("scope 'plugin-registry' touches only the plugin key", async () => {
     await invalidateCapabilities('ws-1', 'plugin-registry');
 
     expect(mutateMock).toHaveBeenCalledTimes(1);
-    expect(mutateMock).toHaveBeenCalledWith(
-      capabilityKeys.pluginRegistry('ws-1'),
-      ...REVALIDATE_ARGS,
-    );
+    expect(mutateMock).toHaveBeenCalledWith(capabilityKeys.pluginRegistry('ws-1'));
   });
 
   it("scope 'connectors' touches only the connectors URL key", async () => {
     await invalidateCapabilities('ws-1', 'connectors');
 
     expect(mutateMock).toHaveBeenCalledTimes(1);
-    expect(mutateMock).toHaveBeenCalledWith(connectorsKey('ws-1'), ...REVALIDATE_ARGS);
+    expect(mutateMock).toHaveBeenCalledWith(connectorsKey('ws-1'));
   });
 
   it('is a no-op without a workspace id', async () => {
