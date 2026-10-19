@@ -64,6 +64,7 @@ jest.mock('@/lib/api-client', () => ({
     getLogs: jest.fn(),
     ingest: jest.fn(),
     getConflicts: jest.fn(),
+    getConflictHistory: jest.fn(),
     resolveConflict: jest.fn(),
   },
   ApiError: class ApiError extends Error {
@@ -78,6 +79,8 @@ jest.mock('@/lib/api-client', () => ({
 const getStatusMock = vaultSyncApi.getStatus as jest.Mock;
 const getLogsMock = vaultSyncApi.getLogs as jest.Mock;
 const getConflictsMock = vaultSyncApi.getConflicts as jest.Mock;
+const getConflictHistoryMock = vaultSyncApi.getConflictHistory as jest.Mock;
+const resolveConflictMock = vaultSyncApi.resolveConflict as jest.Mock;
 const updateConfigMock = vaultSyncApi.updateConfig as jest.Mock;
 const ingestMock = vaultSyncApi.ingest as jest.Mock;
 const triggerSyncMock = vaultSyncApi.triggerSync as jest.Mock;
@@ -99,6 +102,7 @@ describe('VaultSyncPanel — honesty regressions', () => {
     getStatusMock.mockResolvedValue(mockStatus);
     getLogsMock.mockResolvedValue([]);
     getConflictsMock.mockResolvedValue([]);
+    getConflictHistoryMock.mockResolvedValue({ items: [], total: 0 });
     updateConfigMock.mockResolvedValue({ success: true, config: {} });
     ingestMock.mockResolvedValue({
       success: true,
@@ -252,8 +256,116 @@ describe('VaultSyncPanel — honesty regressions', () => {
 
     renderPanel();
     await waitFor(() => {
-      expect(screen.queryByText(/In Sync/i)).toBeNull();
+      expect(screen.getByText(/Vault status unavailable/i)).toBeTruthy();
     });
+    // Negative controls: no invented health claim may replace the error, and
+    // the retry must be the real "Request sync" action.
+    expect(screen.queryByText(/Installed/i)).toBeNull();
     expect(screen.queryByText('Healthy')).toBeNull();
+    expect(screen.queryByText(/In Sync/i)).toBeNull();
+    expect(screen.getByRole('button', { name: /Request sync/i })).toBeTruthy();
+  });
+
+  it('must say the resolution is recorded, not applied, after resolving a conflict', async () => {
+    getConflictsMock.mockResolvedValue([
+      {
+        id: 'c1',
+        file: 'Notes/Ideas.md',
+        conflictFile: 'Notes/Ideas.conflict-2026-10-01.md',
+        detectedAt: '2026-10-01T00:00:00Z',
+        localHead: 'aaaaaaaabbbbbbbb',
+        remoteHead: 'ccccccccdddddddd',
+      },
+    ]);
+    resolveConflictMock.mockResolvedValue({
+      success: true,
+      conflictId: 'c1',
+      resolution: 'keep-local',
+      remainingConflicts: 0,
+    });
+
+    renderPanel();
+    await waitFor(() => expect(getConflictsMock).toHaveBeenCalled());
+
+    // camelCase mock: proves the panel reads transformed responses too.
+    await waitFor(() => expect(screen.getByText(/Ideas\.conflict-2026-10-01\.md/)).toBeTruthy());
+
+    fireEvent.click(await screen.findByRole('button', { name: /^Keep Local$/i }));
+
+    await waitFor(() =>
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({ title: expect.stringMatching(/recorded/i) }),
+      ),
+    );
+    expect(mockToast).not.toHaveBeenCalledWith(
+      expect.objectContaining({ detail: expect.stringMatching(/zero-data-loss/i) }),
+    );
+  });
+
+  it('must list reporting devices and mark only the latest reporter, never "current"', async () => {
+    getStatusMock.mockResolvedValue({
+      ...mockStatus,
+      daemonStatus: 'running',
+      machine: 'laptop-01',
+      devices: [
+        {
+          machine: 'laptop-01',
+          clientVersion: '0.4.0',
+          lastHeartbeat: '2026-10-18T10:00:00Z',
+          status: 'in_sync',
+          lastPullTime: '2026-10-18T09:50:00Z',
+          lastPushTime: '2026-10-18T09:55:00Z',
+          lastError: null,
+        },
+        {
+          machine: 'desktop-02',
+          clientVersion: '0.3.1',
+          lastHeartbeat: '2026-10-17T08:00:00Z',
+          status: 'error',
+          lastPullTime: null,
+          lastPushTime: null,
+          lastError: 'auth failed',
+        },
+      ],
+    });
+
+    renderPanel();
+    await waitFor(() => expect(screen.getByText('laptop-01')).toBeTruthy());
+
+    expect(screen.getByText('desktop-02')).toBeTruthy();
+    expect(screen.getAllByText('Last reported').length).toBe(1);
+    expect(screen.queryByText(/current device/i)).toBeNull();
+    expect(screen.getByText(/auth failed/)).toBeTruthy();
+  });
+
+  it('must render recorded conflict resolutions from the history endpoint', async () => {
+    getConflictHistoryMock.mockResolvedValue({
+      items: [
+        {
+          id: 'h1',
+          file: 'Notes/Ideas.md',
+          resolution: 'keep-local',
+          resolvedAt: '2026-10-02T00:00:00Z',
+        },
+      ],
+      total: 1,
+    });
+
+    renderPanel();
+    await waitFor(() => expect(screen.getByText(/Showing 1 of 1/)).toBeTruthy());
+    expect(screen.getAllByText('keep-local').length).toBeGreaterThan(0);
+    expect(screen.getByText(/resolved /i)).toBeTruthy();
+  });
+
+  it('must not resurrect the removed fabricated claims', async () => {
+    renderPanel();
+    await waitFor(() => expect(getStatusMock).toHaveBeenCalled());
+    await screen.findByText(/Sync Activity Log/i);
+
+    expect(screen.queryByText(/Watcher daemon is listening/i)).toBeNull();
+    expect(screen.queryByText(/zero divergent commits/i)).toBeNull();
+    expect(screen.queryByText(/Full-text vector search/i)).toBeNull();
+    expect(screen.queryByText(/every 4s/i)).toBeNull();
+    expect(screen.queryByText(/Installed/i)).toBeNull();
   });
 });
