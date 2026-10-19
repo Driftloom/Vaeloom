@@ -153,6 +153,28 @@ class TestMemoryFeed:
         assert res.json()["detail"] == "Forbidden: Access to specified workspace denied"
 
 
+class TestMemoryExport:
+    """F-export-tags-null: export must survive memories created without tags.
+
+    `MemoryExportItem.tags` used to be a non-optional list, so any row whose
+    `tags` column is NULL -- the shape every tagless create produces, since
+    the service passes `tags=None` straight through and an explicit None
+    suppresses the column default -- made the whole export a 500.
+    """
+
+    async def test_export_includes_tagless_memories(self, client: AsyncClient):
+        headers = await _signup(client)
+        ws = await _create_workspace(client, headers)
+        await _create_memory(client, headers, ws, title="Untagged")
+
+        res = await client.get(f"/api/v1/memories/export?workspace_id={ws}", headers=headers)
+        assert res.status_code == 200
+        body = res.json()
+        assert body["total_count"] == 1
+        assert body["memories"][0]["title"] == "Untagged"
+        assert body["memories"][0]["tags"] == []
+
+
 class TestMemoryHistory:
     async def test_history_records_title_update_delta(self, client: AsyncClient):
         headers = await _signup(client)

@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from ..services.memory_type_packs import CAREER_TYPES
 
@@ -199,6 +199,15 @@ class MemoryExportItem(BaseModel):
     supersedes_id: uuid.UUID | None = None
     created_at: datetime
     updated_at: datetime
+
+    @field_validator("tags", mode="before")
+    @classmethod
+    def _tags_or_empty(cls, value: list[str] | None) -> list[str]:
+        # A tagless create stores NULL: the service forwards `tags=None`
+        # explicitly, which suppresses the column default, and
+        # `from_attributes` then hands us None where the export contract
+        # promises a list -- which made the whole export a 500.
+        return value or []
 
     model_config = {"from_attributes": True}
 
