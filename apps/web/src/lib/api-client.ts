@@ -5103,6 +5103,30 @@ export interface ValidateCapabilityDraftRequest {
   trustClass?: string;
 }
 
+/**
+ * One entry of `GET /capabilities/tools/definitions` — the backend `ALL_TOOLS`
+ * registry in `apps/api/src/api/tools/definitions.py`.
+ *
+ * `transformKeys` camelCases response keys, so `required_scope` arrives as
+ * `requiredScope` and `trust_class` as `trustClass`. JSON Schema payloads are on
+ * `OPAQUE_DATA_KEYS`: their VALUES pass through verbatim (schema property names
+ * keep their snake_case spellings round-tripping back into `ToolDefinition`),
+ * only the wrapping keys themselves are camelCased.
+ *
+ * `category` and `trustClass` are plain `string` rather than unions because the
+ * server defines the set (`definitions.py`); narrowing them client-side would
+ * push any future registry value into a compile-time lie.
+ */
+export interface ToolDefinitionRecord {
+  name: string;
+  description: string;
+  requiredScope: string;
+  category: string;
+  trustClass: string;
+  inputSchema: Record<string, unknown>;
+  outputSchema: Record<string, unknown>;
+}
+
 export const capabilitiesApi = {
   list(category?: string, workspaceId?: string): Promise<CapabilityItemRecord[]> {
     const params: Record<string, string | undefined> = {};
@@ -5138,20 +5162,14 @@ export const capabilitiesApi = {
     return apiClient.get<SkillCatalogEntry[]>('/capabilities/catalog', { category });
   },
   /**
-   * Authoritative tool definitions directly from the backend ALL_TOOLS registry.
+   * Authoritative tool definitions from the backend `ALL_TOOLS` registry.
+   *
+   * The Tools tab and the `[toolName]` subpage both render this; there is no
+   * client copy of the rows. Order is the registry's insertion order and is
+   * stable across requests, so it doubles as the "Catalog order" sort.
    */
-  listToolDefinitions(): Promise<
-    Array<{
-      name: string;
-      description: string;
-      required_scope: string;
-      category: string;
-      trust_class: string;
-      input_schema: Record<string, unknown>;
-      output_schema: Record<string, unknown>;
-    }>
-  > {
-    return apiClient.get('/capabilities/tools/definitions');
+  listToolDefinitions(): Promise<ToolDefinitionRecord[]> {
+    return apiClient.get<ToolDefinitionRecord[]>('/capabilities/tools/definitions');
   },
   /**
    * Installed skills merged with the catalog in one request.

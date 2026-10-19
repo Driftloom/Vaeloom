@@ -1,5 +1,5 @@
 /**
- * ToolsView's enable gate.
+ * ToolsView's enable gate and suite data source.
  *
  * The switch this suite covers used to write `vaeloom.tools.suites.<workspace>`
  * into localStorage and its Tooltip said so: "Browser-local visibility
@@ -9,10 +9,15 @@
  * `PermissionDeniedError`, so a switch that only moves a browser preference is a
  * control that lies about what it controls.
  *
- * Every assertion here is about the SERVER's state, not the component's:
+ * Since the workbench rework, the suites themselves are also server data: the
+ * tool rows that were once hand-copied into a client catalog now come from
+ * `GET /capabilities/tools/definitions`, grouped client-side by the first dotted
+ * segment of each tool's required scope. Some tests here therefore pin
+ * grouping and labels as well:
  *   - which rows were written, under which tool name;
  *   - what the switch shows when only some of a suite's tools have rows;
- *   - what it shows when a write fails, which must be "still enabled".
+ *   - what it shows when a write fails, which must be "still enabled";
+ *   - that every rendered suite is derived from the served definitions.
  *
  * The absent-means-enabled invariant is the reason several of these tests look
  * backwards: a tool with no row runs, so an empty map must render as ON.
@@ -34,6 +39,121 @@ interface ServerToolRow {
   enabled: boolean;
   config: Record<string, unknown>;
   description?: string;
+}
+
+/**
+ * One camelCased `GET /capabilities/tools/definitions` row, the client-shaped
+ * record after `transformKeys` runs and while JSON Schema values pass through
+ * verbatim. Every name/scope/category below was read out of the backend
+ * registry (`ALL_TOOLS` in `apps/api/src/api/tools/definitions.py`); the
+ * descriptions are neutral fixture text. `inputSchema` mirrors what the
+ * backend's `_build_schema` produces for these tools.
+ */
+interface RegistryDefinition {
+  name: string;
+  description: string;
+  requiredScope: string;
+  category: string;
+  trustClass: string;
+  inputSchema: Record<string, unknown>;
+  outputSchema: Record<string, unknown>;
+}
+
+const FIXTURE_DEFINITIONS: RegistryDefinition[] = [
+  {
+    name: 'search_documents',
+    description: 'Search across workspace documents.',
+    requiredScope: 'memory.read',
+    category: 'memory_read',
+    trustClass: 'first_party',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Natural language search for documents.' },
+      },
+      required: ['query'],
+    },
+    outputSchema: { type: 'object' },
+  },
+  {
+    name: 'query_graph',
+    description: 'Query the workspace knowledge graph.',
+    requiredScope: 'memory.read',
+    category: 'memory_read',
+    trustClass: 'first_party',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Graph query to run.' },
+      },
+      required: ['query'],
+    },
+    outputSchema: { type: 'object' },
+  },
+  {
+    name: 'create_entity',
+    description: 'Create an entity in the workspace memory graph.',
+    requiredScope: 'memory.write',
+    category: 'memory_write',
+    trustClass: 'first_party',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        entity_type: { type: 'string', description: 'Type of entity to create.' },
+      },
+      required: ['entity_type'],
+    },
+    outputSchema: { type: 'object' },
+  },
+  {
+    name: 'spawn_sub_agents',
+    description: 'Fan a task out to sub agents.',
+    requiredScope: 'agent.spawn',
+    category: 'system',
+    trustClass: 'core_trusted',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        prompt: { type: 'string', description: 'Prompt handed to the sub agents.' },
+      },
+      required: ['prompt'],
+    },
+    outputSchema: { type: 'object' },
+  },
+  {
+    name: 'delegate_to_sub_agent',
+    description: 'Delegate one task to a named sub agent.',
+    requiredScope: 'agent.spawn',
+    category: 'system',
+    trustClass: 'core_trusted',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        task: { type: 'string', description: 'Task description for the sub agent.' },
+      },
+      required: ['task'],
+    },
+    outputSchema: { type: 'object' },
+  },
+  {
+    name: 'search_gmail',
+    description: 'Search Gmail messages.',
+    requiredScope: 'connector.gmail.read',
+    category: 'connector_read',
+    trustClass: 'first_party',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Gmail search query.' },
+      },
+      required: ['query'],
+    },
+    outputSchema: { type: 'object' },
+  },
+];
+
+function fixtureDefinitions(): RegistryDefinition[] {
+  return JSON.parse(JSON.stringify(FIXTURE_DEFINITIONS)) as RegistryDefinition[];
 }
 
 /** `GET /capabilities` rows, camelCased by `transformKeys`. The view now reads
@@ -74,6 +194,7 @@ jest.mock('@/lib/api-client', () => {
         void workspaceId;
         return !category || category === 'tool' ? server.toolRows.map((row) => ({ ...row })) : [];
       }),
+      listToolDefinitions: jest.fn(async () => fixtureDefinitions()),
       create: jest.fn(async (body: Record<string, unknown>) => {
         maybeFail(server.failures.create);
         server.nextId += 1;
@@ -112,7 +233,12 @@ jest.mock('@/components/shared/Toast', () => ({
  */
 function reapplyDefaults(): void {
   const mocked = jest.requireMock('@/lib/api-client') as {
-    capabilitiesApi: { list: jest.Mock; create: jest.Mock; update: jest.Mock };
+    capabilitiesApi: {
+      list: jest.Mock;
+      listToolDefinitions: jest.Mock;
+      create: jest.Mock;
+      update: jest.Mock;
+    };
   };
   const maybeFail = (err: Error | null) => {
     if (err) throw err;
@@ -121,6 +247,7 @@ function reapplyDefaults(): void {
     maybeFail(server.failures.list);
     return !category || category === 'tool' ? server.toolRows.map((row) => ({ ...row })) : [];
   });
+  mocked.capabilitiesApi.listToolDefinitions.mockImplementation(async () => fixtureDefinitions());
   mocked.capabilitiesApi.create.mockImplementation(async (body: Record<string, unknown>) => {
     maybeFail(server.failures.create);
     server.nextId += 1;
@@ -152,7 +279,8 @@ function reapplyDefaults(): void {
  * `jest.clearAllMocks()`. Sharing one id across the file would let one test's
  * revalidated row answer every later one (whether the second mount refetches
  * depends on the dedup window, which makes the failure non-deterministic), so
- * every render gets its own key.
+ * every render gets its own key. The definitions cache is keyless-safe to
+ * share: its data is static across tests.
  */
 let workspaceSeq = 0;
 
@@ -162,26 +290,19 @@ function renderView(props: Partial<React.ComponentProps<typeof ToolsView>> = {})
   return render(<ToolsView tools={tools} workspaceId={`ws-tools-${workspaceSeq}`} {...props} />);
 }
 
-/** `memory-graph` renders as "Memory Graph"; the switch lives in the same card. */
-function suiteIdLabel(suiteId: string): string {
-  return suiteId
-    .replace(/[-_]+/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase())
-    .trim();
-}
-
-/** The suite card for a suite id. The suite name is a span inside the card's li. */
-function suiteCard(suiteId: string): HTMLElement {
+/** The suite card for a suite by its rendered name. The suite name is a span
+ *  inside the card's li. */
+function suiteCard(suiteName: string): HTMLElement {
   const card = screen
-    .getAllByText(suiteIdLabel(suiteId))
+    .getAllByText(suiteName)
     .map((node) => node.closest('li'))
     .find((node) => node !== null);
-  if (!card) throw new Error(`No suite card for ${suiteId}`);
+  if (!card) throw new Error(`No suite card for ${suiteName}`);
   return card;
 }
 
-function suiteSwitch(suiteId: string): HTMLElement {
-  return within(suiteCard(suiteId)).getByRole('switch');
+function suiteSwitch(suiteName: string): HTMLElement {
+  return within(suiteCard(suiteName)).getByRole('switch');
 }
 
 /**
@@ -202,8 +323,27 @@ function toolSwitch(name: string): HTMLElement {
   return screen.getByRole('switch', { name: `Allow ${name} in this workspace` });
 }
 
-/** memory-graph is the default selection: search_documents, query_graph, create_entity. */
-const MEMORY_GRAPH_TOOLS = ['search_documents', 'query_graph', 'create_entity'] as const;
+/** The memory suite is the default selection: search_documents, query_graph, create_entity. */
+const MEMORY_TOOLS = ['search_documents', 'query_graph', 'create_entity'] as const;
+
+/** Tool names that only ever existed in the fabricated client catalog. Task 1
+ *  proved none of these is served by the backend registry. */
+const CATALOG_ONLY_TOOLS = [
+  'eval_python',
+  'take_screenshot',
+  'delegate_to_agent',
+  'broadcast_message',
+  'playback_state',
+  'queue_track',
+  'create_task_card',
+  'cursor_click',
+  'read_workspace_file',
+  'write_workspace_file',
+  'fetch_webpage_content',
+  'execute_custom_capability',
+] as const;
+
+const SELECTED_SUITE_LABELS = ['Memory Graph', 'Agent Bus', 'Other'] as const;
 
 async function waitForGateLoaded(): Promise<void> {
   await waitFor(() => expect(screen.queryByText(/Reading this workspace/)).toBeNull());
@@ -229,8 +369,8 @@ describe('ToolsView tool enable gate', () => {
 
     // No row means enabled. Rendering this as OFF would switch off the whole
     // built-in surface for every workspace that has never touched a toggle.
-    expect(suiteSwitch('memory-graph')).toHaveAttribute('aria-checked', 'true');
-    const tooltip = openTooltip(suiteSwitch('memory-graph'));
+    expect(suiteSwitch('Memory Graph')).toHaveAttribute('aria-checked', 'true');
+    const tooltip = openTooltip(suiteSwitch('Memory Graph'));
     expect(tooltip).toHaveTextContent('No tool in Memory Graph has an enabled=false row');
     expect(tooltip).toHaveTextContent('Turning this off writes one capability row per tool');
     expect(mockToast).not.toHaveBeenCalled();
@@ -253,27 +393,27 @@ describe('ToolsView tool enable gate', () => {
     renderView();
     await waitForGateLoaded();
 
-    fireEvent.click(suiteSwitch('memory-graph'));
+    fireEvent.click(suiteSwitch('Memory Graph'));
 
     await waitFor(() => expect(server.toolRows).toHaveLength(3));
-    expect(server.toolRows.map((row) => row.name).sort()).toEqual([...MEMORY_GRAPH_TOOLS].sort());
+    expect(server.toolRows.map((row) => row.name).sort()).toEqual([...MEMORY_TOOLS].sort());
     for (const row of server.toolRows) {
       expect(row.enabled).toBe(false);
       expect(row.category).toBe('tool');
     }
     // A row named after the suite would be a row nothing reads: the gate matches
     // on the individual tool name.
-    expect(server.toolRows.some((row) => row.name === 'memory-graph')).toBe(false);
+    expect(server.toolRows.some((row) => row.name === 'memory')).toBe(false);
   });
 
   it('reflects a fully disabled suite as off, from the server rows', async () => {
-    server.toolRows = MEMORY_GRAPH_TOOLS.map((name) =>
+    server.toolRows = MEMORY_TOOLS.map((name) =>
       toolRow(name, { id: `row-${name}`, enabled: false }),
     );
     renderView();
     await waitForGateLoaded();
 
-    expect(suiteSwitch('memory-graph')).toHaveAttribute('aria-checked', 'false');
+    expect(suiteSwitch('Memory Graph')).toHaveAttribute('aria-checked', 'false');
     expect(screen.getByText('all 3 denied')).toBeInTheDocument();
   });
 
@@ -284,12 +424,12 @@ describe('ToolsView tool enable gate', () => {
     renderView();
     await waitForGateLoaded();
 
-    expect(suiteSwitch('memory-graph')).toHaveAttribute('aria-checked', 'true');
+    expect(suiteSwitch('Memory Graph')).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByText('1 of 3 denied')).toBeInTheDocument();
     expect(screen.queryByText('all 3 denied')).toBeNull();
     // The accessible name carries the mixed state too, so the switch is not read
     // as a plain "on" by a screen reader either.
-    expect(suiteSwitch('memory-graph').closest('div')?.textContent).toContain(
+    expect(suiteSwitch('Memory Graph').closest('div')?.textContent).toContain(
       'Partially disabled: 1 of 3 tools in Memory Graph are denied at execution',
     );
   });
@@ -303,7 +443,7 @@ describe('ToolsView tool enable gate', () => {
     await waitForGateLoaded();
 
     expect(screen.getByText('2 of 3 denied')).toBeInTheDocument();
-    const tooltip = openTooltip(suiteSwitch('memory-graph'));
+    const tooltip = openTooltip(suiteSwitch('Memory Graph'));
     expect(tooltip).toHaveTextContent('2 of 3 tools have an enabled=false row');
     expect(tooltip).toHaveTextContent('query_graph');
     expect(tooltip).toHaveTextContent('create_entity');
@@ -314,7 +454,7 @@ describe('ToolsView tool enable gate', () => {
     renderView();
     await waitForGateLoaded();
 
-    const tooltip = openTooltip(suiteSwitch('memory-graph'));
+    const tooltip = openTooltip(suiteSwitch('Memory Graph'));
     expect(tooltip).toHaveTextContent('the gate keys on the individual tool name');
     expect(tooltip).toHaveTextContent('execute_tool');
   });
@@ -324,22 +464,22 @@ describe('ToolsView tool enable gate', () => {
     renderView();
     await waitForGateLoaded();
 
-    expect(suiteSwitch('memory-graph')).toHaveAttribute('aria-checked', 'true');
+    expect(suiteSwitch('Memory Graph')).toHaveAttribute('aria-checked', 'true');
     expect(document.body.textContent ?? '').not.toContain('denied');
   });
 
   it('re-enables through the same rows rather than deleting them', async () => {
-    server.toolRows = MEMORY_GRAPH_TOOLS.map((name) =>
+    server.toolRows = MEMORY_TOOLS.map((name) =>
       toolRow(name, { id: `row-${name}`, enabled: false }),
     );
     renderView();
     await waitForGateLoaded();
-    expect(suiteSwitch('memory-graph')).toHaveAttribute('aria-checked', 'false');
+    expect(suiteSwitch('Memory Graph')).toHaveAttribute('aria-checked', 'false');
 
-    fireEvent.click(suiteSwitch('memory-graph'));
+    fireEvent.click(suiteSwitch('Memory Graph'));
 
     await waitFor(() => expect(server.toolRows.every((row) => row.enabled)).toBe(true));
-    expect(suiteSwitch('memory-graph')).toHaveAttribute('aria-checked', 'true');
+    expect(suiteSwitch('Memory Graph')).toHaveAttribute('aria-checked', 'true');
   });
 
   it('disables the switches when the rows cannot be read, instead of guessing', async () => {
@@ -351,7 +491,7 @@ describe('ToolsView tool enable gate', () => {
     expect(alert).toHaveTextContent('The switches are disabled');
     // An empty map after a failure is indistinguishable from "no row means
     // enabled", which is exactly the confusion the disabled state prevents.
-    expect(suiteSwitch('memory-graph')).toBeDisabled();
+    expect(suiteSwitch('Memory Graph')).toBeDisabled();
   });
 
   it('keeps stale rows operable and says so when a background refresh fails', async () => {
@@ -378,11 +518,58 @@ describe('ToolsView tool enable gate', () => {
 
     // The retained rows still read truthfully — and stay operable.
     expect(screen.getByText('1 of 3 denied')).toBeInTheDocument();
-    expect(suiteSwitch('memory-graph')).toHaveAttribute('aria-checked', 'true');
-    expect(suiteSwitch('memory-graph')).not.toBeDisabled();
+    expect(suiteSwitch('Memory Graph')).toHaveAttribute('aria-checked', 'true');
+    expect(suiteSwitch('Memory Graph')).not.toBeDisabled();
     fireEvent.click(screen.getByRole('button', { name: 'query_graph' }));
     expect(toolSwitch('query_graph')).toHaveAttribute('aria-checked', 'false');
     expect(toolSwitch('query_graph')).not.toBeDisabled();
+  });
+});
+
+// ─── Suite data source: served definitions, grouped client-side ─────────────
+
+describe('ToolsView suite data source', () => {
+  it('groups the served definitions by scope prefix under their labels', async () => {
+    renderView();
+    await waitForGateLoaded();
+
+    const memoryCard = suiteCard('Memory Graph');
+    expect(memoryCard.textContent).toContain('search_documents');
+    expect(memoryCard.textContent).toContain('query_graph');
+    expect(memoryCard.textContent).toContain('create_entity');
+
+    const agentCard = suiteCard('Agent Bus');
+    expect(agentCard.textContent).toContain('spawn_sub_agents');
+    expect(agentCard.textContent).toContain('delegate_to_sub_agent');
+  });
+
+  it('lands scope prefixes without a suite label under Other', async () => {
+    renderView();
+    await waitForGateLoaded();
+
+    const otherCard = suiteCard('Other');
+    expect(otherCard.textContent).toContain('search_gmail');
+    // The labeled segments never leak into the catch-all suite.
+    expect(otherCard.textContent).not.toContain('spawn_sub_agents');
+    expect(otherCard.textContent).not.toContain('search_documents');
+  });
+
+  it('renders no catalog-only tool anywhere in the view', async () => {
+    renderView();
+    await waitForGateLoaded();
+
+    // Visiting every suite exercises each suite's row list, not just the one
+    // the drawer happens to open by default.
+    for (const suiteName of SELECTED_SUITE_LABELS) {
+      const card = suiteCard(suiteName);
+      const selectButton = within(card).getAllByRole('button')[0];
+      fireEvent.click(selectButton);
+
+      const text = document.body.textContent ?? '';
+      for (const phantom of CATALOG_ONLY_TOOLS) {
+        expect(text).not.toContain(phantom);
+      }
+    }
   });
 });
 
@@ -392,10 +579,10 @@ describe('ToolsView gate write failures', () => {
   it('leaves the switch showing enabled when the row write fails', async () => {
     renderView();
     await waitForGateLoaded();
-    expect(suiteSwitch('memory-graph')).toHaveAttribute('aria-checked', 'true');
+    expect(suiteSwitch('Memory Graph')).toHaveAttribute('aria-checked', 'true');
 
     server.failures.update = Object.assign(new Error('Capability not found'), { status: 404 });
-    fireEvent.click(suiteSwitch('memory-graph'));
+    fireEvent.click(suiteSwitch('Memory Graph'));
 
     await waitFor(() =>
       expect(mockToast).toHaveBeenCalledWith(
@@ -404,7 +591,7 @@ describe('ToolsView gate write failures', () => {
     );
     // The rows the server refused do not exist, so the tools still run. A switch
     // reading "off" here would be a claim about server state that is false.
-    expect(suiteSwitch('memory-graph')).toHaveAttribute('aria-checked', 'true');
+    expect(suiteSwitch('Memory Graph')).toHaveAttribute('aria-checked', 'true');
     const detail = (mockToast.mock.calls.at(-1)?.[0] as { detail: string }).detail;
     expect(detail).toContain('still enabled server-side');
   });
@@ -428,7 +615,7 @@ describe('ToolsView gate write failures', () => {
       },
     );
 
-    fireEvent.click(suiteSwitch('memory-graph'));
+    fireEvent.click(suiteSwitch('Memory Graph'));
 
     await waitFor(() =>
       expect(mockToast).toHaveBeenCalledWith(
@@ -445,7 +632,7 @@ describe('ToolsView gate write failures', () => {
       expect(server.toolRows.filter((row) => row.name !== 'search_documents')).toHaveLength(2),
     );
     expect(server.toolRows.find((row) => row.name === 'search_documents')?.enabled).toBe(true);
-    expect(suiteSwitch('memory-graph')).toHaveAttribute('aria-checked', 'true');
+    expect(suiteSwitch('Memory Graph')).toHaveAttribute('aria-checked', 'true');
     expect(screen.getByText('2 of 3 denied')).toBeInTheDocument();
   });
 

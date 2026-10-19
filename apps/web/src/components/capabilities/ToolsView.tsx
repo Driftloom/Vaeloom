@@ -4,13 +4,19 @@ import React, { useCallback, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { CapabilityItem } from '@/lib/capabilities-data';
 import { useToast } from '@/components/shared/Toast';
-import { capabilitiesApi } from '@/lib/api-client';
+import { capabilitiesApi, type ToolDefinitionRecord } from '@/lib/api-client';
 import { capabilityKeys, invalidateCapabilities } from '@/lib/queries/capability-keys';
-import { TOOL_DEFINITIONS_CATALOG } from '@/lib/tool-definitions-catalog';
+import {
+  OTHER_SUITE_KEY,
+  OTHER_SUITE_LABEL,
+  TOOL_DEFINITIONS_SWR_KEY,
+  TOOL_SUITE_LABELS,
+  definitionFromRecord,
+  suiteKeyForScope,
+} from '@/lib/tool-definitions-catalog';
 
 import {
   buildRow,
-  formatSuiteName,
   CUSTOM_SUITE_ID,
   type DetailSubTab,
   type ToolGateRow,
@@ -51,7 +57,7 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
     [onSortChange],
   );
 
-  const [selectedSuiteId, setSelectedSuiteId] = useState<string>('memory-graph');
+  const [selectedSuiteId, setSelectedSuiteId] = useState<string>('memory');
   const [selectedToolName, setSelectedToolName] = useState<string | null>(null);
   const [detailSubTab, setDetailSubTab] = useState<DetailSubTab>('contract');
 
@@ -94,27 +100,66 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
       : 'The tool rows could not be read.'
     : null;
 
+  // The definitions registry is workspace-independent, so it fetches under its
+  // own shared key; the `[toolName]` subpage reads the same entry. A failed
+  // definitions fetch leaves `suites` empty — the tab renders nothing rather
+  // than falling back to client-fabricated rows.
+  const { data: definitions } = useSWR(TOOL_DEFINITIONS_SWR_KEY, () =>
+    capabilitiesApi.listToolDefinitions(),
+  );
+
   const [pendingTools, setPendingTools] = useState<ReadonlySet<string>>(() => new Set());
 
   const suites = useMemo<ToolSuite[]>(() => {
-    const builtIn: ToolSuite[] = Object.entries(TOOL_DEFINITIONS_CATALOG)
-      .filter(([suiteId]) => suiteId !== 'custom-workspace')
-      .map(([suiteId, catalog]) => ({
-        id: suiteId,
-        name: formatSuiteName(suiteId),
-        description: catalog.description,
-        origin: 'built-in' as const,
-        rows: catalog.tools.map((t) => buildRow(t.name, t, null)),
-      }));
+    const served = definitions ?? [];
+    const servedNames = new Set(served.map((d) => d.name));
 
-    const knownNames = new Set(builtIn.flatMap((s) => s.rows.map((r) => r.name)));
+    // Workspace rows the registry has never heard of. They carry no served
+    // definition, so the drawer shows their capability row fields with its
+    // "no server definition" notice instead.
     const customRows = tools
-      .filter((t) => !knownNames.has(t.name))
-      .map((item) => {
-        const catalog = TOOL_DEFINITIONS_CATALOG['custom-workspace'];
-        const def = catalog?.tools.find((t) => t.name === item.name) ?? null;
-        return buildRow(item.name, def, item);
+      .filter((t) => !servedNames.has(t.name))
+      .map((item) => buildRow(item.name, null, item));
+
+    // Group by the first dotted segment of each tool's required scope,
+    // preserving the registry's first-seen order for the labeled suites; the
+    // catch-all 'Other' suite collects every unlabeled prefix and sorts last.
+    const groups = new Map<string, ToolDefinitionRecord[]>();
+    for (const record of served) {
+      const key = suiteKeyForScope(record.requiredScope);
+      const bucket = groups.get(key);
+      if (bucket) bucket.push(record);
+      else groups.set(key, [record]);
+    }
+
+    const builtIn: ToolSuite[] = [];
+    const otherRows: ToolRow[] = [];
+    for (const [key, records] of groups) {
+      const rows = records.map((record) =>
+        buildRow(record.name, definitionFromRecord(record), null),
+      );
+      const label = TOOL_SUITE_LABELS[key];
+      if (label) {
+        builtIn.push({
+          id: key,
+          name: label,
+          description: `Registry tools whose required scope begins with "${key}".`,
+          origin: 'built-in',
+          rows,
+        });
+      } else {
+        otherRows.push(...rows);
+      }
+    }
+    if (otherRows.length > 0) {
+      builtIn.push({
+        id: OTHER_SUITE_KEY,
+        name: OTHER_SUITE_LABEL,
+        description: 'Registry tools whose scope prefix has no suite label.',
+        origin: 'built-in',
+        rows: otherRows,
       });
+    }
 
     if (customRows.length === 0) return builtIn;
     return [
@@ -122,13 +167,13 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
         id: CUSTOM_SUITE_ID,
         name: 'Workspace Tools',
         description:
-          'Tools registered against this workspace. Definitions shown for these come from the tool catalog, not from the capability row.',
+          'Tools registered against this workspace. No server definition exists for them; the fields shown come from their workspace capability row.',
         origin: 'workspace',
         rows: customRows,
       },
       ...builtIn,
     ];
-  }, [tools]);
+  }, [definitions, tools]);
 
   const filteredSuites = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();

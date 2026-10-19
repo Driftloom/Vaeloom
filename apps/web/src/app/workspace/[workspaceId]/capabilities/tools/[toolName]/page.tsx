@@ -19,7 +19,12 @@ import {
   Tooltip,
 } from '@vaeloom/ui-kit';
 import { capabilitiesApi, type CapabilityTestResponse } from '@/lib/api-client';
-import { TOOL_DEFINITIONS_CATALOG, type ToolDefinitionItem } from '@/lib/tool-definitions-catalog';
+import {
+  TOOL_DEFINITIONS_SWR_KEY,
+  definitionFromRecord,
+  suiteKeyForScope,
+  suiteLabelForKey,
+} from '@/lib/tool-definitions-catalog';
 import { useToast } from '@/components/shared/Toast';
 import { PageHeader } from '@/components/shared/Page';
 import { CapabilitySubpageSkeleton } from '@/components/capabilities/CapabilitySubpageSkeleton';
@@ -41,25 +46,28 @@ export default function ToolSubpage() {
   const [testResult, setTestResult] = useState<CapabilityTestResponse | null>(null);
   const [testError, setTestError] = useState<string | null>(null);
 
-  const allTools = useMemo(() => {
-    return Object.values(TOOL_DEFINITIONS_CATALOG).flatMap((suite) =>
-      suite.tools.map((t) => ({ ...t, suiteId: suite.suiteId })),
-    );
-  }, []);
+  // Served from the backend tool registry — the same `GET
+  // /capabilities/tools/definitions` fetch (and SWR cache key) the Tools tab
+  // uses. The lookup is an exact name match: registry names are snake_case
+  // identifiers and guessing a dash/underscore normalization would silently
+  // alias two tools that are deliberately distinct.
+  const { data: definitions, isLoading: loadingDefinitions } = useSWR(
+    TOOL_DEFINITIONS_SWR_KEY,
+    () => capabilitiesApi.listToolDefinitions(),
+    { revalidateOnFocus: false, shouldRetryOnError: false },
+  );
 
   const tool = useMemo(() => {
-    if (!decodedToolName) return null;
-    const clean = decodedToolName.toLowerCase();
-    const cleanUnderscores = clean.replace(/-/g, '_');
-    return (
-      allTools.find(
-        (t) =>
-          t.name.toLowerCase() === clean ||
-          t.name.toLowerCase() === cleanUnderscores ||
-          t.name.replace(/_/g, '-') === clean,
-      ) ?? null
-    );
-  }, [allTools, decodedToolName]);
+    if (!decodedToolName || !definitions) return null;
+    const record = definitions.find((d) => d.name === decodedToolName) ?? null;
+    if (!record) return null;
+    return {
+      ...definitionFromRecord(record),
+      // The subpage header renders this as "<suiteId> Suite", so it carries
+      // the readable suite label rather than the raw scope prefix.
+      suiteId: suiteLabelForKey(suiteKeyForScope(record.requiredScope)),
+    };
+  }, [definitions, decodedToolName]);
 
   const {
     data: workspaceRows,
@@ -229,13 +237,13 @@ export default function ToolSubpage() {
       </div>
 
       <div className="flex-1 min-h-0 min-w-0 overflow-y-auto p-4 sm:p-6">
-        {loadingWorkspaceRows && !tool ? (
+        {!tool && (loadingWorkspaceRows || loadingDefinitions) ? (
           <CapabilitySubpageSkeleton eyebrow="Tool Capability" />
         ) : !tool ? (
           <div className="max-w-xl mx-auto py-12">
             <EmptyState
               title={`Tool "${decodedToolName}" not found`}
-              description="This tool does not exist in the canonical tool definition catalog."
+              description="No definition with this name exists in the backend tool registry, so there is no served contract to inspect."
               action={{
                 label: 'View all Tools',
                 onClick: () => router.push(breadcrumbsBackUrl),
@@ -357,7 +365,7 @@ export default function ToolSubpage() {
                     Raw JSON Schema
                   </h4>
                   <pre className="p-4 rounded-lg bg-surface-elevated border border-border text-xs font-mono text-text-secondary overflow-x-auto max-h-72">
-                    {JSON.stringify(tool.parameters, null, 2)}
+                    {JSON.stringify(tool.inputSchema, null, 2)}
                   </pre>
                 </div>
               </div>
