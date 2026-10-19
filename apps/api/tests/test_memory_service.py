@@ -76,6 +76,24 @@ class TestCreateMemory:
         memory = await svc.create_memory(db, dto, tenant_id="t-1", user_id="u-1")
         assert memory.embedding is None
 
+    async def test_create_embedding_error_logs_visible_warning(self, svc, monkeypatch, caplog):
+        import logging
+
+        from api.services import llm_service
+
+        async def failing_embedding(*args, **kwargs):
+            raise LLMProviderError("fail")
+        monkeypatch.setattr(llm_service.llm_service, "generate_embedding", failing_embedding)
+        db = MagicMock()
+        db.add = MagicMock()
+        db.flush = AsyncMock()
+        db.refresh = AsyncMock()
+        dto = MemoryCreate(type="note", title="Fail", content="test")
+        with caplog.at_level(logging.WARNING, logger="api.services.memory_service"):
+            memory = await svc.create_memory(db, dto, tenant_id="t-1", user_id="u-1")
+        assert memory.embedding is None
+        assert any("storing without a vector" in rec.getMessage() for rec in caplog.records)
+
     async def test_create_whitespace_content(self, svc):
         # P14 fix: whitespace-only must 422
         from pydantic import ValidationError
@@ -265,6 +283,33 @@ class TestUpdateMemory:
         dto = MemoryUpdate(content="new content")
         result = await svc.update_memory(db, mem_id, dto, tenant_id=None)
         assert result is not None
+
+    async def test_update_content_embedding_error_logs_visible_warning(self, svc, monkeypatch, caplog):
+        import logging
+
+        from api.services import llm_service
+
+        async def failing_embedding(*args, **kwargs):
+            raise LLMProviderError("fail")
+        monkeypatch.setattr(llm_service.llm_service, "generate_embedding", failing_embedding)
+        mem_id = uuid.uuid4()
+        mock_mem = build_mock_memory(id=mem_id, content="old")
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = mock_mem
+        db = MagicMock()
+
+        async def execute(stmt):
+            return result
+
+        db.execute = execute
+        db.flush = AsyncMock()
+        db.refresh = AsyncMock()
+        dto = MemoryUpdate(content="new content")
+        with caplog.at_level(logging.WARNING, logger="api.services.memory_service"):
+            updated = await svc.update_memory(db, mem_id, dto, tenant_id=None)
+        assert updated is not None
+        assert mock_mem.embedding == [0.1] * 1536
+        assert any("keeping the previous vector" in rec.getMessage() for rec in caplog.records)
 
 
 class TestDeleteMemory:

@@ -167,7 +167,14 @@ class MemoryService:
                     ),
                     timeout=3.0,
                 )
-            except Exception:
+            except Exception as exc:
+                # Absence is honest; silence is not. Without this a mock or an
+                # expired provider key leaves memories vectorless with no signal.
+                logger.warning(
+                    "Embedding generation failed for memory '%s' (%s); storing without a vector",
+                    dto.title,
+                    exc,
+                )
                 embedding = None
 
         # CONT-P12 expand-contract: taxonomy_version 1 (legacy 6) vs 2 (expanded 22) — no guess
@@ -450,12 +457,20 @@ class MemoryService:
             update_data["content"] = sanitize_text(update_data["content"])
             content_for_embedding = update_data.get("content") or memory.content or ""
             if content_for_embedding.strip():
-                with contextlib.suppress(LLMProviderError):
+                try:
                     update_data["embedding"] = await llm_service.generate_embedding(
                         content_for_embedding,
                         user_id=str(memory.user_id) if memory.user_id else None,
                         workspace_id=str(memory.workspace_id) if memory.workspace_id else None,
                         db=db,
+                    )
+                except LLMProviderError as exc:
+                    # Keep the previous vector: a real vector of the prior text
+                    # beats both a fabricated one and a silent no-op.
+                    logger.warning(
+                        "Embedding regeneration failed for memory '%s' (%s); keeping the previous vector",
+                        memory.id,
+                        exc,
                     )
                 update_data["content_hash"] = llm_service.compute_content_hash(content_for_embedding)
                 update_data["size"] = len(content_for_embedding)

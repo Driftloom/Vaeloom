@@ -12,12 +12,15 @@ logger = logging.getLogger(__name__)
 
 
 class RecommendationService:
-    async def _compute_embedding(self, text_content: str) -> list[float]:
+    async def _compute_embedding(self, text_content: str) -> list[float] | None:
         try:
             return await llm_service.generate_embedding(text_content)
-        except Exception:
-            pass
-        return [0.0] * 1536
+        except Exception as exc:
+            # Returning a fabricated zero vector made absence indistinguishable
+            # from a real embedding. Nothing calls this today; when it is wired
+            # in, absence must stay absent.
+            logger.warning("Recommendation embedding generation failed (%s)", exc)
+            return None
 
     async def generate(self, dto, db):
         user_id = dto.user_id
