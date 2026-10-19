@@ -24,6 +24,7 @@ import { PageHeader } from '@/components/shared/Page';
 import { MemoryCorrectionPanel } from '@/components/memory/MemoryCorrectionPanel';
 import { ScaleMemoryViewer } from '@/components/memory/ScaleMemoryViewer';
 import { VaultSyncPanel } from '@/components/memory/VaultSyncPanel';
+import { buildLineageTimeline, lineageLabel } from '@/components/memory/lineageTimeline';
 import { memoryApi, memoryFeedApi, vaultSyncApi } from '@/lib/api-client';
 import type { MemorySearchResultItem } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
@@ -283,6 +284,13 @@ function MemoryGraphPageContent() {
     setSelectedId(id);
     setShowLineage(true);
   }, []);
+
+  // Chronological provenance line for the modal (shared with the detail
+  // page). "Current" comes from each record's own status, never from which
+  // record was opened, and successors render instead of being dropped.
+  const lineageTimeline = lineage
+    ? buildLineageTimeline(lineage.chainBackwards, lineage.chainForwards, selectedId ?? '')
+    : null;
 
   const handleDeleteMemory = useCallback(
     async (id: string) => {
@@ -949,29 +957,28 @@ function MemoryGraphPageContent() {
           <div className="py-12 flex justify-center">
             <LoadingSpinner text="Tracing provenance..." />
           </div>
-        ) : lineage ? (
+        ) : lineageTimeline ? (
           <div className="space-y-4">
             <div>
               <h4 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">
                 Supersession Lineage Chain
               </h4>
-              {lineage.chainBackwards.length === 0 ? (
+              {lineageTimeline.ordered.length <= 1 ? (
                 <p className="text-xs text-text-muted">Origin record (no previous versions).</p>
               ) : (
-                <div className="flex gap-2 overflow-x-auto pb-2">
-                  {lineage.chainBackwards.map((m: unknown, idx: number) => {
-                    const mem = m as Record<string, unknown>;
+                <div data-testid="lineage-chain" className="flex gap-2 overflow-x-auto pb-2">
+                  {lineageTimeline.ordered.map((mem, idx) => {
                     return (
                       <div
                         key={String(mem['id'])}
                         className={`shrink-0 w-52 rounded-lg border p-3 ${
-                          idx === 0
+                          idx === lineageTimeline.viewedIdx
                             ? 'border-accent bg-accent/10 text-text'
                             : 'border-border bg-surface-100 text-text-secondary'
                         }`}
                       >
                         <p className="font-mono text-[10px] uppercase font-semibold">
-                          {idx === 0 ? 'Current Active' : `v-${idx} Superseded`}
+                          {lineageLabel(mem, idx, lineageTimeline.viewedIdx)}
                         </p>
                         <p className="text-xs font-medium truncate mt-1">
                           {String(mem['title'] || mem['id']).slice(0, 32)}

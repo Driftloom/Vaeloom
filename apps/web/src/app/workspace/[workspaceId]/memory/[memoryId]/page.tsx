@@ -20,6 +20,7 @@ import {
   ConfidenceIndicator,
   Breadcrumb,
 } from '@vaeloom/ui-kit';
+import { buildLineageTimeline, lineageLabel } from '@/components/memory/lineageTimeline';
 
 function formatTimestamp(iso: string | null | undefined) {
   if (!iso) return '—';
@@ -184,6 +185,14 @@ export default function MemoryDetailPage() {
 
   const isSuperseded = status === 'superseded';
 
+  // Chronological provenance line for the strip below (shared with the
+  // corrections-tab modal). "Current" comes from each record's own status,
+  // never from which record happens to be open, and successors
+  // (`chainForwards`) render instead of being fetched and dropped.
+  const lineageTimeline = lineage
+    ? buildLineageTimeline(lineage.chainBackwards, lineage.chainForwards, memory.id)
+    : null;
+
   const breadcrumbItems = [
     {
       label: 'Memory',
@@ -329,57 +338,58 @@ export default function MemoryDetailPage() {
 
             {lineageLoading && !lineage ? (
               <p className="text-xs text-text-muted animate-pulse">Tracing provenance chain...</p>
-            ) : lineage && lineage.chainBackwards.length > 0 ? (
+            ) : lineageTimeline ? (
               <div className="space-y-3">
                 <p className="text-xs text-text-secondary">
                   Every revision is preserved immutably. Click any historical version to inspect its
                   state:
                 </p>
-                <div className="flex gap-3 overflow-x-auto pb-2">
-                  {lineage.chainBackwards.map((m: unknown, idx: number) => {
-                    const ances = m as Record<string, unknown>;
-                    const ancesId = String(ances['id']);
-                    const isCurrent = ancesId === memory.id;
+                <div data-testid="lineage-chain" className="flex gap-3 overflow-x-auto pb-2">
+                  {lineageTimeline.ordered.map((version, idx) => {
+                    const versionId = String(version['id']);
+                    const isViewed = versionId === memory.id;
+                    const isActive = String(version['status'] ?? '') === 'active';
 
                     return (
                       <Link
-                        key={ancesId}
+                        key={versionId}
                         href={
                           workspaceId
-                            ? `/workspace/${workspaceId}/memory/${ancesId}`
-                            : `../memory/${ancesId}`
+                            ? `/workspace/${workspaceId}/memory/${versionId}`
+                            : `../memory/${versionId}`
                         }
                         className={`shrink-0 w-60 rounded-xl border p-3.5 transition block hover:border-accent ${
-                          isCurrent
+                          isViewed
                             ? 'border-accent bg-accent/10 text-text ring-1 ring-accent'
                             : 'border-border bg-surface-100 text-text-secondary'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-1">
                           <p className="font-mono text-[10px] uppercase font-semibold">
-                            {idx === 0 ? 'Current Version' : `v-${idx} Ancestor`}
+                            {lineageLabel(version, idx, lineageTimeline.viewedIdx)}
                           </p>
-                          {isCurrent && (
+                          {isActive && (
                             <Badge variant="primary" size="sm">
                               Active
                             </Badge>
                           )}
                         </div>
                         <p className="text-xs font-semibold truncate mt-1 text-text">
-                          {String(ances['title'] || ancesId).slice(0, 32)}
+                          {String(version['title'] || versionId).slice(0, 32)}
                         </p>
                         <p className="text-[11px] text-text-muted line-clamp-2 mt-1">
-                          {String(ances['summary'] || 'No summary')}
+                          {String(version['summary'] || 'No summary')}
                         </p>
                       </Link>
                     );
                   })}
                 </div>
+                {!lineageTimeline.hasOtherVersions && (
+                  <p className="text-xs text-text-muted">
+                    Origin record (no prior or later versions).
+                  </p>
+                )}
               </div>
-            ) : lineage ? (
-              <p className="text-xs text-text-muted">
-                Origin record (no prior superseded versions).
-              </p>
             ) : (
               <ErrorState
                 message={lineageError ?? 'Could not load the lineage for this memory.'}

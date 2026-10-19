@@ -352,4 +352,36 @@ describe('memory page rendering honesty', () => {
     fireEvent.click(screen.getByRole('button', { name: /^refresh$/i }));
     await screen.findByText('Indexed knowledge items · not refreshed');
   });
+
+  it('lineage modal labels versions by their own status, not by which record was opened', async () => {
+    // Opening the lineage of a superseded ancestor from the corrections flow
+    // used to label it "Current Active" and drop its successor entirely.
+    const ancestor = makeMemory({ id: 'm-1', status: 'superseded', summary: 'Old wording' });
+    const successor = makeMemory({
+      id: 'm-2',
+      status: 'active',
+      summary: 'Corrected wording',
+      supersedesId: 'm-1',
+    });
+    listMock.mockImplementation((params: { type?: string } = {}) => {
+      if (params.type === 'task') {
+        return Promise.resolve({ memories: [], total: 0, page: 1, pageSize: 1 });
+      }
+      return Promise.resolve({ memories: [ancestor], total: 1, page: 1, pageSize: 100 });
+    });
+    (memoryFeedApi.lineage as jest.Mock).mockResolvedValue({
+      memory: ancestor,
+      chainBackwards: [ancestor],
+      chainForwards: [successor],
+      provenance: [],
+      agentActions: [],
+    });
+    renderPage();
+    await screen.findByText('Old wording');
+    fireEvent.click(screen.getByRole('button', { name: 'Edit memory' }));
+    const dialog = await screen.findByRole('dialog');
+    await within(dialog).findByText('Current Version');
+    expect(within(dialog).queryByText('Current Active')).toBeNull();
+    expect(within(dialog).getByText('This Version')).toBeTruthy();
+  });
 });
