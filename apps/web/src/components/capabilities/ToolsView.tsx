@@ -1,9 +1,11 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+import useSWR from 'swr';
 import { CapabilityItem } from '@/lib/capabilities-data';
 import { useToast } from '@/components/shared/Toast';
 import { capabilitiesApi } from '@/lib/api-client';
+import { capabilityKeys, invalidateCapabilities } from '@/lib/queries/capability-keys';
 import { TOOL_DEFINITIONS_CATALOG } from '@/lib/tool-definitions-catalog';
 
 import {
@@ -52,33 +54,41 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
   const [selectedToolName, setSelectedToolName] = useState<string | null>(null);
   const [detailSubTab, setDetailSubTab] = useState<DetailSubTab>('contract');
 
-  const [gateRows, setGateRows] = useState<ReadonlyMap<string, ToolGateRow>>(() => new Map());
-  const [gateStatus, setGateStatus] = useState<'loading' | 'ready' | 'failed'>('loading');
-  const [gateError, setGateError] = useState<string | null>(null);
-  const [pendingTools, setPendingTools] = useState<ReadonlySet<string>>(() => new Set());
+  // The gate reads the shared capability-row key the workbench page fetches,
+  // so a write from either surface revalidates one cache entry and both stay
+  // in step. Rows of other categories ride along in that response and are
+  // filtered out here.
+  const {
+    data: serverRows,
+    error: gateFetchError,
+    isLoading: gateLoading,
+  } = useSWR(
+    workspaceId ? capabilityKeys.list(workspaceId) : null,
+    () => capabilitiesApi.list(undefined, workspaceId),
+    { revalidateOnFocus: false, shouldRetryOnError: false },
+  );
 
-  useEffect(() => {
-    let cancelled = false;
-    setGateStatus('loading');
-    setGateError(null);
-    capabilitiesApi
-      .list('tool', workspaceId)
-      .then((rows) => {
-        if (cancelled) return;
-        const next = new Map<string, ToolGateRow>();
-        for (const row of rows) next.set(row.name, { id: row.id, enabled: row.enabled });
-        setGateRows(next);
-        setGateStatus('ready');
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        setGateError(err instanceof Error ? err.message : 'The tool rows could not be read.');
-        setGateStatus('failed');
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [workspaceId]);
+  const gateRows = useMemo(() => {
+    const next = new Map<string, ToolGateRow>();
+    for (const row of serverRows ?? []) {
+      if (row.category === 'tool') next.set(row.name, { id: row.id, enabled: row.enabled });
+    }
+    return next;
+  }, [serverRows]);
+
+  const gateStatus: 'loading' | 'ready' | 'failed' = gateFetchError
+    ? 'failed'
+    : gateLoading || !serverRows
+      ? 'loading'
+      : 'ready';
+
+  const gateError = gateFetchError
+    ? gateFetchError instanceof Error
+      ? gateFetchError.message
+      : 'The tool rows could not be read.'
+    : null;
+
+  const [pendingTools, setPendingTools] = useState<ReadonlySet<string>>(() => new Set());
 
   const suites = useMemo<ToolSuite[]>(() => {
     const builtIn: ToolSuite[] = Object.entries(TOOL_DEFINITIONS_CATALOG)
@@ -166,12 +176,7 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
         });
         id = created.id;
       }
-      const updated = await capabilitiesApi.update(id, { enabled });
-      setGateRows((previous) => {
-        const next = new Map(previous);
-        next.set(row.name, { id: updated.id, enabled: updated.enabled });
-        return next;
-      });
+      await capabilitiesApi.update(id, { enabled });
     },
     [gateRows],
   );
@@ -181,6 +186,9 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
       setPendingTools((previous) => new Set(previous).add(row.name));
       try {
         await writeToolEnabled(row, enabled);
+        // The optimistic local map is gone: the switch now reads what the
+        // server stores, so revalidation is the only way the row lands.
+        await invalidateCapabilities(workspaceId, 'list');
         toast({
           tone: enabled ? 'success' : 'info',
           title: `${row.name} ${enabled ? 'enabled' : 'disabled'} for this workspace`,
@@ -202,7 +210,7 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
         });
       }
     },
-    [toast, writeToolEnabled],
+    [toast, workspaceId, writeToolEnabled],
   );
 
   const handleToggleSuite = useCallback(
@@ -230,6 +238,9 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
         for (const row of suite.rows) next.delete(row.name);
         return next;
       });
+      // Refresh from what actually landed, including when some writes failed:
+      // the switch state the user sees next is the server's, not the local guess.
+      await invalidateCapabilities(workspaceId, 'list');
 
       const moved = suite.rows.length - failures.length;
       if (failures.length === 0) {
@@ -250,7 +261,7 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
         detail: `${failures.map((failure) => failure.name).join(', ')}: ${failures[0]?.reason ?? 'The server write failed.'} Those tools are still enabled server-side because no enabled=false row was written. The other ${moved} did change.`,
       });
     },
-    [toast, writeToolEnabled],
+    [toast, workspaceId, writeToolEnabled],
   );
 
   return (

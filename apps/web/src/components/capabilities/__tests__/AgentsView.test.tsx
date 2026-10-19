@@ -140,7 +140,7 @@ jest.mock('@/components/shared/Toast', () => ({
 /**
  * A fresh workspace id per test.
  *
- * The view reads its rows through SWR under `['agent-capability-rows', workspaceId]`,
+ * The view reads its rows through SWR under `['capabilities', workspaceId, 'agent-catalog']`,
  * and that cache outlives `jest.clearAllMocks()`. Sharing one id across the file
  * would let the first test's row answer every later one.
  */
@@ -309,12 +309,17 @@ describe('AgentsView ReAct round budget: writing', () => {
     type('4');
     commit();
 
-    await waitFor(() => expect(roundsBadge()).toHaveTextContent('Not saved'));
+    // The write is accepted, but the echoed row carries no value and the
+    // revalidated row (AgentsView always revalidates behind a successful
+    // write) confirms the server still does not hold it. The badge therefore
+    // settles on the row's own state; the only thing it may never claim is
+    // the operator's number as saved.
+    await waitFor(() => expect(roundsBadge()).toHaveTextContent('Not set on this row'));
     expect(mocked.capabilitiesApi.update).toHaveBeenCalledTimes(1);
     expect(mocked.capabilitiesApi.update.mock.calls[0][1]).toEqual({
       config: { max_react_rounds: 4 },
     });
-    expect(panel()).toHaveTextContent('the row does not hold 4');
+    expect(roundsBadge()).not.toHaveTextContent('Saved: 4');
   });
 
   it('shows the server error and keeps the previous value when the write is rejected', async () => {

@@ -7,6 +7,7 @@ import { Badge, Button, EmptyState, ErrorState, Skeleton, Switch, Tooltip } from
 import { CapabilityItem, formatRelativeTime } from '@/lib/capabilities-data';
 import { useToast } from '@/components/shared/Toast';
 import { pluginApi, type PluginResponse } from '@/lib/api-client';
+import { capabilityKeys, invalidateCapabilities } from '@/lib/queries/capability-keys';
 
 export interface PluginsViewProps {
   workspaceId?: string;
@@ -17,8 +18,6 @@ export interface PluginsViewProps {
   gitImportError?: string | null;
   onClearGitImportError?: () => void;
 }
-
-const SWR_KEY = 'plugin-registry';
 
 /** The only status values `PluginStatus` accepts server-side. */
 const ACTIVE_STATUS = 'ACTIVE';
@@ -78,11 +77,21 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
     data: registry,
     error: registryError,
     isLoading: registryLoading,
-    mutate: mutateRegistry,
-  } = useSWR(SWR_KEY, () => pluginApi.list({ page_size: 100 }), {
-    revalidateOnFocus: false,
-    shouldRetryOnError: false,
-  });
+  } = useSWR(
+    workspaceId ? capabilityKeys.pluginRegistry(workspaceId) : null,
+    () => pluginApi.list({ page_size: 100 }),
+    {
+      revalidateOnFocus: false,
+      shouldRetryOnError: false,
+    },
+  );
+
+  // `workspaceId` is optional on this pane's contract; a missing one makes the
+  // helper a no-op instead of invalidating a fabricated workspace.
+  const reloadRegistry = useCallback(
+    () => invalidateCapabilities(workspaceId ?? '', 'plugin-registry'),
+    [workspaceId],
+  );
 
   const [pendingIds, setPendingIds] = useState<PendingSet>(new Set());
   const [toggleError, setToggleError] = useState<string | null>(null);
@@ -120,14 +129,14 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
       setPending(plugin.id, true);
       try {
         await pluginApi.update(plugin.id, { status: next });
-        await mutateRegistry();
+        await reloadRegistry();
         toast({
           tone: 'success',
           title: `${plugin.name} ${enabled ? 'enabled' : 'disabled'}`,
           detail: `Server status is now ${next}.`,
         });
       } catch (err) {
-        await mutateRegistry();
+        await reloadRegistry();
         const detail = err instanceof Error ? err.message : 'The server write failed.';
         setToggleError(`${plugin.name} was not changed: ${detail}`);
         toast({
@@ -139,7 +148,7 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
         setPending(plugin.id, false);
       }
     },
-    [mutateRegistry, setPending, toast],
+    [reloadRegistry, setPending, toast],
   );
 
   const handleToggleWorkspace = useCallback(
@@ -181,7 +190,7 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => void mutateRegistry()}
+              onClick={() => void reloadRegistry()}
               loading={registryLoading}
               disabled={registryLoading}
               aria-label="Refresh plugin registry"
@@ -217,7 +226,7 @@ export const PluginsView: React.FC<PluginsViewProps> = ({
           <ErrorState
             title="Plugin registry unavailable"
             message={`${registryError.message}. The workspace plugin rows below are still shown; the registered-plugin list could not be loaded.`}
-            onRetry={() => void mutateRegistry()}
+            onRetry={() => void reloadRegistry()}
             actionText="Retry registry fetch"
           />
         )}

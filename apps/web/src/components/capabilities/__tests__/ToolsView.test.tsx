@@ -35,7 +35,9 @@ interface ServerToolRow {
   description?: string;
 }
 
-/** `GET /capabilities?category=tool` rows, camelCased by `transformKeys`. */
+/** `GET /capabilities` rows, camelCased by `transformKeys`. The view now reads
+ *  the shared unfiltered list key, so the double answers for any category and
+ *  ToolsView filters `category === 'tool'` rows out of it client-side. */
 function toolRow(name: string, overrides: Partial<ServerToolRow> = {}): ServerToolRow {
   return {
     id: `row-${name}`,
@@ -69,7 +71,7 @@ jest.mock('@/lib/api-client', () => {
       list: jest.fn(async (category?: string, workspaceId?: string) => {
         maybeFail(server.failures.list);
         void workspaceId;
-        return category === 'tool' ? server.toolRows.map((row) => ({ ...row })) : [];
+        return !category || category === 'tool' ? server.toolRows.map((row) => ({ ...row })) : [];
       }),
       create: jest.fn(async (body: Record<string, unknown>) => {
         maybeFail(server.failures.create);
@@ -116,7 +118,7 @@ function reapplyDefaults(): void {
   };
   mocked.capabilitiesApi.list.mockImplementation(async (category?: string) => {
     maybeFail(server.failures.list);
-    return category === 'tool' ? server.toolRows.map((row) => ({ ...row })) : [];
+    return !category || category === 'tool' ? server.toolRows.map((row) => ({ ...row })) : [];
   });
   mocked.capabilitiesApi.create.mockImplementation(async (body: Record<string, unknown>) => {
     maybeFail(server.failures.create);
@@ -142,11 +144,21 @@ function reapplyDefaults(): void {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const WORKSPACE = 'ws-tools-1';
+/**
+ * A fresh workspace id per test.
+ *
+ * The gate now reads its rows through SWR, whose module-level cache outlives
+ * `jest.clearAllMocks()`. Sharing one id across the file would let one test's
+ * revalidated row answer every later one (whether the second mount refetches
+ * depends on the dedup window, which makes the failure non-deterministic), so
+ * every render gets its own key.
+ */
+let workspaceSeq = 0;
 
 function renderView(props: Partial<React.ComponentProps<typeof ToolsView>> = {}) {
+  workspaceSeq += 1;
   const tools: CapabilityItem[] = [];
-  return render(<ToolsView tools={tools} workspaceId={WORKSPACE} {...props} />);
+  return render(<ToolsView tools={tools} workspaceId={`ws-tools-${workspaceSeq}`} {...props} />);
 }
 
 /** `memory-graph` renders as "Memory Graph"; the switch lives in the same card. */

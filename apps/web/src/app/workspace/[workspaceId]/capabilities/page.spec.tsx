@@ -275,13 +275,27 @@ jest.mock('@/lib/api-client', () => {
 // Real enough to drive the data path: the fetcher runs, its resolution becomes
 // `data`, its rejection becomes `error`, and `mutate` refetches. Keyed cache is
 // omitted because each test asserts on a freshly rendered tree.
+//
+// The named `mutate` export backs the shared `invalidateCapabilities` helper:
+// the page no longer reloads through the hook-local `mutate` from useSWR, so a
+// post-write reload must reach the mounted hooks through the module-level
+// mutate. It therefore re-runs the loaders of every currently mounted hook
+// whose cacheKey matches the key being revalidated -- the same contract real
+// SWR gives the global mutate. Without it the write flows ('create', toggle,
+// refresh) would settle on pre-write data, and a crash if it stayed undefined.
 
 jest.mock('swr', () => {
   const react = jest.requireActual('react');
+  const loaderRegistry = new Map<string, Set<() => void>>();
+  const keyOf = (key: unknown) => (Array.isArray(key) ? key.join('|') : String(key));
   return {
     __esModule: true,
+    mutate: async (key: unknown) => {
+      const cacheKey = keyOf(key);
+      for (const loader of loaderRegistry.get(cacheKey) ?? []) loader();
+    },
     default: (key: unknown, fetcher?: () => Promise<unknown>) => {
-      const cacheKey = Array.isArray(key) ? key.join('|') : String(key);
+      const cacheKey = keyOf(key);
       const [data, setData] = react.useState<unknown>(undefined);
       const [error, setError] = react.useState<unknown>(undefined);
       const fetcherRef = react.useRef(fetcher);
@@ -304,7 +318,14 @@ jest.mock('swr', () => {
       }, []);
 
       react.useEffect(() => {
+        const loaders = loaderRegistry.get(cacheKey) ?? new Set<() => void>();
+        loaders.add(load);
+        loaderRegistry.set(cacheKey, loaders);
         load();
+        return () => {
+          loaders.delete(load);
+          if (loaders.size === 0) loaderRegistry.delete(cacheKey);
+        };
       }, [load, cacheKey]);
 
       return {
@@ -771,6 +792,46 @@ describe('CapabilitiesPage', () => {
         { id: 'srv-skill-1', body: { enabled: true } },
       ]),
     );
+  });
+
+  it('disables the detail-pane actions while a toggle is in flight', async () => {
+    fakeDb.skills = [
+      installedSkill({ id: 'srv-skill-1', name: 'acceptance-criteria-review', enabled: true }),
+    ];
+    await renderSkills();
+
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    capsApi()['update'].mockImplementationOnce(
+      async (id: string, body: Record<string, unknown>) => {
+        await gate;
+        fakeDb.updates.push({ id, body });
+        const row = fakeDb.skills.find((entry) => entry.id === id);
+        if (!row) throw httpError(404, 'Capability not found');
+        if (body['enabled'] !== undefined) row.enabled = body['enabled'] as boolean;
+        return { ...row };
+      },
+    );
+
+    const disableButton = screen.getByRole('button', { name: 'Disable' });
+    await act(async () => {
+      fireEvent.click(disableButton);
+    });
+
+    // In flight: a second click must not slip a second write out.
+    fireEvent.click(disableButton);
+    expect(disableButton).toBeDisabled();
+
+    await act(async () => {
+      release();
+    });
+
+    await waitFor(() =>
+      expect(fakeDb.updates).toEqual([{ id: 'srv-skill-1', body: { enabled: false } }]),
+    );
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Enable' })).toBeEnabled());
   });
 
   it('registers a catalog skill with the singular category when installing', async () => {
