@@ -28,7 +28,7 @@ export default function MemoryCorrectionsPage() {
 
       <PageHeader
         title="Memory Corrections & Supersessions"
-        description="Audit human corrections, inspect side-by-side diffs against previous beliefs, and trace immutable cognitive lineage."
+        description="Audit human corrections, inspect word-level diffs against previous beliefs, and trace immutable cognitive lineage."
         actions={
           <Badge variant="mono" size="sm">
             CONT-P12-R06 Spec
@@ -40,24 +40,20 @@ export default function MemoryCorrectionsPage() {
       <MemoryCorrectionPanel workspaceId={workspaceId} />
 
       {/* Governance & Provenance Rules */}
-      <Card
-        padding="md"
-        className="p-6 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl space-y-3"
-      >
+      <Card padding="md" className="p-6 bg-surface border border-border rounded-xl space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider">
+          <h3 className="text-xs font-semibold text-text uppercase tracking-wider">
             Zero-Trust Memory Immutability Guarantees
           </h3>
           <Badge variant="mono" size="sm">
             Zero Data Loss
           </Badge>
         </div>
-        <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
+        <p className="text-xs text-text-secondary leading-relaxed">
           When an agent belief or user fact is amended, previous memories are marked as{' '}
-          <code className="font-mono text-[var(--color-text-primary)]">SUPERSEDED</code> with
-          immutable pointers to their successors rather than being overwritten. This ensures
-          complete temporal provenance, verifiable audits, and mathematical safety against
-          hallucinated drift.
+          <code className="font-mono text-text">SUPERSEDED</code> with immutable pointers to their
+          successors rather than being overwritten. This ensures complete temporal provenance,
+          verifiable audits, and mathematical safety against hallucinated drift.
         </p>
       </Card>
     </div>

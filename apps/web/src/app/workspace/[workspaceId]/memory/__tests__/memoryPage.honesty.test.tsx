@@ -1,7 +1,60 @@
-import { TYPE_FILTERS } from '@/app/workspace/[workspaceId]/memory/page';
+import MemoryPage, { TYPE_FILTERS } from '@/app/workspace/[workspaceId]/memory/page';
 import { MemoryCard } from '@vaeloom/ui-kit';
-import { render, screen } from '@testing-library/react';
+import { memoryApi, memoryFeedApi, vaultSyncApi } from '@/lib/api-client';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { SWRConfig } from 'swr';
 import React from 'react';
+
+const mockToast = jest.fn();
+
+jest.mock('@/components/shared/Toast', () => ({
+  useToast: () => ({ toast: mockToast }),
+}));
+
+const mockSearchParams = new Map<string, string>();
+
+jest.mock('next/navigation', () => ({
+  useParams: () => ({ workspaceId: 'ws-1' }),
+  useRouter: () => ({ push: jest.fn(), replace: jest.fn(), prefetch: jest.fn() }),
+  useSearchParams: () => ({
+    get: (key: string) => mockSearchParams.get(key) ?? null,
+  }),
+}));
+
+jest.mock('next/link', () => {
+  return function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
+    return <a href={href}>{children}</a>;
+  };
+});
+
+jest.mock('@/lib/dynamic-imports', () => ({
+  DynamicGraphViewer: () => null,
+}));
+
+jest.mock('@/components/memory/VaultSyncPanel', () => ({ VaultSyncPanel: () => null }));
+jest.mock('@/components/memory/MemoryCorrectionPanel', () => ({
+  MemoryCorrectionPanel: () => null,
+}));
+jest.mock('@/components/memory/ScaleMemoryViewer', () => ({ ScaleMemoryViewer: () => null }));
+
+jest.mock('@/lib/api-client', () => ({
+  memoryApi: {
+    list: jest.fn(),
+    search: jest.fn(),
+    create: jest.fn(),
+    delete: jest.fn(),
+    export: jest.fn(),
+    import: jest.fn(),
+    bulkStatus: jest.fn(),
+  },
+  memoryFeedApi: {
+    feed: jest.fn(),
+    lineage: jest.fn(),
+  },
+  vaultSyncApi: {
+    getStatus: jest.fn(),
+  },
+}));
 
 /**
  * Invariant tests for the memory UI's fabricated-data defects.
@@ -94,5 +147,185 @@ describe('MemoryCard confidence', () => {
   it('renders the real score when one exists', () => {
     render(<MemoryCard id="m-1" content="body" source="file" timestamp="now" confidence={0.42} />);
     expect(screen.getByText(/42%/)).toBeTruthy();
+  });
+});
+
+const listMock = memoryApi.list as jest.Mock;
+const searchMock = memoryApi.search as jest.Mock;
+const feedMock = memoryFeedApi.feed as jest.Mock;
+const statusMock = vaultSyncApi.getStatus as jest.Mock;
+
+const makeMemory = (overrides: Record<string, unknown> = {}) => ({
+  id: 'm-1',
+  title: 'Distributed systems notes',
+  summary: 'Summary of distributed systems',
+  content: null,
+  type: 'note',
+  tags: ['architecture'],
+  confidence: null,
+  source: 'manual',
+  createdAt: '2026-10-01T00:00:00.000Z',
+  updatedAt: '2026-10-01T00:00:00.000Z',
+  createdBy: 'u-1',
+  updatedBy: 'u-1',
+  tenantId: 't-1',
+  ...overrides,
+});
+
+const VAULT_STATUS = {
+  workspaceId: 'ws-1',
+  status: 'unknown',
+  installed: false,
+  daemonStatus: 'not_connected',
+  lastClientHeartbeat: null,
+  lastError: null,
+  branch: 'main',
+  totalNotes: 0,
+  vaultMemories: 0,
+  conflictsCount: 0,
+  autoIngest: false,
+  debounceSeconds: 30,
+  rebaseIntervalMinutes: 5,
+  engine: 'client',
+  engineNote: '',
+};
+
+const renderPage = () =>
+  render(
+    <SWRConfig
+      value={{ provider: () => new Map(), dedupingInterval: 0, shouldRetryOnError: false }}
+    >
+      <MemoryPage />
+    </SWRConfig>,
+  );
+
+describe('memory page rendering honesty', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockSearchParams.clear();
+    listMock.mockImplementation((params: { type?: string; page?: number } = {}) => {
+      if (params.type === 'task') {
+        return Promise.resolve({ memories: [], total: 0, page: 1, pageSize: 1 });
+      }
+      return Promise.resolve({ memories: [makeMemory()], total: 1, page: 1, pageSize: 100 });
+    });
+    searchMock.mockResolvedValue([]);
+    feedMock.mockResolvedValue({ feed: [], total: 0, page: 1, pageSize: 50, stats: {} });
+    statusMock.mockResolvedValue(VAULT_STATUS);
+  });
+
+  it('create modal offers exactly the canonical memory types, not legacy fabrications', async () => {
+    renderPage();
+    await screen.findByText('Summary of distributed systems');
+    fireEvent.click(screen.getByRole('button', { name: /new note \/ memory/i }));
+    const values = screen.getAllByRole('option').map((o) => (o as HTMLOptionElement).value);
+    expect(values.length).toBe(MEMORY_TYPES.length);
+    for (const v of values) {
+      expect((MEMORY_TYPES as readonly string[]).includes(v)).toBe(true);
+    }
+    expect(values).not.toContain('task');
+  });
+
+  it('renders no fabricated sync copy', async () => {
+    renderPage();
+    await screen.findByText('Summary of distributed systems');
+    expect(screen.queryByText(/auto-push/i)).toBeNull();
+    expect(screen.queryByText(/rebase/i)).toBeNull();
+    expect(screen.queryByText(/30s/i)).toBeNull();
+  });
+
+  it('shows an error with retry when the memory list fails, never a success state', async () => {
+    listMock.mockImplementation((params: { type?: string } = {}) => {
+      if (params.type === 'task') {
+        return Promise.resolve({ memories: [], total: 0, page: 1, pageSize: 1 });
+      }
+      return Promise.reject(new Error('list down'));
+    });
+    renderPage();
+    const alert = await screen.findByRole('alert');
+    expect(within(alert).getByText(/couldn't load memories/i)).toBeTruthy();
+    expect(screen.queryByText(/Your Memory is ready/i)).toBeNull();
+    const callsBefore = listMock.mock.calls.length;
+    fireEvent.click(within(alert).getByRole('button', { name: /try again/i }));
+    await waitFor(() => expect(listMock.mock.calls.length).toBeGreaterThan(callsBefore));
+  });
+
+  it('reports the true total instead of claiming the window is everything', async () => {
+    listMock.mockImplementation((params: { type?: string; page?: number } = {}) => {
+      if (params.type === 'task') {
+        return Promise.resolve({ memories: [], total: 0, page: 1, pageSize: 1 });
+      }
+      const page = params.page ?? 1;
+      return Promise.resolve({
+        memories: [makeMemory({ id: `m-${page}` })],
+        total: 137,
+        page,
+        pageSize: 100,
+      });
+    });
+    renderPage();
+    await screen.findByText('Showing 1 of 137 memories');
+    expect(screen.queryByText(/No matching memories/i)).toBeNull();
+    expect(screen.queryByText(/No records match/i)).toBeNull();
+    fireEvent.click(screen.getByRole('button', { name: /load more/i }));
+    await screen.findByText('Showing 2 of 137 memories');
+  });
+
+  it('keeps showing ready memories when a background refresh fails', async () => {
+    renderPage();
+    await screen.findByText('Summary of distributed systems');
+    listMock.mockClear();
+    listMock.mockImplementation((params: { type?: string } = {}) => {
+      if (params.type === 'task') {
+        return Promise.resolve({ memories: [], total: 0, page: 1, pageSize: 1 });
+      }
+      return Promise.reject(new Error('refresh down'));
+    });
+    fireEvent.click(screen.getByRole('button', { name: /^refresh$/i }));
+    await waitFor(() => expect(listMock).toHaveBeenCalled());
+    expect(screen.getByText('Summary of distributed systems')).toBeTruthy();
+    expect(screen.queryByText(/Your Memory is ready/i)).toBeNull();
+  });
+
+  it('shows scan results with an explicit cap note and no "no records" claim', async () => {
+    searchMock.mockResolvedValue(
+      Array.from({ length: 20 }, (_, i) => ({
+        memory: makeMemory({ id: `s-${i}` }),
+        score: 0.9,
+      })),
+    );
+    renderPage();
+    await screen.findByText('Summary of distributed systems');
+    fireEvent.change(screen.getByPlaceholderText(/search memories/i), {
+      target: { value: 'distributed' },
+    });
+    await waitFor(
+      () =>
+        expect(searchMock).toHaveBeenCalledWith(
+          expect.objectContaining({ query: 'distributed', workspace_id: 'ws-1', top_k: 20 }),
+        ),
+      { timeout: 3000 },
+    );
+    await screen.findByText('Top 20 matches', {}, { timeout: 3000 });
+    expect(screen.queryByText(/No records match/i)).toBeNull();
+  });
+
+  it('distinguishes "no strong matches" from "no records"', async () => {
+    renderPage();
+    await screen.findByText('Summary of distributed systems');
+    fireEvent.change(screen.getByPlaceholderText(/search memories/i), {
+      target: { value: 'zzz-nothing' },
+    });
+    await screen.findByText(/No strong matches/i, {}, { timeout: 3000 });
+    expect(screen.queryByText(/No records match/i)).toBeNull();
+  });
+
+  it('honours ?query= deep links on mount', async () => {
+    mockSearchParams.set('query', 'architecture');
+    searchMock.mockResolvedValue([{ memory: makeMemory({ id: 's-1' }), score: 0.8 }]);
+    renderPage();
+    const input = screen.getByPlaceholderText(/search memories/i) as HTMLInputElement;
+    await waitFor(() => expect(input.value).toBe('architecture'));
+    await waitFor(() => expect(searchMock).toHaveBeenCalled(), { timeout: 3000 });
   });
 });

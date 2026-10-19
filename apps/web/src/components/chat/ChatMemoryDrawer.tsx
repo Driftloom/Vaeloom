@@ -21,6 +21,12 @@ export interface ChatMemoryDrawerProps {
   onRecallContext?: (contextSnippet: string) => void;
 }
 
+/**
+ * GET /workspaces/{id}/memories returns a bare `MemoryResponse[]`; older
+ * callers wrapped it in `{ memories }` / `{ items }`. Accept both.
+ */
+export type MemoryDrawerPayload = MemoryItem[] | { memories?: MemoryItem[]; items?: MemoryItem[] };
+
 export function ChatMemoryDrawer({
   isOpen,
   onClose,
@@ -40,12 +46,12 @@ export function ChatMemoryDrawer({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  const { data, isLoading, error } = useSWR<{ memories?: MemoryItem[]; items?: MemoryItem[] }>(
+  const { data, isLoading, error } = useSWR<MemoryDrawerPayload>(
     isOpen && workspaceId ? `/workspaces/${workspaceId}/memories` : null,
     async (url: string) => {
       try {
         const res = await api.get<Record<string, unknown>>(url);
-        return res as unknown as { memories?: MemoryItem[]; items?: MemoryItem[] };
+        return res as unknown as MemoryDrawerPayload;
       } catch {
         return { memories: [] };
       }
@@ -55,7 +61,7 @@ export function ChatMemoryDrawer({
 
   if (!isOpen) return null;
 
-  const rawList = data?.memories ?? data?.items ?? [];
+  const rawList: MemoryItem[] = Array.isArray(data) ? data : (data?.memories ?? data?.items ?? []);
   const filteredMemories = rawList.filter((m) => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();

@@ -6,9 +6,10 @@ import Link from 'next/link';
 import useSWR from 'swr';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { memoryApi, memoryFeedApi, type MemoryLineageResponse } from '@/lib/api-client';
+import { memoryApi, memoryFeedApi, ApiError, type MemoryLineageResponse } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
 import { PageHeader } from '@/components/shared/Page';
+import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
 import {
   Button,
   Badge,
@@ -39,10 +40,20 @@ export default function MemoryDetailPage() {
     mutate: mutateMemory,
   } = useSWR(memoryId ? `memory-${memoryId}` : null, () => memoryApi.get(memoryId!));
 
-  const { data: lineage, isLoading: lineageLoading } = useSWR<MemoryLineageResponse>(
-    memoryId ? `lineage-${memoryId}` : null,
-    () => memoryFeedApi.lineage(memoryId!),
+  const {
+    data: lineage,
+    error: lineageErrorRaw,
+    isLoading: lineageLoading,
+    mutate: mutateLineage,
+  } = useSWR<MemoryLineageResponse>(memoryId ? `lineage-${memoryId}` : null, () =>
+    memoryFeedApi.lineage(memoryId!),
   );
+
+  const lineageError: string | null = lineageErrorRaw
+    ? lineageErrorRaw instanceof ApiError
+      ? `Could not load lineage (HTTP ${lineageErrorRaw.status}).`
+      : 'Could not load lineage. Check your connection and retry.'
+    : null;
 
   const [activeView, setActiveView] = useState<'rendered' | 'raw'>('rendered');
   const [editing, setEditing] = useState(false);
@@ -51,6 +62,7 @@ export default function MemoryDetailPage() {
   const [editContent, setEditContent] = useState('');
   const [editReason, setEditReason] = useState('Correction via Memory Detail Editor');
   const [saving, setSaving] = useState(false);
+  const [confirmingSave, setConfirmingSave] = useState(false);
 
   const startEdit = useCallback(() => {
     if (!memory) return;
@@ -64,6 +76,7 @@ export default function MemoryDetailPage() {
 
   const cancelEdit = useCallback(() => {
     setEditing(false);
+    setConfirmingSave(false);
   }, []);
 
   const saveEdit = useCallback(async () => {
@@ -113,9 +126,9 @@ export default function MemoryDetailPage() {
   if (memoryLoading) {
     return (
       <div className="space-y-6 animate-pulse max-w-5xl mx-auto p-4 sm:p-6">
-        <div className="h-6 w-36 bg-[var(--color-surface-subtle)] rounded" />
-        <div className="h-10 w-full max-w-md bg-[var(--color-surface-subtle)] rounded" />
-        <div className="h-96 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-subtle)]" />
+        <div className="h-6 w-36 bg-surface-100 rounded" />
+        <div className="h-10 w-full max-w-md bg-surface-100 rounded" />
+        <div className="h-96 rounded-xl border border-border bg-surface-100" />
       </div>
     );
   }
@@ -215,14 +228,12 @@ export default function MemoryDetailPage() {
         </Badge>
         {confidence !== undefined && <ConfidenceIndicator score={confidence} />}
         {sourceType && (
-          <span className="text-xs text-[var(--color-text-muted)] font-mono">
-            Source: <strong className="text-[var(--color-text-primary)]">{sourceType}</strong>
+          <span className="text-xs text-text-muted font-mono">
+            Source: <strong className="text-text">{sourceType}</strong>
           </span>
         )}
         {sourceLabel && (
-          <span className="text-xs text-[var(--color-text-secondary)] font-mono">
-            ({sourceLabel})
-          </span>
+          <span className="text-xs text-text-secondary font-mono">({sourceLabel})</span>
         )}
       </div>
 
@@ -232,34 +243,28 @@ export default function MemoryDetailPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Executive Summary Card */}
           {summary && (
-            <Card
-              padding="md"
-              className="space-y-2 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-xl"
-            >
-              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+            <Card padding="md" className="space-y-2 border border-border bg-surface rounded-xl">
+              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
                 Executive Synthesis
               </h2>
-              <p className="text-sm text-[var(--color-text-primary)] leading-relaxed">{summary}</p>
+              <p className="text-sm text-text leading-relaxed">{summary}</p>
             </Card>
           )}
 
           {/* Clean Markdown Note Content */}
-          <Card
-            padding="md"
-            className="space-y-3 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-xl"
-          >
-            <div className="flex items-center justify-between pb-2 border-b border-[var(--color-border)]">
-              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+          <Card padding="md" className="space-y-3 border border-border bg-surface rounded-xl">
+            <div className="flex items-center justify-between pb-2 border-b border-border">
+              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
                 Markdown Note Content
               </h2>
-              <div className="flex items-center gap-1 bg-[var(--color-surface-subtle)] p-1 rounded-lg border border-[var(--color-border)] text-xs">
+              <div className="flex items-center gap-1 bg-surface-100 p-1 rounded-lg border border-border text-xs">
                 <button
                   type="button"
                   onClick={() => setActiveView('rendered')}
                   className={`px-2.5 py-1 rounded font-medium transition ${
                     activeView === 'rendered'
-                      ? 'bg-[var(--color-surface)] text-[var(--color-text-primary)] shadow-sm'
-                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+                      ? 'bg-surface text-text shadow-sm'
+                      : 'text-text-muted hover:text-text'
                   }`}
                 >
                   Formatted
@@ -269,8 +274,8 @@ export default function MemoryDetailPage() {
                   onClick={() => setActiveView('raw')}
                   className={`px-2.5 py-1 rounded font-medium transition ${
                     activeView === 'raw'
-                      ? 'bg-[var(--color-surface)] text-[var(--color-text-primary)] shadow-sm'
-                      : 'text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+                      ? 'bg-surface text-text shadow-sm'
+                      : 'text-text-muted hover:text-text'
                   }`}
                 >
                   Raw Markdown
@@ -280,16 +285,16 @@ export default function MemoryDetailPage() {
 
             {content ? (
               activeView === 'rendered' ? (
-                <div className="prose prose-invert max-w-none text-sm text-[var(--color-text-primary)] leading-relaxed p-4 rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border)] overflow-x-auto space-y-3">
+                <div className="markdown-body p-4 rounded-lg bg-surface-100 border border-border overflow-x-auto">
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{content}</ReactMarkdown>
                 </div>
               ) : (
-                <pre className="font-mono text-xs text-[var(--color-text-secondary)] whitespace-pre-wrap p-4 rounded-lg bg-[var(--color-surface-sunken)] border border-[var(--color-border)] overflow-x-auto max-h-[450px]">
+                <pre className="font-mono text-xs text-text-secondary whitespace-pre-wrap p-4 rounded-lg bg-surface-100 border border-border overflow-x-auto max-h-[450px]">
                   {content}
                 </pre>
               )
             ) : (
-              <p className="text-xs text-[var(--color-text-muted)] italic p-4">
+              <p className="text-xs text-text-muted italic p-4">
                 No full note content recorded for this memory item.
               </p>
             )}
@@ -297,11 +302,8 @@ export default function MemoryDetailPage() {
 
           {/* Linked Concepts & Tags */}
           {tags.length > 0 && (
-            <Card
-              padding="md"
-              className="space-y-2 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-xl"
-            >
-              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+            <Card padding="md" className="space-y-2 border border-border bg-surface rounded-xl">
+              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
                 Linked Concepts & Tags
               </h2>
               <div className="flex flex-wrap gap-2">
@@ -315,12 +317,9 @@ export default function MemoryDetailPage() {
           )}
 
           {/* Lineage & Supersession History */}
-          <Card
-            padding="md"
-            className="space-y-4 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-xl"
-          >
+          <Card padding="md" className="space-y-4 border border-border bg-surface rounded-xl">
             <div className="flex items-center justify-between">
-              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
                 Lineage & Supersession Chain
               </h2>
               <Badge variant="mono" size="sm">
@@ -328,13 +327,11 @@ export default function MemoryDetailPage() {
               </Badge>
             </div>
 
-            {lineageLoading ? (
-              <p className="text-xs text-[var(--color-text-muted)] animate-pulse">
-                Tracing provenance chain...
-              </p>
+            {lineageLoading && !lineage ? (
+              <p className="text-xs text-text-muted animate-pulse">Tracing provenance chain...</p>
             ) : lineage && lineage.chainBackwards.length > 0 ? (
               <div className="space-y-3">
-                <p className="text-xs text-[var(--color-text-secondary)]">
+                <p className="text-xs text-text-secondary">
                   Every revision is preserved immutably. Click any historical version to inspect its
                   state:
                 </p>
@@ -350,12 +347,12 @@ export default function MemoryDetailPage() {
                         href={
                           workspaceId
                             ? `/workspace/${workspaceId}/memory/${ancesId}`
-                            : `/memory/${ancesId}`
+                            : `../memory/${ancesId}`
                         }
-                        className={`shrink-0 w-60 rounded-xl border p-3.5 transition block hover:border-[var(--color-brand-primary,#818cf8)] ${
+                        className={`shrink-0 w-60 rounded-xl border p-3.5 transition block hover:border-accent ${
                           isCurrent
-                            ? 'border-[var(--color-brand-primary,#818cf8)] bg-[var(--color-brand-primary,#818cf8)]/10 text-[var(--color-text-primary)] ring-1 ring-[var(--color-brand-primary,#818cf8)]'
-                            : 'border-[var(--color-border)] bg-[var(--color-surface-subtle)] text-[var(--color-text-secondary)]'
+                            ? 'border-accent bg-accent/10 text-text ring-1 ring-accent'
+                            : 'border-border bg-surface-100 text-text-secondary'
                         }`}
                       >
                         <div className="flex items-center justify-between gap-1">
@@ -368,10 +365,10 @@ export default function MemoryDetailPage() {
                             </Badge>
                           )}
                         </div>
-                        <p className="text-xs font-semibold truncate mt-1 text-[var(--color-text-primary)]">
+                        <p className="text-xs font-semibold truncate mt-1 text-text">
                           {String(ances['title'] || ancesId).slice(0, 32)}
                         </p>
-                        <p className="text-[11px] text-[var(--color-text-muted)] line-clamp-2 mt-1">
+                        <p className="text-[11px] text-text-muted line-clamp-2 mt-1">
                           {String(ances['summary'] || 'No summary')}
                         </p>
                       </Link>
@@ -379,22 +376,27 @@ export default function MemoryDetailPage() {
                   })}
                 </div>
               </div>
-            ) : (
-              <p className="text-xs text-[var(--color-text-muted)]">
+            ) : lineage ? (
+              <p className="text-xs text-text-muted">
                 Origin record (no prior superseded versions).
               </p>
+            ) : (
+              <ErrorState
+                message={lineageError ?? 'Could not load the lineage for this memory.'}
+                onRetry={() => void mutateLineage()}
+              />
             )}
 
             {supersedesId && (
-              <p className="text-xs text-[var(--color-text-secondary)] pt-2 border-t border-[var(--color-border)]">
+              <p className="text-xs text-text-secondary pt-2 border-t border-border">
                 This record supersedes ancestor{' '}
                 <Link
                   href={
                     workspaceId
                       ? `/workspace/${workspaceId}/memory/${supersedesId}`
-                      : `/memory/${supersedesId}`
+                      : `../memory/${supersedesId}`
                   }
-                  className="font-mono text-[var(--color-brand-primary,#818cf8)] hover:underline font-semibold"
+                  className="font-mono text-accent hover:underline font-semibold"
                 >
                   #{supersedesId.slice(0, 8)}
                 </Link>
@@ -407,49 +409,35 @@ export default function MemoryDetailPage() {
         {/* Sidebar column (1/3) */}
         <div className="space-y-6">
           {/* Metadata & Record Info */}
-          <Card
-            padding="md"
-            className="space-y-3 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-xl"
-          >
-            <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+          <Card padding="md" className="space-y-3 border border-border bg-surface rounded-xl">
+            <h2 className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
               Record Metadata
             </h2>
             <dl className="space-y-2 text-xs">
               <div>
-                <dt className="text-[var(--color-text-muted)]">Memory ID</dt>
-                <dd className="font-mono text-[var(--color-text-primary)] break-all mt-0.5 font-medium">
-                  {memory.id}
-                </dd>
+                <dt className="text-text-muted">Memory ID</dt>
+                <dd className="font-mono text-text break-all mt-0.5 font-medium">{memory.id}</dd>
               </div>
               <div>
-                <dt className="text-[var(--color-text-muted)]">Memory Type</dt>
-                <dd className="text-[var(--color-text-primary)] font-medium mt-0.5 capitalize">
-                  {type}
-                </dd>
+                <dt className="text-text-muted">Memory Type</dt>
+                <dd className="text-text font-medium mt-0.5 capitalize">{type}</dd>
               </div>
               <div>
-                <dt className="text-[var(--color-text-muted)]">Created</dt>
-                <dd className="text-[var(--color-text-primary)] mt-0.5">
-                  {formatTimestamp(createdAt)}
-                </dd>
+                <dt className="text-text-muted">Created</dt>
+                <dd className="text-text mt-0.5">{formatTimestamp(createdAt)}</dd>
               </div>
               <div>
-                <dt className="text-[var(--color-text-muted)]">Last Updated</dt>
-                <dd className="text-[var(--color-text-primary)] mt-0.5">
-                  {formatTimestamp(updatedAt)}
-                </dd>
+                <dt className="text-text-muted">Last Updated</dt>
+                <dd className="text-text mt-0.5">{formatTimestamp(updatedAt)}</dd>
               </div>
             </dl>
           </Card>
 
           {/* Source Document Link & Evidence Card */}
           {(sourceType || sourceUri || sourceLabel || documentId) && (
-            <Card
-              padding="md"
-              className="space-y-3 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-xl"
-            >
+            <Card padding="md" className="space-y-3 border border-border bg-surface rounded-xl">
               <div className="flex items-center justify-between">
-                <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+                <h2 className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
                   Source Evidence & Files
                 </h2>
                 <Badge variant="mono" size="sm">
@@ -459,22 +447,20 @@ export default function MemoryDetailPage() {
               <dl className="space-y-2 text-xs">
                 {sourceType && (
                   <div>
-                    <dt className="text-[var(--color-text-muted)]">Source Type</dt>
-                    <dd className="text-[var(--color-text-primary)] font-medium mt-0.5">
-                      {sourceType}
-                    </dd>
+                    <dt className="text-text-muted">Source Type</dt>
+                    <dd className="text-text font-medium mt-0.5">{sourceType}</dd>
                   </div>
                 )}
                 {sourceLabel && (
                   <div>
-                    <dt className="text-[var(--color-text-muted)]">Source Label</dt>
-                    <dd className="text-[var(--color-text-primary)] mt-0.5">{sourceLabel}</dd>
+                    <dt className="text-text-muted">Source Label</dt>
+                    <dd className="text-text mt-0.5">{sourceLabel}</dd>
                   </div>
                 )}
                 {sourceUri && (
                   <div>
-                    <dt className="text-[var(--color-text-muted)]">Source URI / Path</dt>
-                    <dd className="text-[var(--color-text-primary)] break-all font-mono text-[11px] mt-0.5 bg-[var(--color-surface-subtle)] p-1.5 rounded border border-[var(--color-border)]">
+                    <dt className="text-text-muted">Source URI / Path</dt>
+                    <dd className="text-text break-all font-mono text-[11px] mt-0.5 bg-surface-100 p-1.5 rounded border border-border">
                       {sourceUri}
                     </dd>
                   </div>
@@ -483,10 +469,10 @@ export default function MemoryDetailPage() {
 
               {/* Action link to Documents */}
               {workspaceId && (
-                <div className="pt-2 border-t border-[var(--color-border)]">
+                <div className="pt-2 border-t border-border">
                   <Link
                     href={`/workspace/${workspaceId}/documents`}
-                    className="inline-flex items-center justify-center w-full px-3 py-2 text-xs font-medium rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] hover:bg-[var(--color-surface-hover)] text-[var(--color-text-primary)] transition"
+                    className="inline-flex items-center justify-center w-full px-3 py-2 text-xs font-medium rounded-lg border border-border bg-surface-100 hover:bg-surface-hover text-text transition"
                   >
                     Open Documents Hub →
                   </Link>
@@ -497,21 +483,18 @@ export default function MemoryDetailPage() {
 
           {/* Extended Metadata Attributes */}
           {Object.keys(metadata).length > 0 && (
-            <Card
-              padding="md"
-              className="space-y-3 border border-[var(--color-border)] bg-[var(--color-surface)] rounded-xl"
-            >
-              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-text-muted)]">
+            <Card padding="md" className="space-y-3 border border-border bg-surface rounded-xl">
+              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-text-muted">
                 Extended Attributes
               </h2>
               <div className="space-y-1.5 text-xs font-mono">
                 {Object.entries(metadata).map(([k, v]) => (
                   <div
                     key={k}
-                    className="flex justify-between gap-2 border-b border-[var(--color-border)]/50 pb-1"
+                    className="flex justify-between gap-2 border-b border-border/50 pb-1"
                   >
-                    <span className="text-[var(--color-text-muted)] truncate">{k}</span>
-                    <span className="text-[var(--color-text-primary)] text-right text-[11px] truncate">
+                    <span className="text-text-muted truncate">{k}</span>
+                    <span className="text-text text-right text-[11px] truncate">
                       {typeof v === 'string' ? v : JSON.stringify(v)}
                     </span>
                   </div>
@@ -528,14 +511,14 @@ export default function MemoryDetailPage() {
           <div>
             <label
               htmlFor="edit-title"
-              className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1"
+              className="block text-xs font-semibold text-text uppercase tracking-wider mb-1"
             >
               Title
             </label>
             <input
               id="edit-title"
               type="text"
-              className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2.5 text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)] font-sans"
+              className="w-full rounded-md border border-border bg-surface-100 p-2.5 text-xs text-text focus:outline-none focus:ring-1 focus:ring-accent font-sans"
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
             />
@@ -543,14 +526,14 @@ export default function MemoryDetailPage() {
           <div>
             <label
               htmlFor="edit-summary"
-              className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1"
+              className="block text-xs font-semibold text-text uppercase tracking-wider mb-1"
             >
               Executive Summary
             </label>
             <textarea
               id="edit-summary"
               rows={3}
-              className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2.5 text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)] font-sans"
+              className="w-full rounded-md border border-border bg-surface-100 p-2.5 text-xs text-text focus:outline-none focus:ring-1 focus:ring-accent font-sans"
               value={editSummary}
               onChange={(e) => setEditSummary(e.target.value)}
             />
@@ -558,7 +541,7 @@ export default function MemoryDetailPage() {
           <div>
             <label
               htmlFor="edit-reason"
-              className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1"
+              className="block text-xs font-semibold text-text uppercase tracking-wider mb-1"
             >
               Revision Reason (Immutable Audit Trail)
             </label>
@@ -566,7 +549,7 @@ export default function MemoryDetailPage() {
               id="edit-reason"
               type="text"
               placeholder="e.g. Updated with recent architectural decisions and scope"
-              className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2.5 text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)] font-sans"
+              className="w-full rounded-md border border-border bg-surface-100 p-2.5 text-xs text-text focus:outline-none focus:ring-1 focus:ring-accent font-sans"
               value={editReason}
               onChange={(e) => setEditReason(e.target.value)}
             />
@@ -574,28 +557,41 @@ export default function MemoryDetailPage() {
           <div>
             <label
               htmlFor="edit-content"
-              className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1"
+              className="block text-xs font-semibold text-text uppercase tracking-wider mb-1"
             >
               Markdown Content
             </label>
             <textarea
               id="edit-content"
               rows={6}
-              className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2.5 text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)] font-mono"
+              className="w-full rounded-md border border-border bg-surface-100 p-2.5 text-xs text-text focus:outline-none focus:ring-1 focus:ring-accent font-mono"
               value={editContent}
               onChange={(e) => setEditContent(e.target.value)}
             />
           </div>
-          <div className="flex justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
+          <div className="flex justify-end gap-2 pt-3 border-t border-border">
             <Button variant="ghost" onClick={cancelEdit}>
               Cancel
             </Button>
-            <Button variant="primary" onClick={() => void saveEdit()} loading={saving}>
+            <Button variant="primary" onClick={() => setConfirmingSave(true)} loading={saving}>
               Save Revision (Supersede)
             </Button>
           </div>
         </div>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={confirmingSave}
+        onClose={() => setConfirmingSave(false)}
+        onConfirm={() => {
+          setConfirmingSave(false);
+          void saveEdit();
+        }}
+        title="Save revision & supersede?"
+        message="Saving creates an immutable new revision and marks this record as superseded. Historical lineage is preserved and cannot be undone."
+        confirmLabel="Save Revision"
+        cancelLabel="Keep Editing"
+      />
     </div>
   );
 }

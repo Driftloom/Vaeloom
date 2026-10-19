@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useMemo, Suspense } from 'react';
+import React, { useState, useCallback, useMemo, useEffect, useRef, Suspense } from 'react';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import useSWR from 'swr';
@@ -9,6 +9,7 @@ import {
   TabPanel,
   Modal,
   EmptyState,
+  ErrorState,
   StatCard,
   Button,
   Badge,
@@ -24,6 +25,7 @@ import { MemoryCorrectionPanel } from '@/components/memory/MemoryCorrectionPanel
 import { ScaleMemoryViewer } from '@/components/memory/ScaleMemoryViewer';
 import { VaultSyncPanel } from '@/components/memory/VaultSyncPanel';
 import { memoryApi, memoryFeedApi, vaultSyncApi } from '@/lib/api-client';
+import type { MemorySearchResultItem } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import type { Memory } from '@vaeloom/shared-types';
@@ -76,6 +78,14 @@ export const TYPE_FILTERS: FilterOption[] = [
   { id: 'workflow', label: 'Workflows' },
 ];
 
+// Server-side search returns at most this many hits; when the cap is reached
+// the UI must say so instead of implying the list is exhaustive.
+const SEARCH_TOP_K = 20;
+// List pages are fetched in windows of this size; the API caps page_size at 100.
+const LIST_PAGE_SIZE = 100;
+// The activity feed is capped here; beyond it the UI shows its own Load more.
+const FEED_PAGE_SIZE_MAX = 100;
+
 function MemoryGraphPageContent() {
   const params = useParams<{ workspaceId: string }>();
   const workspaceId = params.workspaceId;
@@ -99,31 +109,67 @@ function MemoryGraphPageContent() {
   const [newType, setNewType] = useState('note');
   const [newTags, setNewTags] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [loadedPages, setLoadedPages] = useState(1);
+  const [feedPageSize, setFeedPageSize] = useState(50);
+  const [searchResults, setSearchResults] = useState<MemorySearchResultItem[] | null>(null);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [searchRetryTick, setSearchRetryTick] = useState(0);
+  const searchSeqRef = useRef(0);
 
   const { toast } = useToast();
+
+  // Apply ?query= deep links without ever erasing what the user typed: a
+  // navigation that carries no query parameter leaves the search box alone.
+  useEffect(() => {
+    const q = searchParams.get('query') || searchParams.get('q') || '';
+    if (q) setSearchQuery(q);
+  }, [searchParams]);
 
   // Feed API query
   const {
     data: feedData,
     isLoading: feedLoading,
+    error: feedError,
     mutate: mutateFeed,
-  } = useSWR(workspaceId ? `memory-feed-${workspaceId}` : null, () =>
-    memoryFeedApi.feed({ workspace_id: workspaceId, page: 1, page_size: 50 }),
+  } = useSWR(workspaceId ? [`memory-feed-${workspaceId}`, feedPageSize] : null, () =>
+    memoryFeedApi.feed({ workspace_id: workspaceId, page: 1, page_size: feedPageSize }),
   );
 
   // Lineage query
-  const { data: lineage, isLoading: lineageLoading } = useSWR(
-    selectedId ? `lineage-${selectedId}` : null,
-    () => memoryFeedApi.lineage(selectedId!),
-  );
+  const {
+    data: lineage,
+    isLoading: lineageLoading,
+    error: lineageError,
+    mutate: mutateLineage,
+  } = useSWR(selectedId ? `lineage-${selectedId}` : null, () => memoryFeedApi.lineage(selectedId!));
 
-  // Memories query with explicit workspace scoping
+  // Memories query with explicit workspace scoping. The type filter runs
+  // server-side, and only `loadedPages` windows are fetched; the total is kept
+  // separately so a truncated window never reads as "no records".
   const {
     data: memoriesRes,
     isLoading: memoriesLoading,
+    error: memoriesError,
     mutate: mutateMemories,
-  } = useSWR(workspaceId ? `memories-${workspaceId}` : null, () =>
-    memoryApi.list({ page_size: 100, workspace_id: workspaceId }),
+  } = useSWR(
+    workspaceId ? [`memories-${workspaceId}`, loadedPages, selectedType] : null,
+    async () => {
+      const pages = await Promise.all(
+        Array.from({ length: loadedPages }, (_, i) =>
+          memoryApi.list({
+            page: i + 1,
+            page_size: LIST_PAGE_SIZE,
+            workspace_id: workspaceId,
+            ...(selectedType !== 'all' ? { type: selectedType } : {}),
+          }),
+        ),
+      );
+      return {
+        memories: pages.flatMap((p) => (Array.isArray(p.memories) ? p.memories : [])),
+        total: pages[0]?.total ?? 0,
+      };
+    },
   );
 
   const memItems: Memory[] = useMemo(() => {
@@ -133,11 +179,36 @@ function MemoryGraphPageContent() {
     return res.memories ?? res.items ?? [];
   }, [memoriesRes]);
 
+  const memoriesTotal = useMemo(() => {
+    if (!memoriesRes || Array.isArray(memoriesRes)) return memItems.length;
+    const total = (memoriesRes as { total?: number }).total;
+    return typeof total === 'number' ? total : memItems.length;
+  }, [memoriesRes, memItems]);
+
+  // A new type filter restarts the paginated window.
+  useEffect(() => {
+    setLoadedPages(1);
+  }, [selectedType]);
+
+  // `task` is no longer a valid memory type, but rows written with it may still
+  // exist. Probe once so they stay reachable through a labelled legacy filter
+  // instead of being silently orphaned. (List reads accept any type string; the
+  // pack registry only guards writes.)
+  const { data: legacyTaskProbe } = useSWR(
+    workspaceId ? `legacy-task-probe-${workspaceId}` : null,
+    () => memoryApi.list({ type: 'task', page_size: 1, workspace_id: workspaceId }),
+  );
+  const legacyTaskCount = legacyTaskProbe?.total ?? 0;
+
   // Real vault client state for the sync stat. This tile previously rendered a
   // hardcoded "Healthy" with no query behind it, on a page where the Vault panel
   // polls real status 500ms later.
-  const { data: vaultStatus } = useSWR(
-    workspaceId ? `vault-sync-status-${workspaceId}` : null,
+  const {
+    data: vaultStatus,
+    error: vaultStatusError,
+    mutate: mutateVaultStatus,
+  } = useSWR(
+    workspaceId ? ['vault-sync-status', workspaceId] : null,
     () => vaultSyncApi.getStatus(workspaceId),
     { refreshInterval: 15000 },
   );
@@ -158,30 +229,72 @@ function MemoryGraphPageContent() {
 
   const vaultSyncCaption = useMemo(() => {
     if (!vaultStatus) return 'Checking vault client';
-    if (vaultStatus.daemonStatus !== 'running') {
-      return 'No vault client reporting';
-    }
-    return `${vaultStatus.debounceSeconds}s debounce & ${vaultStatus.rebaseIntervalMinutes}m rebase`;
-  }, [vaultStatus]);
+    const heartbeat = vaultStatus.lastClientHeartbeat
+      ? `Last contact ${formatRelative(vaultStatus.lastClientHeartbeat)}`
+      : 'No client has reported yet';
+    const base = vaultStatus.lastError ? `Last error: ${vaultStatus.lastError}` : heartbeat;
+    return vaultStatusError ? `${base} · status not refreshed` : base;
+  }, [vaultStatus, vaultStatusError]);
 
-  // Client-side search and filtering
+  // Type filtering is server-side now; the client only drops soft-deleted rows
+  // that list pages may still return.
   const filteredMemories = useMemo(() => {
-    return memItems.filter((m) => {
-      if (m.status === 'deleted') return false;
-      if (selectedType !== 'all' && m.type !== selectedType) return false;
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matchesTitle = m.title?.toLowerCase().includes(q);
-        const matchesSummary = m.summary?.toLowerCase().includes(q);
-        const contentStr = ((m as unknown as Record<string, unknown>)['content'] as string) || '';
-        const matchesContent = contentStr.toLowerCase().includes(q);
-        const matchesTags =
-          Array.isArray(m.tags) && m.tags.some((t) => t.toLowerCase().includes(q));
-        if (!matchesTitle && !matchesSummary && !matchesContent && !matchesTags) return false;
-      }
-      return true;
-    });
-  }, [memItems, selectedType, searchQuery]);
+    return memItems.filter((m) => m.status !== 'deleted');
+  }, [memItems]);
+
+  const searchActive = searchQuery.trim().length > 0;
+
+  const searchMemories: Memory[] = useMemo(() => {
+    if (!searchResults) return [];
+    return searchResults.map((r) => r.memory).filter((m) => m && m.status !== 'deleted');
+  }, [searchResults]);
+
+  // Server-side search (hybrid retrieval), debounced. Every query/filter change
+  // invalidates the previous in-flight request so a slow response cannot
+  // overwrite a newer one.
+  useEffect(() => {
+    searchSeqRef.current += 1;
+    const seq = searchSeqRef.current;
+    const q = searchQuery.trim();
+    if (!q) {
+      setSearchResults(null);
+      setSearchLoading(false);
+      setSearchError(null);
+      return;
+    }
+    setSearchLoading(true);
+    setSearchError(null);
+    const timer = setTimeout(() => {
+      memoryApi
+        .search({
+          query: q,
+          workspace_id: workspaceId,
+          top_k: SEARCH_TOP_K,
+          ...(selectedType !== 'all' ? { type: selectedType } : {}),
+        })
+        .then((results) => {
+          if (seq !== searchSeqRef.current) return;
+          setSearchResults(Array.isArray(results) ? results : []);
+        })
+        .catch((err: unknown) => {
+          if (seq !== searchSeqRef.current) return;
+          setSearchResults(null);
+          setSearchError(err instanceof Error ? err.message : 'Search failed.');
+        })
+        .finally(() => {
+          if (seq === searchSeqRef.current) setSearchLoading(false);
+        });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery, selectedType, workspaceId, searchRetryTick]);
+
+  const displayMemories = searchActive ? searchMemories : filteredMemories;
+
+  const loadMoreMemories = useCallback(() => setLoadedPages((p) => p + 1), []);
+  const loadMoreFeed = useCallback(
+    () => setFeedPageSize((s) => Math.min(s + 50, FEED_PAGE_SIZE_MAX)),
+    [],
+  );
 
   const openLineage = useCallback((id: string) => {
     setSelectedId(id);
@@ -377,10 +490,10 @@ function MemoryGraphPageContent() {
   };
 
   const selectAllFiltered = () => {
-    if (selectedMemoryIds.size === filteredMemories.length) {
+    if (selectedMemoryIds.size === displayMemories.length) {
       setSelectedMemoryIds(new Set());
     } else {
-      setSelectedMemoryIds(new Set(filteredMemories.map((m) => m.id)));
+      setSelectedMemoryIds(new Set(displayMemories.map((m) => m.id)));
     }
   };
 
@@ -409,14 +522,94 @@ function MemoryGraphPageContent() {
     });
   }, [feedData]);
 
+  const feedTruncated = !!feedData && feedData.feed.length < feedData.total;
+
   const tabs = [
-    { id: 'list', label: `Notes & Memories (${filteredMemories.length})` },
-    { id: 'feed', label: `Agentic Activity${feedData?.feed ? ` (${feedData.feed.length})` : ''}` },
+    {
+      id: 'list',
+      label: `Notes & Memories (${searchActive ? searchMemories.length : memoriesTotal})`,
+    },
+    {
+      id: 'feed',
+      label: `Agentic Activity${feedData?.feed ? ` (${feedData.feed.length}${feedTruncated ? '+' : ''})` : ''}`,
+    },
     { id: 'scale', label: 'SCALE Temporal' },
     { id: 'graph', label: 'Knowledge Graph' },
     { id: 'corrections', label: 'Corrections' },
     { id: 'sync', label: 'Vault & Git Sync' },
   ];
+
+  // A labelled legacy option so `task` rows (no longer a valid type) stay
+  // reachable. Appended to the filter categories only — never TYPE_FILTERS,
+  // which mirrors the canonical taxonomy.
+  const filterCategories: FilterOption[] = useMemo(() => {
+    if (legacyTaskCount > 0) {
+      return [...TYPE_FILTERS, { id: 'task', label: 'Tasks (legacy)' }];
+    }
+    return TYPE_FILTERS;
+  }, [legacyTaskCount]);
+
+  const renderMemoryGrid = (items: Memory[]) => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {items.map((m) => {
+        // Only surface a confidence score the backend actually stored.
+        // The old `?? 0.85` invented a number for every memory that had
+        // none, so the UI displayed a confident-looking 85% that was
+        // never computed.
+        const storedConfidence = m.metadata?.['confidence'];
+        const confScore =
+          typeof storedConfidence === 'number' && storedConfidence > 0
+            ? storedConfidence
+            : undefined;
+        const sourceText = m.source?.label || m.source?.type || (m.source?.uri ? 'file' : 'manual');
+        const contentStr =
+          ((m as unknown as Record<string, unknown>)['content'] as string) || m.summary || m.title;
+        const relTime = formatRelative(m.createdAt);
+        const isSelected = selectedMemoryIds.has(m.id);
+
+        return (
+          <div
+            key={m.id}
+            className={`relative group rounded-xl transition border ${
+              isSelected ? 'border-accent ring-1 ring-accent' : 'border-transparent'
+            }`}
+          >
+            <div
+              className="absolute top-3 left-3 z-10 p-1 flex items-center justify-center"
+              onClick={(e: React.MouseEvent) => toggleSelectMemory(m.id, e)}
+            >
+              <input
+                type="checkbox"
+                checked={isSelected}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => toggleSelectMemory(m.id, e)}
+                aria-label={`Select memory ${m.title || m.id}`}
+                className="w-6 h-6 min-w-[24px] min-h-[24px] rounded border-border text-accent focus:ring-accent cursor-pointer"
+              />
+            </div>
+            <div
+              className="cursor-pointer pl-7"
+              onClick={() => router.push(`/workspace/${workspaceId}/memory/${m.id}`)}
+            >
+              <MemoryCard
+                id={m.id}
+                content={contentStr}
+                confidence={confScore}
+                source={sourceText}
+                timestamp={relTime}
+                entityCount={Array.isArray(m.tags) ? m.tags.length : undefined}
+                onEdit={(id: string) => {
+                  openLineage(id);
+                }}
+                onDelete={(id: string) => {
+                  void handleDeleteMemory(id);
+                }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
@@ -466,56 +659,68 @@ function MemoryGraphPageContent() {
           value={String(feedData?.stats?.superseded ?? 0)}
           caption="Immutable version audit trail"
         />
-        <StatCard label="Vault Git Sync" value={vaultSyncLabel} caption={vaultSyncCaption} />
+        {vaultStatusError && !vaultStatus ? (
+          <ErrorState
+            title="Vault status unavailable"
+            message={
+              vaultStatusError instanceof Error
+                ? vaultStatusError.message
+                : 'Could not load vault sync status.'
+            }
+            onRetry={() => void mutateVaultStatus()}
+          />
+        ) : (
+          <StatCard label="Vault Git Sync" value={vaultSyncLabel} caption={vaultSyncCaption} />
+        )}
       </div>
 
       {/* Dedicated Workbench Quick Navigation Links */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Link
           href={`/workspace/${workspaceId}/memory/vault`}
-          className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] transition flex items-center justify-between group shadow-sm"
+          className="p-3 rounded-xl border border-border bg-surface hover:bg-surface-hover transition flex items-center justify-between group shadow-sm"
         >
           <div>
-            <p className="text-xs font-semibold text-[var(--color-text-primary)] group-hover:text-[var(--color-brand-primary,#818cf8)]">
+            <p className="text-xs font-semibold text-text group-hover:text-accent">
               Vault Git Sync →
             </p>
-            <p className="text-[11px] text-[var(--color-text-muted)]">30s auto-push & rebase</p>
+            <p className="text-[11px] text-text-muted">Status, conflicts &amp; sync requests</p>
           </div>
         </Link>
 
         <Link
           href={`/workspace/${workspaceId}/memory/graph`}
-          className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] transition flex items-center justify-between group shadow-sm"
+          className="p-3 rounded-xl border border-border bg-surface hover:bg-surface-hover transition flex items-center justify-between group shadow-sm"
         >
           <div>
-            <p className="text-xs font-semibold text-[var(--color-text-primary)] group-hover:text-[var(--color-brand-primary,#818cf8)]">
+            <p className="text-xs font-semibold text-text group-hover:text-accent">
               Graph Workbench →
             </p>
-            <p className="text-[11px] text-[var(--color-text-muted)]">Interactive ontology view</p>
+            <p className="text-[11px] text-text-muted">Interactive ontology view</p>
           </div>
         </Link>
 
         <Link
           href={`/workspace/${workspaceId}/memory/scale`}
-          className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] transition flex items-center justify-between group shadow-sm"
+          className="p-3 rounded-xl border border-border bg-surface hover:bg-surface-hover transition flex items-center justify-between group shadow-sm"
         >
           <div>
-            <p className="text-xs font-semibold text-[var(--color-text-primary)] group-hover:text-[var(--color-brand-primary,#818cf8)]">
+            <p className="text-xs font-semibold text-text group-hover:text-accent">
               SCALE Hierarchy →
             </p>
-            <p className="text-[11px] text-[var(--color-text-muted)]">Multiscale rollups</p>
+            <p className="text-[11px] text-text-muted">Multiscale rollups</p>
           </div>
         </Link>
 
         <Link
           href={`/workspace/${workspaceId}/memory/corrections`}
-          className="p-3 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] transition flex items-center justify-between group shadow-sm"
+          className="p-3 rounded-xl border border-border bg-surface hover:bg-surface-hover transition flex items-center justify-between group shadow-sm"
         >
           <div>
-            <p className="text-xs font-semibold text-[var(--color-text-primary)] group-hover:text-[var(--color-brand-primary,#818cf8)]">
+            <p className="text-xs font-semibold text-text group-hover:text-accent">
               Corrections Ledger →
             </p>
-            <p className="text-[11px] text-[var(--color-text-muted)]">Audit trail & diffs</p>
+            <p className="text-[11px] text-text-muted">Audit trail &amp; diffs</p>
           </div>
         </Link>
       </div>
@@ -530,23 +735,30 @@ function MemoryGraphPageContent() {
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             searchPlaceholder="Search memories, notes, tags, or concepts..."
-            categories={TYPE_FILTERS}
+            categories={filterCategories}
             activeCategory={selectedType}
             onCategoryChange={setSelectedType}
           />
 
+          {legacyTaskCount > 0 && (
+            <p className="text-xs text-text-muted">
+              {legacyTaskCount} memory item{legacyTaskCount === 1 ? '' : 's'} still use the retired
+              “task” type. They remain readable through the Tasks (legacy) filter.
+            </p>
+          )}
+
           {selectedMemoryIds.size > 0 && (
-            <div className="flex items-center justify-between p-3 bg-[var(--color-surface-subtle)] border border-[var(--color-brand-primary,#818cf8)] rounded-xl shadow-sm">
+            <div className="flex items-center justify-between p-3 bg-surface-100 border border-accent rounded-xl shadow-sm">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold text-[var(--color-brand-primary,#818cf8)]">
+                <span className="text-xs font-semibold text-accent">
                   {selectedMemoryIds.size} selected
                 </span>
                 <button
                   type="button"
                   onClick={selectAllFiltered}
-                  className="text-xs text-[var(--color-text-muted)] hover:underline"
+                  className="text-xs text-text-muted hover:underline"
                 >
-                  {selectedMemoryIds.size === filteredMemories.length
+                  {selectedMemoryIds.size === displayMemories.length
                     ? 'Deselect all'
                     : 'Select all'}
                 </button>
@@ -562,20 +774,54 @@ function MemoryGraphPageContent() {
             </div>
           )}
 
-          {memoriesLoading ? (
+          {memoriesError && !memoriesRes ? (
+            <ErrorState
+              title="Couldn't load memories"
+              message={
+                memoriesError instanceof Error
+                  ? memoriesError.message
+                  : 'The memory list could not be loaded.'
+              }
+              onRetry={() => void mutateMemories()}
+            />
+          ) : searchActive ? (
+            <div aria-busy={searchLoading}>
+              {searchError ? (
+                <ErrorState
+                  title="Search failed"
+                  message={searchError}
+                  onRetry={() => setSearchRetryTick((n) => n + 1)}
+                />
+              ) : searchLoading || searchResults === null ? (
+                <div className="py-12 flex justify-center">
+                  <LoadingSpinner text="Searching memories..." />
+                </div>
+              ) : searchMemories.length === 0 ? (
+                <EmptyState
+                  title="No strong matches"
+                  description="No memories scored above the relevance threshold for this query. Try different keywords or a type filter."
+                />
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-xs text-text-muted">
+                    {searchResults.length >= SEARCH_TOP_K
+                      ? `Top ${SEARCH_TOP_K} matches`
+                      : `${searchMemories.length} ${searchMemories.length === 1 ? 'match' : 'matches'}`}
+                  </p>
+                  {renderMemoryGrid(searchMemories)}
+                </div>
+              )}
+            </div>
+          ) : memoriesLoading ? (
             <div className="py-12 flex justify-center">
               <LoadingSpinner text="Loading memories..." />
             </div>
-          ) : filteredMemories.length === 0 ? (
+          ) : memoriesTotal === 0 ? (
             <EmptyState
-              title={
-                searchQuery || selectedType !== 'all'
-                  ? 'No matching memories'
-                  : 'Your Memory is ready'
-              }
+              title={selectedType !== 'all' ? 'No matching memories' : 'Your Memory is ready'}
               description={
-                searchQuery || selectedType !== 'all'
-                  ? 'No records match your active query and filters. Try resetting search.'
+                selectedType !== 'all'
+                  ? 'No stored memories use the selected type. Try a different filter.'
                   : 'Capture ideas, notes, or connect your local vault to automatically populate memories.'
               }
               action={{
@@ -583,72 +829,28 @@ function MemoryGraphPageContent() {
                 onClick: () => setCreateModalOpen(true),
               }}
             />
+          ) : memItems.length === 0 ? (
+            <div className="py-12 flex flex-col items-center justify-center gap-3">
+              <p className="text-sm text-text-muted">
+                This window of memories is empty. Load more to continue through the list.
+              </p>
+              <Button variant="secondary" size="sm" onClick={loadMoreMemories}>
+                Load more
+              </Button>
+            </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredMemories.map((m) => {
-                // Only surface a confidence score the backend actually stored.
-                // The old `?? 0.85` invented a number for every memory that had
-                // none, so the UI displayed a confident-looking 85% that was
-                // never computed.
-                const storedConfidence = m.metadata?.['confidence'];
-                const confScore =
-                  typeof storedConfidence === 'number' && storedConfidence > 0
-                    ? storedConfidence
-                    : undefined;
-                const sourceText =
-                  m.source?.label || m.source?.type || (m.source?.uri ? 'file' : 'manual');
-                const contentStr =
-                  ((m as unknown as Record<string, unknown>)['content'] as string) ||
-                  m.summary ||
-                  m.title;
-                const relTime = formatRelative(m.createdAt);
-                const isSelected = selectedMemoryIds.has(m.id);
-
-                return (
-                  <div
-                    key={m.id}
-                    className={`relative group rounded-xl transition border ${
-                      isSelected
-                        ? 'border-[var(--color-brand-primary,#818cf8)] ring-1 ring-[var(--color-brand-primary,#818cf8)]'
-                        : 'border-transparent'
-                    }`}
-                  >
-                    <div
-                      className="absolute top-3 left-3 z-10 p-1 flex items-center justify-center"
-                      onClick={(e: React.MouseEvent) => toggleSelectMemory(m.id, e)}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                          toggleSelectMemory(m.id, e)
-                        }
-                        aria-label={`Select memory ${m.title || m.id}`}
-                        className="w-6 h-6 min-w-[24px] min-h-[24px] rounded border-[var(--color-border)] text-indigo-600 focus:ring-indigo-500 cursor-pointer"
-                      />
-                    </div>
-                    <div
-                      className="cursor-pointer pl-7"
-                      onClick={() => router.push(`/workspace/${workspaceId}/memory/${m.id}`)}
-                    >
-                      <MemoryCard
-                        id={m.id}
-                        content={contentStr}
-                        confidence={confScore}
-                        source={sourceText}
-                        timestamp={relTime}
-                        entityCount={Array.isArray(m.tags) ? m.tags.length : undefined}
-                        onEdit={(id: string) => {
-                          openLineage(id);
-                        }}
-                        onDelete={(id: string) => {
-                          void handleDeleteMemory(id);
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="space-y-4">
+              {renderMemoryGrid(filteredMemories)}
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-text-muted">
+                  {`Showing ${filteredMemories.length} of ${memoriesTotal} memories`}
+                </p>
+                {filteredMemories.length < memoriesTotal && (
+                  <Button variant="secondary" size="sm" onClick={loadMoreMemories}>
+                    Load more
+                  </Button>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -656,7 +858,17 @@ function MemoryGraphPageContent() {
 
       {/* Tab 2: Agentic Activity & Provenance */}
       <TabPanel id="feed" activeTab={activeTab}>
-        {feedLoading ? (
+        {feedError && !feedData ? (
+          <ErrorState
+            title="Couldn't load agentic activity"
+            message={
+              feedError instanceof Error
+                ? feedError.message
+                : 'The activity feed could not be loaded.'
+            }
+            onRetry={() => void mutateFeed()}
+          />
+        ) : feedLoading ? (
           <div className="py-12 flex justify-center">
             <LoadingSpinner text="Loading agentic timeline..." />
           </div>
@@ -666,11 +878,25 @@ function MemoryGraphPageContent() {
             description="Agentic actions, synthesis rollups, and memory corrections will appear here in chronological order with provenance."
           />
         ) : (
-          <div className="rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-sm">
-            <h3 className="text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-4">
-              Memory Lifecycle & Agent Trajectory
-            </h3>
-            <MemoryTimeline items={timelineItems} />
+          <div className="space-y-3">
+            <div className="rounded-xl border border-border bg-surface p-6 shadow-sm">
+              <h3 className="text-xs font-semibold text-text uppercase tracking-wider mb-4">
+                Memory Lifecycle &amp; Agent Trajectory
+              </h3>
+              <MemoryTimeline items={timelineItems} />
+            </div>
+            {feedData && feedTruncated && (
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-xs text-text-muted">
+                  {`Showing the latest ${feedData.feed.length} of ${feedData.total} activity events`}
+                </p>
+                {feedPageSize < FEED_PAGE_SIZE_MAX && (
+                  <Button variant="secondary" size="sm" onClick={loadMoreFeed}>
+                    Load more
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         )}
       </TabPanel>
@@ -682,7 +908,7 @@ function MemoryGraphPageContent() {
 
       {/* Tab 4: Knowledge Graph */}
       <TabPanel id="graph" activeTab={activeTab}>
-        <div className="min-h-[600px] h-[70vh] bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl overflow-hidden relative shadow-sm">
+        <div className="min-h-[600px] h-[70vh] bg-surface border border-border rounded-xl overflow-hidden relative shadow-sm">
           <DynamicGraphViewer workspaceId={workspaceId} />
         </div>
       </TabPanel>
@@ -708,20 +934,28 @@ function MemoryGraphPageContent() {
         }
         size="lg"
       >
-        {lineageLoading ? (
+        {lineageError && !lineage ? (
+          <ErrorState
+            title="Couldn't load lineage"
+            message={
+              lineageError instanceof Error
+                ? lineageError.message
+                : 'Provenance for this record could not be loaded.'
+            }
+            onRetry={() => void mutateLineage()}
+          />
+        ) : lineageLoading ? (
           <div className="py-12 flex justify-center">
             <LoadingSpinner text="Tracing provenance..." />
           </div>
         ) : lineage ? (
           <div className="space-y-4">
             <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-[var(--color-text-muted)] mb-2">
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-text-muted mb-2">
                 Supersession Lineage Chain
               </h4>
               {lineage.chainBackwards.length === 0 ? (
-                <p className="text-xs text-[var(--color-text-muted)]">
-                  Origin record (no previous versions).
-                </p>
+                <p className="text-xs text-text-muted">Origin record (no previous versions).</p>
               ) : (
                 <div className="flex gap-2 overflow-x-auto pb-2">
                   {lineage.chainBackwards.map((m: unknown, idx: number) => {
@@ -731,8 +965,8 @@ function MemoryGraphPageContent() {
                         key={String(mem['id'])}
                         className={`shrink-0 w-52 rounded-lg border p-3 ${
                           idx === 0
-                            ? 'border-[var(--color-brand-primary,#818cf8)] bg-[var(--color-brand-primary,#818cf8)]/10 text-[var(--color-text-primary)]'
-                            : 'border-[var(--color-border)] bg-[var(--color-surface-subtle)] text-[var(--color-text-secondary)]'
+                            ? 'border-accent bg-accent/10 text-text'
+                            : 'border-border bg-surface-100 text-text-secondary'
                         }`}
                       >
                         <p className="font-mono text-[10px] uppercase font-semibold">
@@ -741,7 +975,7 @@ function MemoryGraphPageContent() {
                         <p className="text-xs font-medium truncate mt-1">
                           {String(mem['title'] || mem['id']).slice(0, 32)}
                         </p>
-                        <p className="text-[11px] text-[var(--color-text-muted)] line-clamp-2 mt-0.5">
+                        <p className="text-[11px] text-text-muted line-clamp-2 mt-0.5">
                           {String(mem['summary'] || '')}
                         </p>
                       </div>
@@ -751,16 +985,14 @@ function MemoryGraphPageContent() {
               )}
             </div>
 
-            <div className="pt-2 border-t border-[var(--color-border)] flex justify-end">
+            <div className="pt-2 border-t border-border flex justify-end">
               <Button variant="secondary" onClick={() => setShowLineage(false)}>
                 Close
               </Button>
             </div>
           </div>
         ) : (
-          <p className="text-sm text-[var(--color-text-muted)]">
-            No lineage available for this record.
-          </p>
+          <p className="text-sm text-text-muted">No lineage available for this record.</p>
         )}
       </Modal>
 
@@ -773,7 +1005,7 @@ function MemoryGraphPageContent() {
       >
         <form onSubmit={handleCreateMemory} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
+            <label className="block text-xs font-semibold text-text uppercase tracking-wider mb-1">
               Title / Concept
             </label>
             <input
@@ -782,36 +1014,30 @@ function MemoryGraphPageContent() {
               placeholder="e.g. Distributed Consensus in Distributed Systems"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2.5 text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)] font-sans"
+              className="w-full rounded-md border border-border bg-surface-50 p-2.5 text-xs text-text focus:outline-none focus:ring-1 focus:ring-accent font-sans"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
+            <label className="block text-xs font-semibold text-text uppercase tracking-wider mb-1">
               Memory Type
             </label>
             <select
               value={newType}
               onChange={(e) => setNewType(e.target.value)}
-              className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2.5 text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)] font-sans"
+              className="w-full rounded-md border border-border bg-surface-50 p-2.5 text-xs text-text focus:outline-none focus:ring-1 focus:ring-accent font-sans"
             >
-              <option value="note">Note</option>
-              <option value="document">Document</option>
-              <option value="insight">Insight</option>
-              <option value="decision">Decision</option>
-              <option value="task">Task</option>
-              <option value="profile">Profile</option>
-              <option value="career">Career</option>
-              <option value="skill">Skill</option>
-              <option value="project">Project</option>
-              <option value="goal">Goal</option>
-              <option value="relationship">Relationship</option>
+              {TYPE_FILTERS.filter((f) => f.id !== 'all').map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.label}
+                </option>
+              ))}
             </select>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
-              Content & Insights
+            <label className="block text-xs font-semibold text-text uppercase tracking-wider mb-1">
+              Content &amp; Insights
             </label>
             <textarea
               required
@@ -819,12 +1045,12 @@ function MemoryGraphPageContent() {
               placeholder="Enter note or markdown content..."
               value={newContent}
               onChange={(e) => setNewContent(e.target.value)}
-              className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2.5 text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)] font-sans"
+              className="w-full rounded-md border border-border bg-surface-50 p-2.5 text-xs text-text focus:outline-none focus:ring-1 focus:ring-accent font-sans"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
+            <label className="block text-xs font-semibold text-text uppercase tracking-wider mb-1">
               Tags (comma separated)
             </label>
             <input
@@ -832,11 +1058,11 @@ function MemoryGraphPageContent() {
               placeholder="e.g. memory, architecture, notes"
               value={newTags}
               onChange={(e) => setNewTags(e.target.value)}
-              className="w-full rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2.5 text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)] font-mono"
+              className="w-full rounded-md border border-border bg-surface-50 p-2.5 text-xs text-text focus:outline-none focus:ring-1 focus:ring-accent font-mono"
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
+          <div className="flex justify-end gap-2 pt-3 border-t border-border">
             <Button variant="ghost" onClick={() => setCreateModalOpen(false)}>
               Cancel
             </Button>
@@ -856,10 +1082,10 @@ function MemoryGraphPageContent() {
       >
         <form onSubmit={handleImportMemories} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
+            <label className="block text-xs font-semibold text-text uppercase tracking-wider mb-1">
               JSON Payload (Array or Export Format)
             </label>
-            <p className="text-[11px] text-[var(--color-text-muted)] mb-2">
+            <p className="text-[11px] text-text-muted mb-2">
               Paste exported JSON or an array of items with title, content, type, tags, and
               metadata.
             </p>
@@ -869,7 +1095,7 @@ function MemoryGraphPageContent() {
               placeholder={`[\n  {\n    "title": "System Architecture Decisions",\n    "content": "Decided on SQLite/PostgreSQL RLS with event stream...",\n    "type": "decision",\n    "tags": ["architecture", "database"]\n  }\n]`}
               value={importJsonText}
               onChange={(e) => setImportJsonText(e.target.value)}
-              className="w-full font-mono text-xs rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-2.5 text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)]"
+              className="w-full font-mono text-xs rounded-md border border-border bg-surface-50 p-2.5 text-text focus:outline-none focus:ring-1 focus:ring-accent"
             />
           </div>
 
@@ -879,17 +1105,14 @@ function MemoryGraphPageContent() {
               id="dedup"
               checked={importDeduplicate}
               onChange={(e) => setImportDeduplicate(e.target.checked)}
-              className="rounded border-[var(--color-border)] text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+              className="rounded border-border text-accent focus:ring-accent cursor-pointer"
             />
-            <label
-              htmlFor="dedup"
-              className="text-xs text-[var(--color-text-primary)] cursor-pointer"
-            >
+            <label htmlFor="dedup" className="text-xs text-text cursor-pointer">
               Deduplicate by SHA-256 content hash (skip existing identical records)
             </label>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
+          <div className="flex justify-end gap-2 pt-3 border-t border-border">
             <Button variant="ghost" onClick={() => setImportModalOpen(false)}>
               Cancel
             </Button>

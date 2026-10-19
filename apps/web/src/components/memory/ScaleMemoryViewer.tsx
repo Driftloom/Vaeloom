@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import useSWR from 'swr';
-import { request } from '@/lib/api';
+import { cognitionApi } from '@/lib/api-client';
 import { Card, Badge, Button, EmptyState, ErrorState, Modal, StatCard } from '@vaeloom/ui-kit';
 import { useToast } from '@/components/shared/Toast';
 
@@ -26,8 +26,13 @@ interface ScaleMemoryViewerProps {
   workspaceId: string;
 }
 
+type TierKey = 'ALL' | ScaleMemoryNode['tier'];
+
+/** The backend rollup endpoint consolidates WEEKLY and MONTHLY only. */
+type RollupTargetTier = 'WEEKLY' | 'MONTHLY';
+
 const TIERS: Array<{
-  key: string;
+  key: TierKey;
   label: string;
   description: string;
   variant: 'default' | 'primary' | 'warning' | 'info' | 'success' | 'mono';
@@ -37,6 +42,12 @@ const TIERS: Array<{
     label: 'All Wavelengths',
     description: 'Full multiscale temporal hierarchy',
     variant: 'default',
+  },
+  {
+    key: 'SUB_DAILY',
+    label: 'Sub-Daily',
+    description: 'Intraday consolidated impressions and micro-sessions',
+    variant: 'mono',
   },
   {
     key: 'DAILY',
@@ -57,6 +68,12 @@ const TIERS: Array<{
     variant: 'warning',
   },
   {
+    key: 'ANNUAL',
+    label: 'Annual Retrospectives',
+    description: 'Year-scale trajectory, skills and career direction',
+    variant: 'success',
+  },
+  {
     key: 'NORTH_STAR',
     label: 'North Star',
     description: 'Core personal values & non-negotiable direction',
@@ -66,40 +83,36 @@ const TIERS: Array<{
 
 export function ScaleMemoryViewer({ workspaceId }: ScaleMemoryViewerProps) {
   const { toast } = useToast();
-  const [selectedTier, setSelectedTier] = useState<string>('ALL');
+  const [selectedTier, setSelectedTier] = useState<TierKey>('ALL');
   const [isRollingUp, setIsRollingUp] = useState(false);
   const [rollupModalOpen, setRollupModalOpen] = useState(false);
-  const [targetRollupTier, setTargetRollupTier] = useState<
-    'DAILY' | 'WEEKLY' | 'MONTHLY' | 'NORTH_STAR'
-  >('WEEKLY');
+  const [targetRollupTier, setTargetRollupTier] = useState<RollupTargetTier>('WEEKLY');
   const [selectedNode, setSelectedNode] = useState<ScaleMemoryNode | null>(null);
 
-  const queryTier = selectedTier === 'ALL' ? '' : `&tier=${selectedTier}`;
-  const endpoint = workspaceId
-    ? `/cognition/scale/nodes?workspace_id=${workspaceId}${queryTier}&limit=50`
-    : null;
+  const listParams: { limit: number; tier?: string } = { limit: 50 };
+  if (selectedTier !== 'ALL') listParams.tier = selectedTier;
 
   const { data, error, mutate, isLoading } = useSWR<{ nodes: ScaleMemoryNode[]; total: number }>(
-    endpoint,
-    (url: string) => request<{ nodes: ScaleMemoryNode[]; total: number }>(url),
+    workspaceId ? ['scale-memory-nodes', workspaceId, selectedTier] : null,
+    async () => {
+      const res = await cognitionApi.listScaleNodes(workspaceId, listParams);
+      return { nodes: res.nodes as unknown as ScaleMemoryNode[], total: res.total };
+    },
     { revalidateOnFocus: false },
   );
 
-  const triggerRollup = async (tier: 'DAILY' | 'WEEKLY' | 'MONTHLY' | 'NORTH_STAR') => {
+  const triggerRollup = async (tier: RollupTargetTier) => {
     try {
       setIsRollingUp(true);
       const now = new Date();
-      const days = tier === 'DAILY' ? 1 : tier === 'WEEKLY' ? 7 : tier === 'MONTHLY' ? 30 : 365;
+      const days = tier === 'WEEKLY' ? 7 : 30;
       const start = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
 
-      await request('/cognition/scale/rollup', {
-        method: 'POST',
-        body: JSON.stringify({
-          workspace_id: workspaceId,
-          target_tier: tier,
-          period_start: start.toISOString(),
-          period_end: now.toISOString(),
-        }),
+      await cognitionApi.rollup({
+        workspace_id: workspaceId,
+        target_tier: tier,
+        period_start: start.toISOString(),
+        period_end: now.toISOString(),
       });
 
       await mutate();
@@ -125,17 +138,17 @@ export function ScaleMemoryViewer({ workspaceId }: ScaleMemoryViewerProps) {
   return (
     <div className="space-y-6">
       {/* Header & Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--color-border)]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="text-lg font-display font-medium text-[var(--color-text-primary)]">
+            <h3 className="text-lg font-display font-medium text-text">
               PIOS SCALE Multiscale Temporal Hierarchy
             </h3>
             <Badge variant="primary" size="sm">
               Cognitive Synthesis
             </Badge>
           </div>
-          <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
+          <p className="text-xs text-text-secondary mt-0.5">
             Hierarchical temporal wavelength consolidation: Atomic inputs → Daily logs → Weekly
             rollups → Monthly milestones → Strategic North Star.
           </p>
@@ -154,34 +167,38 @@ export function ScaleMemoryViewer({ workspaceId }: ScaleMemoryViewerProps) {
       </div>
 
       {/* Tier Filter Pills */}
-      <div className="flex flex-wrap gap-2">
-        {TIERS.map((tier) => {
-          const active = selectedTier === tier.key;
-          return (
-            <button
-              key={tier.key}
-              type="button"
-              onClick={() => setSelectedTier(tier.key)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                active
-                  ? 'bg-[var(--color-brand-primary,#818cf8)] text-white shadow-sm'
-                  : 'bg-[var(--color-surface-subtle)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text-primary)] border border-[var(--color-border)]'
-              }`}
-            >
-              {tier.label}
-            </button>
-          );
-        })}
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2">
+          {TIERS.map((tier) => {
+            const active = selectedTier === tier.key;
+            return (
+              <button
+                key={tier.key}
+                type="button"
+                onClick={() => setSelectedTier(tier.key)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                  active
+                    ? 'bg-accent text-accent-fg shadow-sm'
+                    : 'bg-surface-100 text-text-secondary hover:bg-surface-hover hover:text-text border border-border'
+                }`}
+              >
+                {tier.label}
+              </button>
+            );
+          })}
+        </div>
+        {data && data.total > nodes.length && (
+          <span className="text-xs text-text-muted font-mono">
+            Showing {nodes.length} of {data.total} nodes
+          </span>
+        )}
       </div>
 
       {/* Nodes List or Error / Loading / Empty */}
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-pulse">
           {[1, 2, 3, 4].map((i) => (
-            <div
-              key={i}
-              className="h-44 rounded-xl bg-[var(--color-surface-subtle)] border border-[var(--color-border)] p-5"
-            />
+            <div key={i} className="h-44 rounded-xl bg-surface-100 border border-border p-5" />
           ))}
         </div>
       ) : error ? (
@@ -219,36 +236,34 @@ export function ScaleMemoryViewer({ workspaceId }: ScaleMemoryViewerProps) {
               <Card
                 key={node.id}
                 padding="md"
-                className="space-y-3 border border-[var(--color-border)] bg-[var(--color-surface)] hover:border-[var(--color-brand-primary,#818cf8)] transition cursor-pointer shadow-sm rounded-xl"
+                className="space-y-3 border border-border bg-surface hover:border-accent transition cursor-pointer shadow-sm rounded-xl"
                 onClick={() => setSelectedNode(node)}
               >
                 <div className="flex items-center justify-between gap-2">
                   <Badge variant={tierMeta.variant} size="sm">
                     {node.tier}
                   </Badge>
-                  <span className="text-[11px] font-mono text-[var(--color-text-muted)]">
+                  <span className="text-[11px] font-mono text-text-muted">
                     {startDate} — {endDate}
                   </span>
                 </div>
 
-                <p className="text-sm font-medium text-[var(--color-text-primary)] leading-snug line-clamp-2">
+                <p className="text-sm font-medium text-text leading-snug line-clamp-2">
                   {node.summary}
                 </p>
 
                 {node.keyInsights && node.keyInsights.length > 0 && (
                   <div className="space-y-1">
-                    <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] font-semibold">
+                    <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">
                       Key Insights ({node.keyInsights.length})
                     </span>
                     <ul className="space-y-0.5">
                       {node.keyInsights.slice(0, 2).map((insight, idx) => (
                         <li
                           key={idx}
-                          className="text-xs text-[var(--color-text-secondary)] flex items-start gap-1.5"
+                          className="text-xs text-text-secondary flex items-start gap-1.5"
                         >
-                          <span className="text-[var(--color-brand-primary,#818cf8)] font-bold">
-                            •
-                          </span>
+                          <span className="text-accent font-bold">•</span>
                           <span className="truncate">{insight}</span>
                         </li>
                       ))}
@@ -257,13 +272,13 @@ export function ScaleMemoryViewer({ workspaceId }: ScaleMemoryViewerProps) {
                 )}
 
                 {node.actionCommitments && node.actionCommitments.length > 0 && (
-                  <div className="space-y-1 pt-2 border-t border-[var(--color-border)]">
-                    <span className="text-[10px] uppercase tracking-wider text-[var(--color-text-muted)] font-semibold">
+                  <div className="space-y-1 pt-2 border-t border-border">
+                    <span className="text-[10px] uppercase tracking-wider text-text-muted font-semibold">
                       Action Commitments
                     </span>
                     <ul className="space-y-0.5">
                       {node.actionCommitments.slice(0, 2).map((action, idx) => (
-                        <li key={idx} className="text-xs text-emerald-400 flex items-start gap-1.5">
+                        <li key={idx} className="text-xs text-success flex items-start gap-1.5">
                           <span>✓</span>
                           <span className="truncate">{action}</span>
                         </li>
@@ -285,43 +300,37 @@ export function ScaleMemoryViewer({ workspaceId }: ScaleMemoryViewerProps) {
         size="md"
       >
         <div className="space-y-4">
-          <p className="text-xs text-[var(--color-text-secondary)] leading-relaxed">
+          <p className="text-xs text-text-secondary leading-relaxed">
             Select the temporal wavelength for agentic synthesis. Lower tiers will be consolidated
             into high-level strategic takeaways, friction analysis, and action items.
           </p>
 
           <div>
-            <label className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-2">
-              Target Wavelength Tier
+            <label className="block text-xs font-semibold text-text uppercase tracking-wider mb-2">
+              Target Rollup Tier
             </label>
             <div className="grid grid-cols-2 gap-2">
-              {(['DAILY', 'WEEKLY', 'MONTHLY', 'NORTH_STAR'] as const).map((tier) => (
+              {(['WEEKLY', 'MONTHLY'] as const).map((tier) => (
                 <button
                   key={tier}
                   type="button"
                   onClick={() => setTargetRollupTier(tier)}
                   className={`p-3 rounded-lg border text-xs font-medium text-left transition ${
                     targetRollupTier === tier
-                      ? 'border-[var(--color-brand-primary,#818cf8)] bg-[var(--color-brand-primary,#818cf8)]/10 text-[var(--color-text-primary)] ring-1 ring-[var(--color-brand-primary,#818cf8)]'
-                      : 'border-[var(--color-border)] bg-[var(--color-surface-subtle)] text-[var(--color-text-secondary)] hover:border-[var(--color-border-strong)]'
+                      ? 'border-accent bg-accent/10 text-text ring-1 ring-accent'
+                      : 'border-border bg-surface-100 text-text-secondary hover:border-border-strong'
                   }`}
                 >
                   <p className="font-semibold text-sm">{tier.replace('_', ' ')}</p>
-                  <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
-                    {tier === 'DAILY'
-                      ? 'Past 24 Hours'
-                      : tier === 'WEEKLY'
-                        ? 'Past 7 Days'
-                        : tier === 'MONTHLY'
-                          ? 'Past 30 Days'
-                          : 'Strategic 1-Year Horizon'}
+                  <p className="text-[11px] text-text-muted mt-0.5">
+                    {tier === 'WEEKLY' ? 'Past 7 Days' : 'Past 30 Days'}
                   </p>
                 </button>
               ))}
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
+          <div className="flex justify-end gap-2 pt-3 border-t border-border">
             <Button variant="ghost" onClick={() => setRollupModalOpen(false)}>
               Cancel
             </Button>
@@ -349,32 +358,29 @@ export function ScaleMemoryViewer({ workspaceId }: ScaleMemoryViewerProps) {
               <Badge variant="primary" size="sm">
                 {selectedNode.tier}
               </Badge>
-              <span className="text-xs text-[var(--color-text-muted)] font-mono">
+              <span className="text-xs text-text-muted font-mono">
                 Created {new Date(selectedNode.createdAt).toLocaleString()}
               </span>
             </div>
 
             <div>
-              <h4 className="text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
+              <h4 className="text-xs font-semibold text-text uppercase tracking-wider mb-1">
                 Executive Synthesis
               </h4>
-              <p className="text-sm text-[var(--color-text-primary)] bg-[var(--color-surface-subtle)] p-3 rounded-lg border border-[var(--color-border)] leading-relaxed">
+              <p className="text-sm text-text bg-surface-100 p-3 rounded-lg border border-border leading-relaxed">
                 {selectedNode.summary}
               </p>
             </div>
 
             {selectedNode.keyInsights && selectedNode.keyInsights.length > 0 && (
               <div>
-                <h4 className="text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1.5">
+                <h4 className="text-xs font-semibold text-text uppercase tracking-wider mb-1.5">
                   Key Insights
                 </h4>
-                <ul className="space-y-1 bg-[var(--color-surface-subtle)] p-3 rounded-lg border border-[var(--color-border)]">
+                <ul className="space-y-1 bg-surface-100 p-3 rounded-lg border border-border">
                   {selectedNode.keyInsights.map((insight, idx) => (
-                    <li
-                      key={idx}
-                      className="text-xs text-[var(--color-text-secondary)] flex items-start gap-2"
-                    >
-                      <span className="text-[var(--color-brand-primary,#818cf8)] font-bold">•</span>
+                    <li key={idx} className="text-xs text-text-secondary flex items-start gap-2">
+                      <span className="text-accent font-bold">•</span>
                       <span>{insight}</span>
                     </li>
                   ))}
@@ -384,16 +390,13 @@ export function ScaleMemoryViewer({ workspaceId }: ScaleMemoryViewerProps) {
 
             {selectedNode.frictionPoints && selectedNode.frictionPoints.length > 0 && (
               <div>
-                <h4 className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-1.5">
+                <h4 className="text-xs font-semibold text-warning uppercase tracking-wider mb-1.5">
                   Friction Points & Obstacles
                 </h4>
-                <ul className="space-y-1 bg-amber-500/5 p-3 rounded-lg border border-amber-500/30">
+                <ul className="space-y-1 bg-warning/5 p-3 rounded-lg border border-warning/30">
                   {selectedNode.frictionPoints.map((point, idx) => (
-                    <li
-                      key={idx}
-                      className="text-xs text-[var(--color-text-secondary)] flex items-start gap-2"
-                    >
-                      <span className="text-amber-400 font-bold">!</span>
+                    <li key={idx} className="text-xs text-text-secondary flex items-start gap-2">
+                      <span className="text-warning font-bold">!</span>
                       <span>{point}</span>
                     </li>
                   ))}
@@ -403,16 +406,13 @@ export function ScaleMemoryViewer({ workspaceId }: ScaleMemoryViewerProps) {
 
             {selectedNode.actionCommitments && selectedNode.actionCommitments.length > 0 && (
               <div>
-                <h4 className="text-xs font-semibold text-emerald-400 uppercase tracking-wider mb-1.5">
+                <h4 className="text-xs font-semibold text-success uppercase tracking-wider mb-1.5">
                   Action Commitments
                 </h4>
-                <ul className="space-y-1 bg-emerald-500/5 p-3 rounded-lg border border-emerald-500/30">
+                <ul className="space-y-1 bg-success/5 p-3 rounded-lg border border-success/30">
                   {selectedNode.actionCommitments.map((action, idx) => (
-                    <li
-                      key={idx}
-                      className="text-xs text-[var(--color-text-secondary)] flex items-start gap-2"
-                    >
-                      <span className="text-emerald-400 font-bold">✓</span>
+                    <li key={idx} className="text-xs text-text-secondary flex items-start gap-2">
+                      <span className="text-success font-bold">✓</span>
                       <span>{action}</span>
                     </li>
                   ))}
@@ -420,7 +420,7 @@ export function ScaleMemoryViewer({ workspaceId }: ScaleMemoryViewerProps) {
               </div>
             )}
 
-            <div className="flex justify-end pt-3 border-t border-[var(--color-border)]">
+            <div className="flex justify-end pt-3 border-t border-border">
               <Button variant="secondary" onClick={() => setSelectedNode(null)}>
                 Close
               </Button>
