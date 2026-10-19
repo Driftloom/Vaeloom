@@ -29,6 +29,7 @@ import type { MemorySearchResultItem } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import type { Memory } from '@vaeloom/shared-types';
+import { TYPE_FILTERS } from './typeFilters';
 
 function formatRelative(iso: string | null | undefined) {
   if (!iso) return '—';
@@ -49,34 +50,8 @@ function formatRelative(iso: string | null | undefined) {
 // that it used profile/career/skill/project/decision/goal/insight/task/
 // relationship, where `task`/`insight`-style values were not all real either.
 // Either way every non-matching option filtered all rows out and the UI looked
-// empty rather than broken. Exported so a test can assert the invariant.
-export const TYPE_FILTERS: FilterOption[] = [
-  { id: 'all', label: 'All Types' },
-  { id: 'profile', label: 'Profile' },
-  { id: 'document', label: 'Documents' },
-  { id: 'career', label: 'Career' },
-  { id: 'episodic', label: 'Episodic' },
-  { id: 'preference', label: 'Preferences' },
-  { id: 'working', label: 'Working' },
-  { id: 'note', label: 'Notes' },
-  { id: 'fact', label: 'Facts' },
-  { id: 'project', label: 'Projects' },
-  { id: 'skill', label: 'Skills' },
-  { id: 'organization', label: 'Organizations' },
-  { id: 'relationship', label: 'Relationships' },
-  { id: 'event', label: 'Events' },
-  { id: 'insight', label: 'Insights' },
-  { id: 'goal', label: 'Goals' },
-  { id: 'feedback', label: 'Feedback' },
-  { id: 'decision', label: 'Decisions' },
-  { id: 'knowledge', label: 'Knowledge' },
-  { id: 'reference', label: 'References' },
-  { id: 'contact', label: 'Contacts' },
-  { id: 'financial', label: 'Financial' },
-  { id: 'health', label: 'Health' },
-  { id: 'learning', label: 'Learning' },
-  { id: 'workflow', label: 'Workflows' },
-];
+// empty rather than broken. The definition now lives in `./typeFilters` (Next
+// pages may not export arbitrary values), where a test asserts the invariant.
 
 // Server-side search returns at most this many hits; when the cap is reached
 // the UI must say so instead of implying the list is exhaustive.

@@ -1,4 +1,5 @@
-import MemoryPage, { TYPE_FILTERS } from '@/app/workspace/[workspaceId]/memory/page';
+import MemoryPage from '@/app/workspace/[workspaceId]/memory/page';
+import { TYPE_FILTERS } from '@/app/workspace/[workspaceId]/memory/typeFilters';
 import { MemoryCard } from '@vaeloom/ui-kit';
 import { memoryApi, memoryFeedApi, vaultSyncApi } from '@/lib/api-client';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
