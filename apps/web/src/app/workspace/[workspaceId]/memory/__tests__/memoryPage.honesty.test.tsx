@@ -2,7 +2,7 @@ import MemoryPage from '@/app/workspace/[workspaceId]/memory/page';
 import { TYPE_FILTERS } from '@/app/workspace/[workspaceId]/memory/typeFilters';
 import { MemoryCard } from '@vaeloom/ui-kit';
 import { memoryApi, memoryFeedApi, vaultSyncApi } from '@/lib/api-client';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { SWRConfig } from 'swr';
 import React from 'react';
 
@@ -351,6 +351,40 @@ describe('memory page rendering honesty', () => {
     feedMock.mockImplementation(() => Promise.reject(new Error('feed refresh down')));
     fireEvent.click(screen.getByRole('button', { name: /^refresh$/i }));
     await screen.findByText('Indexed knowledge items · not refreshed');
+  });
+
+  it('refreshes the KPI counts while the page stays open', async () => {
+    // Production mounts SWRProvider with `revalidateOnFocus: false` and no
+    // interval, so the stat cards — captioned "Autonomous background
+    // extractions" — froze at whatever the first load returned. The feed
+    // query must opt back into polling so agent writes show up while the
+    // page is open.
+    jest.useFakeTimers();
+    try {
+      feedMock.mockResolvedValue({
+        feed: [],
+        total: 0,
+        page: 1,
+        pageSize: 50,
+        stats: { totalMemories: 57, agentCreated: 4, superseded: 2 },
+      });
+      renderPage();
+      await screen.findByText('57');
+
+      feedMock.mockResolvedValue({
+        feed: [],
+        total: 0,
+        page: 1,
+        pageSize: 50,
+        stats: { totalMemories: 61, agentCreated: 4, superseded: 2 },
+      });
+      await act(async () => {
+        await jest.advanceTimersByTimeAsync(31_000);
+      });
+      await screen.findByText('61');
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it('lineage modal labels versions by their own status, not by which record was opened', async () => {

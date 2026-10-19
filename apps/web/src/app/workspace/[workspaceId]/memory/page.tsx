@@ -28,6 +28,7 @@ import { buildLineageTimeline, lineageLabel } from '@/components/memory/lineageT
 import { memoryApi, memoryFeedApi, vaultSyncApi } from '@/lib/api-client';
 import type { MemorySearchResultItem } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
+import { swrClass } from '@/components/providers/SWRProvider';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import type { Memory } from '@vaeloom/shared-types';
 import { TYPE_FILTERS } from './typeFilters';
@@ -102,14 +103,19 @@ function MemoryGraphPageContent() {
     if (q) setSearchQuery(q);
   }, [searchParams]);
 
-  // Feed API query
+  // Feed API query. The global SWR policy turns focus revalidation off and
+  // sets no interval (SWRProvider.tsx), so this query opts back in: the KPI
+  // cards it feeds are captioned "Autonomous background extractions" and go
+  // stale silently if the page never refetches while it stays open.
   const {
     data: feedData,
     isLoading: feedLoading,
     error: feedError,
     mutate: mutateFeed,
-  } = useSWR(workspaceId ? [`memory-feed-${workspaceId}`, feedPageSize] : null, () =>
-    memoryFeedApi.feed({ workspace_id: workspaceId, page: 1, page_size: feedPageSize }),
+  } = useSWR(
+    workspaceId ? [`memory-feed-${workspaceId}`, feedPageSize] : null,
+    () => memoryFeedApi.feed({ workspace_id: workspaceId, page: 1, page_size: feedPageSize }),
+    swrClass.LIVE,
   );
 
   // Lineage query
