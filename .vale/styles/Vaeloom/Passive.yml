@@ -1,0 +1,7 @@
+extends: existence
+message: "'%s' uses passive voice. Use active voice instead."
+level: warning
+scope: text
+ignorecase: true
+raw:
+  - '(?:am|are|is|was|were|be|been|being)\s+(?:aware|comprised|composed|confirmed|considered|constructed|controlled|created|damaged|defined|delivered|derived|described|designed|destroyed|determined|developed|discovered|displayed|distributed|enabled|enforced|established|evaluated|executed|formed|generated|given|granted|grounded|grown|handled|housed|implemented|informed|initiated|injected|installed|integrated|intended|introduced|issued|maintained|managed|modified|monitored|mounted|noted|obtained|offered|ordered|owned|performed|placed|planned|positioned|prepared|presented|processed|produced|prompted|propagated|protected|provided|published|pulled|pushed|received|recognized|recorded|reduced|referred|reflected|registered|rejected|released|removed|rendered|replaced|replicated|reported|represented|requested|required|resolved|responded|restored|resulted|returned|revealed|reviewed|revised|scheduled|selected|sent|separated|set|shown|specified|stored|structured|suggested|supported|surrounded|tracked|transformed|transmitted|triggered|updated|upgraded|used|utilized|viewed|written)\b'

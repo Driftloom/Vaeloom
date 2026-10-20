@@ -1,0 +1,18 @@
+extends: existence
+message: "Use correct capitalization for '%s'."
+level: error
+scope: text
+ignorecase: false
+tokens:
+  - "\\bmeridian\\b"
+  - "\\bgmail\\b"
+  - "\\bgithub\\b"
+  - "\\bkubernetes\\b"
+  - "\\bpostgresql\\b"
+  - "\\bterraform\\b"
+  - "\\bgrafana\\b"
+  - "\\bprometheus\\b"
+  - "\\belasticsearch\\b"
+  - "\\bkibana\\b"
+  - "\\bdockerfile\\b"
+  - "\\bdockerfiles\\b"

@@ -1,0 +1,156 @@
+extends: substitution
+message: "Use '%s' instead of '%s'."
+level: error
+scope: text
+swap:
+  # General writing improvements
+  'a lot of': many
+  'a number of': many
+  'acquire': get
+  'administer': manage
+  'afterwards': afterward
+  'albeit': although
+  'allows you to': lets
+  'amongst': among
+  'and also': and
+  'approximately': about
+  'are able to': can
+  'are not able to': cannot
+  'as a consequence': because
+  'as a result': because
+  'as can be seen': see
+  'as per': per
+  'as well as': and
+  'at the present time': now
+  'based off': 'based on'
+  'based upon': 'based on'
+  'because of the fact that': because
+  'boot up': boot
+  'by means of': by
+  'carry out': perform
+  'click on': click
+  'come to a decision': decide
+  'consequently': so
+  'currently': ''
+  'de-duplicate': deduplicate
+  'de-duplicated': deduplicated
+  'de-duplication': deduplication
+  'do away with': remove
+  'due to the fact that': because
+  'during the course of': during
+  'each and every': each
+  'end user': user
+  'end-users': users
+  'fewer in number': fewer
+  'file name': filename
+  'firstly': first
+  'following': after
+  'for the purpose of': for
+  'for the reason that': because
+  'give consideration to': consider
+  'has the capability to': can
+  'has the capacity to': can
+  'if you want': to
+  'in a timely manner': promptly
+  'in addition': also
+  'in case': if
+  'in close proximity': near
+  'in conjunction with': with
+  'in excess of': more than
+  'in order for': for
+  'in order to': to
+  'in reference to': about
+  'in regards to': about
+  'in relation to': about
+  'in respect to': about
+  'in spite of the fact that': although
+  'in the event that': if
+  'in the neighborhood of': about
+  'in this case': here
+  'in view of': because
+  'inasmuch as': because
+  'initial': first
+  'is able to': can
+  'is going to': will
+  'is not able to': cannot
+  'it appears that': apparently
+  'it is important to note': 'note:'
+  'it is necessary to': must
+  'it is noteworthy that': notably
+  'it is recommended': we recommend
+  'it is worth noting': notably
+  'it may be that': maybe
+  'it should be noted that': 'note:'
+  'majority of': most
+  'make a decision': decide
+  'make use of': use
+  'methodology': method
+  'modification': change
+  'modify': change
+  'more often than not': usually
+  'necessitate': require
+  'next-generation': next generation
+  'no later than': by
+  'not possible': impossible
+  'notwithstanding': despite
+  'numerous': many
+  'obtain': get
+  'on the other hand': alternatively
+  'one time': once
+  'order of magnitude': roughly
+  'ought to': should
+  'owing to': because
+  'per annum': per year
+  'per cent': percent
+  'performant': efficient
+  'place an order': order
+  'point in time': moment
+  'portion': part
+  'prior to': before
+  'pursuant to': per
+  'relative to': compared with
+  'result in': cause
+  'secondly': second
+  'shall': must
+  'should you wish': if you want
+  'so as to': to
+  'solely': only
+  'start off': start
+  'start up': start
+  'state-of-the-art': modern
+  'subject matter': topic
+  'subsequent': later
+  'subsequently': later
+  'substantial': large
+  'sufficient': enough
+  'take advantage of': use
+  'the fact that': ''
+  'the month of': ''
+  'the presence of': ''
+  'through the use of': with
+  'to date': so far
+  'towards': toward
+  'turn off': turn off
+  'turn on': turn on
+  'turnkey': ready
+  'unable to': cannot
+  'until such time as': until
+  'upwards of': more than
+  'usage': use
+  'utilise': use
+  'utilize': use
+  'utilized': used
+  'utilizes': uses
+  'utilizing': using
+  'viable': workable
+  'via': through
+  'vice versa': conversely
+  'vice-versa': conversely
+  'whether or not': whether
+  'will be able to': can
+  'window of time': time
+  'with effect from': from
+  'with regard to': about
+  'with respect to': about
+  'with the exception of': except
+  'within': in

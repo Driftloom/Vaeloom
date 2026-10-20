@@ -1,0 +1,63 @@
+extends: existence
+message: "'%s' weakens writing. Remove or replace it."
+level: warning
+scope: text
+ignorecase: true
+tokens:
+  - absolutely
+  - accidentally
+  - actually
+  - amazingly
+  - arguably
+  - at least
+  - basically
+  - basically
+  - clearly
+  - completely
+  - considerably
+  - decidedly
+  - deeply
+  - definitely
+  - effectively
+  - entirely
+  - essentially
+  - exceedingly
+  - exclusively
+  - extremely
+  - fairly
+  - frankly
+  - greatly
+  - highly
+  - hugely
+  - incredibly
+  - indeed
+  - inevitably
+  - interestingly
+  - literally
+  - mainly
+  - merely
+  - might
+  - mostly
+  - notably
+  - obviously
+  - particularly
+  - quite
+  - rather
+  - really
+  - remarkably
+  - significantly
+  - simply
+  - slightly
+  - solely
+  - somewhat
+  - strictly
+  - substantially
+  - surprisingly
+  - truly
+  - typically
+  - ultimately
+  - usually
+  - various
+  - very
+  - virtually
+  - wholly
