@@ -12,8 +12,8 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..database import get_db
 from ..config import settings
+from ..database import get_db
 from ..dependencies import get_current_user, get_tenant_id, get_workspace_id
 from ..middleware.rate_limit import rate_limit
 from ..models.schema import Plugin, Workspace, WorkspaceCapability, WorkspaceUser
@@ -1459,7 +1459,10 @@ async def create_capability(
 
         permissions = payload.config.get("permissions")
         permissions = dict(permissions) if isinstance(permissions, dict) and permissions else {}
-        list_field = lambda key: payload.config.get(key) if isinstance(payload.config.get(key), list) else []
+
+        def list_field(key: str) -> list[Any]:
+            value = payload.config.get(key)
+            return value if isinstance(value, list) else []
 
         # Upsert-by-name. The registry's own name lookups are tenant-scoped
         # when a tenant is attached and name-only otherwise (mirrors the

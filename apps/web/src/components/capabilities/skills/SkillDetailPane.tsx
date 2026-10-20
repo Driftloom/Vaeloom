@@ -8,6 +8,7 @@ import {
   EmptyState,
   FormField,
   IconButton,
+  PlayIcon,
   Skeleton,
   Tabs,
   TabPanel,
@@ -23,6 +24,8 @@ import { SkillIntegrationBar } from './SkillIntegrationBar';
 export interface SkillDetailPaneProps {
   selectedRow: SkillRow | null;
   isLoading: boolean;
+  /** A toggle or install for the selected row is in flight. */
+  isPending?: boolean;
   onCloseMobileDetail: () => void;
   onOpenCreate: () => void;
   onToggleEnabled: (key: string, next: boolean) => void;
@@ -49,6 +52,7 @@ function DetailSkeleton() {
 export const SkillDetailPane: React.FC<SkillDetailPaneProps> = ({
   selectedRow,
   isLoading,
+  isPending = false,
   onCloseMobileDetail,
   onOpenCreate,
   onToggleEnabled,
@@ -188,8 +192,14 @@ export const SkillDetailPane: React.FC<SkillDetailPaneProps> = ({
             </>
           ) : (
             <>
-              <Button size="sm" variant="primary" onClick={() => onOpenPlayground(selectedRow)}>
-                ⚡ Test Playground
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => onOpenPlayground(selectedRow)}
+                className="gap-1"
+              >
+                <PlayIcon size={12} className="shrink-0" />
+                Test Playground
               </Button>
               <Button
                 size="sm"
@@ -206,25 +216,36 @@ export const SkillDetailPane: React.FC<SkillDetailPaneProps> = ({
                 <Button
                   size="sm"
                   variant="ghost"
+                  disabled={isPending}
                   onClick={() => onToggleEnabled(selectedRow.key, !selectedRow.item.enabled)}
                 >
                   {selectedRow.item.enabled ? 'Disable' : 'Enable'}
                 </Button>
               )}
               {!selectedRow.installed && (
-                <Button size="sm" variant="secondary" onClick={() => onInstall(selectedRow.key)}>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  disabled={isPending}
+                  onClick={() => onInstall(selectedRow.key)}
+                >
                   Install
                 </Button>
               )}
               {selectedRow.serverBacked && (
-                <Button size="sm" variant="ghost" onClick={() => onDeleteRequest(selectedRow)}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  disabled={isPending}
+                  onClick={() => onDeleteRequest(selectedRow)}
+                >
                   Delete
                 </Button>
               )}
               {workspaceId && (selectedRow.slug || selectedRow.key) && (
                 <Link
                   href={`/workspace/${workspaceId}/capabilities/skills/${encodeURIComponent(selectedRow.slug || selectedRow.key)}`}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-lg border border-border bg-surface-elevated hover:bg-surface text-text transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-control border border-border bg-surface-elevated hover:bg-surface text-text transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
                 >
                   <span>Open Full Page ↗</span>
                 </Link>
@@ -288,7 +309,7 @@ export const SkillDetailPane: React.FC<SkillDetailPaneProps> = ({
           <>
             <TabPanel id="doc" activeTab={detailPane}>
               {isEditing ? (
-                <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
+                <div className="rounded-container border border-border bg-surface p-4 space-y-3">
                   <FormField
                     label="Skill instructions (Markdown)"
                     error={saveError ?? undefined}
@@ -321,7 +342,7 @@ export const SkillDetailPane: React.FC<SkillDetailPaneProps> = ({
                   </p>
                 </div>
               ) : (
-                <div className="rounded-xl border border-border bg-surface p-4 sm:p-5">
+                <div className="rounded-container border border-border bg-surface p-4 sm:p-5">
                   {selectedRow.item.markdownDoc ? (
                     <SkillMarkdownViewer content={selectedRow.item.markdownDoc} />
                   ) : (
@@ -334,7 +355,7 @@ export const SkillDetailPane: React.FC<SkillDetailPaneProps> = ({
             </TabPanel>
 
             <TabPanel id="schema" activeTab={detailPane}>
-              <div className="rounded-xl border border-border bg-surface p-4 space-y-3">
+              <div className="rounded-container border border-border bg-surface p-4 space-y-3">
                 <p className="text-2xs text-text-muted">
                   Read only. The HTTP client camel-cases response keys, so a JSON Schema
                   round-tripped through this page would corrupt its property names. The raw schema
