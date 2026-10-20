@@ -2477,6 +2477,16 @@ async def act_phase(plan: dict[str, Any], request: AgentRequest, on_token: Any =
         return await _act_phase_inner(plan, request, on_token, state)
 
 
+def _mark_static_skill_directive(result: Any) -> Any:
+    if isinstance(result, dict):
+        payload = result.get("result")
+        if isinstance(payload, dict):
+            provenance = payload.setdefault("provenance", {})
+            if isinstance(provenance, dict):
+                provenance.setdefault("skill_directive", "not_applied")
+    return result
+
+
 async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token: Any = None, state: Any | None = None) -> dict[str, Any]:
     agent = request.agent
     message = plan.get("message", request.message)
@@ -2613,15 +2623,15 @@ async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token
             logger.info(f"AUDIT static_success agent={agent_name} type={agent_type} action={result.get('action')} workspace={request.workspace_id}")
         except Exception:
             pass
-        return result
+        return _mark_static_skill_directive(result)
     except CircuitBreakerOpenError:
         _audit_static(False, "circuit_open")
         logger.warning(f"Circuit breaker OPEN for {agent_name}, using fallback")
-        return await agent.fallback()
+        return _mark_static_skill_directive(await agent.fallback())
     except TimeoutError:
         _audit_static(False, f"timeout_{timeout}s")
         logger.error(f"Agent {agent_name} timed out after {timeout}s")
-        return {
+        return _mark_static_skill_directive({
             "agent_name": agent_name,
             "action": "error",
             "confidence": 0.0,
@@ -2631,10 +2641,10 @@ async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token
                 "proposals": [],
                 "questions": [],
             },
-        }
+        })
     except AgentRateLimitError:
         _audit_static(False, "rate_limited")
-        return {
+        return _mark_static_skill_directive({
             "agent_name": agent_name,
             "action": "error",
             "confidence": 0.0,
@@ -2644,16 +2654,16 @@ async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token
                 "proposals": [],
                 "questions": [],
             },
-        }
+        })
     except Exception as exc:
         _audit_static(False, str(exc)[:200])
         logger.exception(f"ACT phase failed: {exc}")
-        return {
+        return _mark_static_skill_directive({
             "agent_name": agent_name,
             "action": "error",
             "confidence": 0.0,
             "result": {"summary": f"Execution error: {exc}", "details": None, "proposals": [], "questions": []},
-        }
+        })
     finally:
         await _act_release_once()
 

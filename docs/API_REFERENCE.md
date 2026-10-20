@@ -124,6 +124,318 @@ prompt, tool list, and execution history.
 Events (SSE). Each chunk is a JSON object with fields `content`, `tool_calls`,
 `status`.
 
+### Capabilities
+
+Capabilities are the workspace's sovereign registry of skills, tools,
+connectors, MCP servers, plugins, and agents. The skills subset is a
+prompt-injection system: a skill is a markdown document that is fenced and
+injected into a run's prompt layer when the workspace row is enabled, its
+`required_scope` was granted, and the turn activates it. A skill is never
+executable code.
+
+| Method | Path                                        | Description                                                              |
+| ------ | ------------------------------------------- | ------------------------------------------------------------------------ |
+| GET    | `/api/v1/capabilities`                      | List workspace capabilities (`category`, `include_catalog` query params) |
+| POST   | `/api/v1/capabilities`                      | Create a persistent capability (201)                                     |
+| GET    | `/api/v1/capabilities/catalog`              | Bundled skills catalog (`category=skill` by default)                     |
+| GET    | `/api/v1/capabilities/tools/definitions`    | Canonical tool definitions and their authorized `required_scope` values   |
+| POST   | `/api/v1/capabilities/validate`             | Validate an unsaved draft; executes and persists nothing                  |
+| GET    | `/api/v1/capabilities/{id}`                 | Get one capability                                                        |
+| PATCH  | `/api/v1/capabilities/{id}`                 | Enable/disable or update a capability                                     |
+| DELETE | `/api/v1/capabilities/{id}`                 | Delete a capability (204)                                                 |
+| POST   | `/api/v1/capabilities/{id}/test`            | Real diagnostic; skill message-probes are dry runs                        |
+| POST   | `/api/v1/capabilities/sync-github`          | Validate a remote library of `SKILL.md` files; never persists             |
+
+`GET /api/v1/capabilities?include_catalog=true&category=skill` also returns
+every bundled catalog skill the workspace has not installed, marked
+`installed: false`, `enabled: false`, and with no `id`. The workspace row set
+is capped at 500 rows; when the cap truncates the response the
+`X-Capabilities-Truncated: true` and `X-Capabilities-Limit: 500` headers say
+so explicitly. The catalog merge then operates on the returned (possibly
+truncated) rows.
+
+The literal routes `/catalog` and `/tools/definitions` are declared before
+`/{cap_id}` so those names can never be resolved as capability IDs.
+
+#### Skill author contract
+
+`POST /api/v1/capabilities` takes the create envelope below. Category names
+are singular in the API — `skill`, `tool`, `connector`, `mcp`, `plugin`,
+`agent` — even though the UI labels the section "Skills".
+
+```json
+{
+  "name": "weekly-review",
+  "category": "skill",
+  "description": "Summarize a week of career activity.",
+  "version": "1.0.0",
+  "author": "Workspace Member",
+  "type": "custom",
+  "runtime": "system",
+  "config": {
+    "markdown_doc": "## Mission\n...\n## Operating Rules\n1. ...\n## Triggers\nUse when ...\n## Output Contract\nReturn ...",
+    "tags": ["career", "review"],
+    "required_scope": "memory.read",
+    "triggers": ["weekly review", "review my week"],
+    "autonomy": "suggest",
+    "trust_class": "community"
+  }
+}
+```
+
+Envelope fields:
+
+| Field         | Required | Notes                                                                                          |
+| ------------- | -------- | ---------------------------------------------------------------------------------------------- |
+| `name`        | yes      | The skill slug. Must match `^[a-zA-Z0-9_\-\. ]{1,255}$`; a duplicate in the same category is 409. Use lowercase and hyphens if the skill should be pinnable. |
+| `category`    | yes      | `skill` for this contract. Unknown categories are 400.                                          |
+| `description` | no       | Max 2000 characters. Defaults to `""`.                                                          |
+| `version`     | no       | Max 50 characters. Defaults to `1.0.0`.                                                         |
+| `author`      | no       | Max 255 characters. Defaults to `Workspace Member` (or the caller's name/email when available). |
+| `type`        | no       | Max 50 characters. Defaults to `custom`.                                                        |
+| `runtime`     | no       | Max 50 characters. Defaults to `system`.                                                        |
+| `config`      | no       | Skill-specific fields below.                                                                     |
+
+`config` fields:
+
+| Field            | Notes                                                                                                                               |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `markdown_doc`   | The instruction document. Max 262,144 characters (256 KiB). A document beyond the cap is 400.                                       |
+| `tags`           | Non-empty list of strings. Empty tags are a hard document-rule failure.                                                              |
+| `required_scope` | One exact scope from `GET /api/v1/capabilities/tools/definitions`. A comma-separated list is not a granted scope and will not inject. Unknown scopes are 400. |
+| `triggers`       | List of activation phrases. Empty means the skill is always eligible.                                                                 |
+| `autonomy`       | One of `suggest`, `autonomous`, `approval_required`. Unknown values are 400.                                                         |
+| `trust_class`    | One of `core_trusted`, `community`. Unknown values are 400. It is a label and ranking signal, not an injection gate.                 |
+| `version`        | Optional per-skill override; falls back to the envelope `version`, then the catalog version.                                          |
+
+Create validates size, scope membership, autonomy, and trust class, but
+deliberately does not lint the skill document: `skill_injection` quarantines
+and fences whatever text it receives, and a malformed document must remain
+creatable so it can be diagnosed. Use `POST /api/v1/capabilities/validate` or
+`POST /api/v1/capabilities/{id}/test` to catch document-rule failures before
+relying on the skill.
+
+##### Remote `SKILL.md` frontmatter
+
+`POST /api/v1/capabilities/sync-github` parses remote `SKILL.md` files with
+YAML frontmatter and returns a validated summary. The body after the second
+`---` is the `markdown_doc`.
+
+```yaml
+---
+name: weekly-review
+description: Summarize a week of career activity.
+tags: [career, review]
+required_scope: memory.read
+autonomy: suggest
+trust_class: community
+triggers:
+  - weekly review
+  - review my week
+version: 1.0.0
+author: Vaeloom Core Team
+---
+## Mission
+...
+## Operating Rules
+1. ...
+## Triggers
+Use when ...
+## Output Contract
+Return ...
+```
+
+`name` is normalized to a lowercase slug with underscores replaced by
+hyphens. The sweep rejects prohibited external domains, scopes outside the
+tool vocabulary, and document-rule failures. It is validation-only:
+`GitHubSkillSyncResult.persisted` is always `false`, and a candidate is
+installed by POSTing it to `/api/v1/capabilities`. The endpoint is
+owner-only, rate-limited to 5 requests/minute, walks at most 200 files per
+sweep, and takes an optional `X-GitHub-Token` header for private
+repositories. Unknown body fields are rejected with 422 rather than dropped.
+
+##### Document rules
+
+`validate_skill_document` evaluates these rules. `status` is `error` when any
+hard rule fails, `warning` when only soft rules fail, and `success` only when
+nothing failed. Catalog entries also run their declared self-check
+(`numbered-operating-rules`, `triggers-echoed`, or `scope-cited`), which
+reports soft violations.
+
+| Rule                          | Severity | Requirement                                                        |
+| ----------------------------- | -------- | ------------------------------------------------------------------ |
+| `SKILL-DOC-PRESENT`           | hard     | `markdown_doc` is non-empty after trimming.                        |
+| `SKILL-DOC-MISSION`           | hard     | Document has a `## Mission` section.                               |
+| `SKILL-DOC-OPERATING-RULES`   | hard     | Document has a `## Operating Rules` section.                       |
+| `SKILL-DOC-TRIGGERS`          | soft     | Document has a `## Triggers` section.                              |
+| `SKILL-DOC-OUTPUT-CONTRACT`   | soft     | Document has a `## Output Contract` section.                       |
+| `SKILL-TAGS-PRESENT`          | hard     | `tags` is non-empty.                                               |
+| `SKILL-SCOPE-VOCABULARY`      | hard     | `required_scope` is in the live tool-scope vocabulary.             |
+| `SKILL-PLACEHOLDER`           | hard     | No unresolved placeholder markers remain in the document.          |
+
+`POST /api/v1/capabilities/validate` is the pre-create counterpart: it takes
+the same draft fields, executes nothing, persists nothing, and returns
+`executed: false` by type. `status: not_validated` is returned for a real
+category that has no category validator rather than claiming a pass.
+
+##### Activation and gates
+
+At act time the server evaluates every workspace skill row through one pure
+gate evaluator. The gates run in this order and are hard exclusions:
+
+| Gate                      | Skip reason                 | What it means                                                                 |
+| ------------------------- | --------------------------- | ----------------------------------------------------------------------------- |
+| `enabled`                 | `disabled`                  | The row's `enabled` flag is false.                                            |
+| domain policy             | `domain_policy_exclusion`   | The skill name is excluded by platform domain policy.                         |
+| scope declared            | `no_required_scope`         | The skill declares no `required_scope`.                                       |
+| scope granted             | `scope_not_granted`         | The declared scope was not granted to this run.                               |
+| document present          | `no_markdown_doc`           | The resolved document is empty.                                               |
+| trigger or pin            | `trigger_not_matched`       | No trigger matched and the skill was not pinned.                              |
+| token budget              | `token_budget_exceeded`     | The whole-skill block did not fit the 4000-token directive budget.            |
+| pin target                | `pinned_unknown`            | A `/skill:` pin named no workspace skill; reported, never silently dropped.    |
+
+A pinned skill bypasses the trigger gate only; every other gate still
+applies, and a pinned skill wins a contested budget before anything else.
+The budget is whole-skill: a skill that would exceed it is dropped entirely
+and named in `skipped` rather than being truncated mid-document.
+
+Trigger matching is case-insensitive token-set containment: every word token
+of a trigger phrase must appear somewhere in the user's message, in any
+order. Multiple triggers are OR-ed. A skill with no triggers is always
+eligible; a skill with triggers and no user message is not matched and says
+so. `trust_class` controls ordering (`core_trusted` first) and the label in
+the rendered block; it is not currently a hard gate.
+
+##### `/skill:<slug>` pin syntax
+
+A user can pin one skill for one turn by opening the message with
+`/skill:<slug>`. The parser is frozen:
+
+```text
+/skill:resume-tailor please tighten this
+  -> residual "please tighten this", pinned "resume-tailor"
+
+/skill:resume-tailor
+  -> residual "", pinned "resume-tailor"
+```
+
+The slug must match `^[a-z0-9][a-z0-9._-]{0,63}$` with no `..`. A pin must
+open the message. Mid-message pins, doubled slashes, case variants, and
+empty, uppercase, over-long, or `..` slugs are malformed: the message passes
+through byte-identically, unpinned. A message with no `/skill:` token also
+passes through byte-identically. The pin is stripped at the API seam before
+the classifier, retrieval, or any LLM sees the message; the slug travels
+separately as `pinned_skill`.
+
+**Non-goal (D1): skills apply on the ReAct act-path only.** The static
+fallback (used only when ReAct fails or is disabled) has no shared
+prompt-assembly seam and does not inject skills. A static-fallback result
+carries `result.provenance.skill_directive = "not_applied"` and emits no
+SKILL_INJECTION record. `agent_react_enabled` defaults to `true`.
+
+##### Install paths
+
+| Path                  | Surface                                                                                      | Notes                                                                 |
+| --------------------- | -------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
+| In-app catalog        | `/workspace/{workspaceId}/capabilities/skills`                                                | Installs via `POST /api/v1/capabilities` with `category: "skill"`.     |
+| Direct API            | `POST /api/v1/capabilities`                                                                   | The create envelope above.                                            |
+| Remote library sweep  | `POST /api/v1/capabilities/sync-github`                                                       | Validation only; install each accepted candidate with the create call. |
+| Offline seed fallback | `apps/web/src/lib/capabilities-data.ts`                                                       | UI fallback when the API catalog is unreachable; not a catalog mirror. |
+
+##### Quickstart
+
+```bash
+API=http://localhost:8000
+TOKEN="<access-token>"
+WS="<workspace-id>"
+
+# 1. Pick a real scope from the live tool registry.
+curl -sS "$API/api/v1/capabilities/tools/definitions" \
+  -H "Authorization: Bearer $TOKEN"
+
+# 2. Validate the draft before creating it.
+curl -sS -X POST "$API/api/v1/capabilities/validate" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Workspace-Id: $WS" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "name": "weekly-review",
+        "category": "skill",
+        "config": {
+          "markdown_doc": "## Mission\nTrack the week.\n## Operating Rules\n1. Collect.\n2. Summarize.\n3. Next steps.\n",
+          "tags": ["career"],
+          "required_scope": "memory.read",
+          "triggers": ["weekly review"]
+        }
+      }'
+
+# 3. Create the capability (201), then probe it as a dry run.
+CAP=$(curl -sS -X POST "$API/api/v1/capabilities" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Workspace-Id: $WS" \
+  -H "Content-Type: application/json" \
+  -d '{
+        "name": "weekly-review",
+        "category": "skill",
+        "config": {
+          "markdown_doc": "## Mission\nTrack the week.\n## Operating Rules\n1. Collect.\n2. Summarize.\n3. Next steps.\n",
+          "tags": ["career"],
+          "required_scope": "memory.read",
+          "triggers": ["weekly review"]
+        }
+      }')
+CAP_ID=$(printf '%s' "$CAP" | python -c 'import json,sys; print(json.load(sys.stdin)["id"])')
+
+curl -sS -X POST "$API/api/v1/capabilities/$CAP_ID/test" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Workspace-Id: $WS" \
+  -H "Content-Type: application/json" \
+  -d '{"input": {"message": "please do my weekly review", "pin": "weekly-review"}}'
+
+# 4. Use it in chat: the pin is stripped, the slug travels as pinned_skill.
+curl -sS -X POST "$API/api/v1/agents/chat" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "X-Workspace-Id: $WS" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "/skill:weekly-review summarize this week"}'
+```
+
+The skill probe is a dry run: it reports per-gate verdicts, trigger match
+evidence, estimated tokens against the 4000-token budget, a directive
+preview, and `recorded_usage: false`. It is available to workspace members.
+`POST /api/v1/capabilities/{id}/test` requires workspace owner only for
+`category: "tool"`, because tool probes dispatch real code in the API
+process.
+
+##### Adding a catalog skill (#29)
+
+The bundled catalog is `SKILL_CATALOG` in
+`apps/api/src/api/services/skill_catalog_service.py` and currently holds 28
+entries. To add the next one:
+
+1. Append one frozen `SkillCatalogEntry` to `SKILL_CATALOG`. `author` must be
+   `Vaeloom Core Team`, `bundled` stays `true`, and the slug must be unique.
+2. Write the inline `markdown_doc` with the hard sections (`## Mission`,
+   `## Operating Rules`) and the soft sections (`## Triggers`,
+   `## Output Contract`). Avoid unresolved placeholders.
+3. Set `required_scope` to one exact value from
+   `GET /api/v1/capabilities/tools/definitions`; catalog entries may not use a
+   comma-separated list.
+4. Set `trust_class` to `core_trusted` or `community` and `autonomy` to
+   `suggest`, `autonomous`, or `approval_required`. Declare a self-check
+   (`numbered-operating-rules`, `triggers-echoed`, or `scope-cited`) that the
+   document actually satisfies.
+5. If you also ship a `skills/<slug>/SKILL.md` mirror on disk, it must have a
+   catalog entry: `test_on_disk_skills_are_all_in_the_catalog` rejects
+   orphans.
+6. The size pin in `apps/api/tests/test_skill_catalog.py` (currently 28) is
+   deliberate. Update it only when the intended catalog size changes, never
+   to make a failing run green.
+7. Run the catalog and capabilities suites before committing:
+   `uv run --project apps/api python -m pytest apps/api/tests/test_skill_catalog.py apps/api/tests/test_capabilities_e2e.py -q -o addopts=""`.
+   `GET /api/v1/capabilities/catalog` will list the new entry; no migration
+   or OpenAPI regeneration is needed because the catalog is runtime data.
+
 ### Memory
 
 The persistent memory system. Memories are vector-indexed and searchable by
