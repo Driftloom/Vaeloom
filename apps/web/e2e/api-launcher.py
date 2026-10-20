@@ -125,11 +125,38 @@ E2E_USERS = [
 ]
 
 
+async def _seed_memory_type_packs() -> None:
+    from sqlalchemy import select
+
+    from api.database import async_session_factory
+    from api.models.schema import MemoryTypePack
+    from api.services.memory_type_packs import CAREER_PACK_SLUG, CAREER_TYPES
+
+    async with async_session_factory() as db:
+        existing = await db.scalar(
+            select(MemoryTypePack).where(MemoryTypePack.slug == CAREER_PACK_SLUG)
+        )
+        if existing is None:
+            db.add(
+                MemoryTypePack(
+                    slug=CAREER_PACK_SLUG,
+                    version=1,
+                    label="Career",
+                    types=list(CAREER_TYPES),
+                    is_active=True,
+                )
+            )
+            await db.commit()
+            print(f"[api-launcher] seeded memory type pack {CAREER_PACK_SLUG}")
+
+
 async def _seed_e2e_user() -> None:
     from fastapi import HTTPException
 
     from api.database import async_session_factory
     from api.services.auth_service import AuthService
+
+    await _seed_memory_type_packs()
 
     async with async_session_factory() as db:
         for user_tuple in E2E_USERS:

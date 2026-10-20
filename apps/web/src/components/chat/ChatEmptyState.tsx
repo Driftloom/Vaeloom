@@ -91,8 +91,8 @@ export function ChatEmptyState({
         How can we help?
       </h2>
       <p className="mt-1 text-sm text-text-muted">
-        Ask anything, or mention <span className="font-mono text-action">@agent</span> and run{' '}
-        <span className="font-mono text-action">/command</span>
+        Ask anything, or mention <span className="font-mono text-primary">@agent</span> and run{' '}
+        <span className="font-mono text-primary">/command</span>
       </p>
 
       {/* Deep-link banner when resume agent is selected */}

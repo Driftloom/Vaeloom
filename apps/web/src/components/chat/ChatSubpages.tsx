@@ -30,7 +30,7 @@ export function ChatSubpagesNav({ activeTab, onTabChange }: ChatSubpagesNavProps
             key={tab.id}
             role="tab"
             aria-selected={isActive}
-            aria-controls={`panel-${tab.id}`}
+            aria-controls={isActive ? `panel-${tab.id}` : undefined}
             id={`tab-${tab.id}`}
             onClick={() => onTabChange(tab.id)}
             className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-medium transition-all shrink-0 ${

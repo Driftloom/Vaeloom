@@ -243,7 +243,12 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
         <ChatSubpagesNav activeTab={store.activeTab} onTabChange={store.setActiveTab} />
 
         {store.activeTab === 'stream' && (
-          <>
+          <div
+            id="panel-stream"
+            role="tabpanel"
+            aria-labelledby="tab-stream"
+            className="flex min-h-0 flex-1 flex-col"
+          >
             <div className="relative flex min-h-0 flex-1 flex-col">
               {store.workflowId && (
                 <div className="mx-auto w-full max-w-[768px] shrink-0 px-4 pt-4 md:px-6">
@@ -306,37 +311,58 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
               activeSkill={activeSkill}
               onActiveSkillChange={setActiveSkill}
             />
-          </>
+          </div>
         )}
 
         {store.activeTab === 'squads' && (
-          <AgentSquadsView
-            selectedSquad={store.selectedSquad}
-            onToggleAgent={store.toggleSquadAgent}
-            onSelectSquad={store.setSelectedSquad}
-            onActivateSquad={() => store.setActiveTab('stream')}
-          />
+          <div
+            id="panel-squads"
+            role="tabpanel"
+            aria-labelledby="tab-squads"
+            className="flex min-h-0 flex-1 flex-col"
+          >
+            <AgentSquadsView
+              selectedSquad={store.selectedSquad}
+              onToggleAgent={store.toggleSquadAgent}
+              onSelectSquad={store.setSelectedSquad}
+              onActivateSquad={() => store.setActiveTab('stream')}
+            />
+          </div>
         )}
 
         {store.activeTab === 'models' && (
-          <ModelMatrixView
-            availableModels={store.availableModels}
-            selectedModel={store.selectedModel}
-            onSelectModel={store.setSelectedModel}
-            temperature={store.temperature}
-            onTemperatureChange={store.setTemperature}
-          />
+          <div
+            id="panel-models"
+            role="tabpanel"
+            aria-labelledby="tab-models"
+            className="flex min-h-0 flex-1 flex-col"
+          >
+            <ModelMatrixView
+              availableModels={store.availableModels}
+              selectedModel={store.selectedModel}
+              onSelectModel={store.setSelectedModel}
+              temperature={store.temperature}
+              onTemperatureChange={store.setTemperature}
+            />
+          </div>
         )}
 
         {store.activeTab === 'memory' && (
-          <MemoryVaultExplorer
-            workspaceId={workspaceId}
-            onCiteMemory={(citation) => {
-              store.setInput(store.input ? `${store.input}\n\n${citation}` : citation);
-              store.setActiveTab('stream');
-            }}
-            onOpenVaultDrawer={() => store.setIsMemoryDrawerOpen(true)}
-          />
+          <div
+            id="panel-memory"
+            role="tabpanel"
+            aria-labelledby="tab-memory"
+            className="flex min-h-0 flex-1 flex-col"
+          >
+            <MemoryVaultExplorer
+              workspaceId={workspaceId}
+              onCiteMemory={(citation) => {
+                store.setInput(store.input ? `${store.input}\n\n${citation}` : citation);
+                store.setActiveTab('stream');
+              }}
+              onOpenVaultDrawer={() => store.setIsMemoryDrawerOpen(true)}
+            />
+          </div>
         )}
 
         <ChatMemoryDrawer
