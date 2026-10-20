@@ -160,6 +160,10 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
   const [edgeTotal, setEdgeTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedEdges, setSelectedEdges] = useState<KnowledgeGraphEdge[]>([]);
+  const [selectedEdgeTotal, setSelectedEdgeTotal] = useState(0);
+  const [selectedEdgesLoading, setSelectedEdgesLoading] = useState(false);
+  const [selectedEdgesError, setSelectedEdgesError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [layoutMode, setLayoutMode] = useState<GraphLayoutMode>('radial');
@@ -201,6 +205,42 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
   useEffect(() => {
     fetchGraph();
   }, [fetchGraph]);
+
+  // The canvas edge page is capped; the inspector must query the node's own
+  // endpoint or edges beyond the fetched page are silently invisible.
+  const selectedId = selected?.id ?? null;
+
+  useEffect(() => {
+    if (!selectedId) {
+      setSelectedEdges([]);
+      setSelectedEdgeTotal(0);
+      setSelectedEdgesLoading(false);
+      setSelectedEdgesError(null);
+      return;
+    }
+    let cancelled = false;
+    setSelectedEdges([]);
+    setSelectedEdgeTotal(0);
+    setSelectedEdgesLoading(true);
+    setSelectedEdgesError(null);
+    knowledgeGraphApi
+      .listNodeEdges(selectedId, { page: 1, page_size: 100 })
+      .then((res) => {
+        if (cancelled) return;
+        setSelectedEdges(res.items);
+        setSelectedEdgeTotal(res.total);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setSelectedEdgesError(err instanceof Error ? err.message : 'Failed to load relationships');
+      })
+      .finally(() => {
+        if (!cancelled) setSelectedEdgesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId]);
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 768px)');
@@ -526,6 +566,13 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
     );
   }
 
+  let countLabel = `${nodeTotal} Nodes · ${edgeTotal} Edges`;
+  if (nodeTotal > nodes.length) {
+    countLabel = `Showing ${nodes.length} of ${nodeTotal} Nodes`;
+  } else if (edgeTotal > edges.length) {
+    countLabel = `${nodeTotal} Nodes · Showing ${edges.length} of ${edgeTotal} Edges`;
+  }
+
   return (
     <div className="flex flex-col h-full space-y-3">
       {/* Top Toolbar */}
@@ -534,9 +581,7 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
           <div className="flex items-center gap-2">
             <h2 className="text-base font-semibold text-text">Multi-Hop Knowledge Graph</h2>
             <Badge variant="mono" size="sm">
-              {nodeTotal > nodes.length
-                ? `Showing ${nodes.length} of ${nodeTotal} Nodes`
-                : `${nodeTotal} Nodes · ${edgeTotal} Edges`}
+              {countLabel}
             </Badge>
             {matchedNodeIds && (
               <Badge variant="primary" size="sm">
@@ -949,45 +994,53 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
               <h4 className="text-xs font-semibold text-text uppercase tracking-wider mb-2">
                 Connected Relationships
               </h4>
-              {filteredEdges.filter((e) => e.sourceId === selected.id || e.targetId === selected.id)
-                .length === 0 ? (
+              {selectedEdgesLoading ? (
+                <p className="text-xs text-text-muted italic">Loading relationships…</p>
+              ) : selectedEdgesError ? (
+                <p role="alert" className="text-xs text-error">
+                  Failed to load relationships: {selectedEdgesError}
+                </p>
+              ) : selectedEdges.length === 0 ? (
                 <p className="text-xs text-text-muted italic">
-                  No relationships connected in this graph view.
+                  No relationships connected to this node.
                 </p>
               ) : (
                 <div className="space-y-1.5">
-                  {filteredEdges
-                    .filter((e) => e.sourceId === selected.id || e.targetId === selected.id)
-                    .map((e) => {
-                      const isOutgoing = e.sourceId === selected.id;
-                      const otherId = isOutgoing ? e.targetId : e.sourceId;
-                      const otherNode = nodeMap.get(otherId);
+                  {selectedEdges.map((e) => {
+                    const isOutgoing = e.sourceId === selected.id;
+                    const otherId = isOutgoing ? e.targetId : e.sourceId;
+                    const otherNode = nodeMap.get(otherId);
 
-                      return (
-                        <div
-                          key={e.id}
-                          className="flex items-center justify-between p-2 rounded-lg border border-border bg-surface-100 text-xs"
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="font-mono text-accent font-semibold shrink-0">
-                              {isOutgoing ? '→' : '←'} {e.relationship}
-                            </span>
-                            <span className="text-text font-medium truncate">
-                              {otherNode?.label || otherId.slice(0, 8)}
-                            </span>
-                          </div>
-                          {otherNode && (
-                            <button
-                              type="button"
-                              onClick={() => setSelected(otherNode)}
-                              className="text-[11px] text-accent hover:underline shrink-0 ml-2"
-                            >
-                              Inspect
-                            </button>
-                          )}
+                    return (
+                      <div
+                        key={e.id}
+                        className="flex items-center justify-between p-2 rounded-lg border border-border bg-surface-100 text-xs"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-mono text-accent font-semibold shrink-0">
+                            {isOutgoing ? '→' : '←'} {e.relationship}
+                          </span>
+                          <span className="text-text font-medium truncate">
+                            {otherNode?.label || otherId.slice(0, 8)}
+                          </span>
                         </div>
-                      );
-                    })}
+                        {otherNode && (
+                          <button
+                            type="button"
+                            onClick={() => setSelected(otherNode)}
+                            className="text-[11px] text-accent hover:underline shrink-0 ml-2"
+                          >
+                            Inspect
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {selectedEdgeTotal > selectedEdges.length && (
+                    <p className="text-[11px] text-text-muted">
+                      Showing {selectedEdges.length} of {selectedEdgeTotal} relationships.
+                    </p>
+                  )}
                 </div>
               )}
             </div>
