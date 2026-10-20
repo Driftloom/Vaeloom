@@ -9188,8 +9188,7 @@ paths:
               schema:
                 type: array
                 items:
-                  type: object
-                  additionalProperties: true
+                  $ref: '#/components/schemas/CatalogSkillItem'
                 title: Response List Catalog Capabilities Api V1 Capabilities Catalog
                   Get
         '422':
@@ -9345,7 +9344,16 @@ paths:
 
         every bundled catalog skill the workspace has not installed, marked
 
-        ``installed: false`` / ``enabled: false`` with no ``id``.'
+        ``installed: false`` / ``enabled: false`` with no ``id``.
+
+
+        The workspace row set is capped at ``CAPABILITY_LIST_LIMIT`` rows; past the
+
+        cap the response is truncated and the ``X-Capabilities-Truncated`` /
+
+        ``X-Capabilities-Limit`` headers make that explicit. The catalog merge then
+
+        sees the returned, possibly truncated rows.'
       operationId: list_capabilities_api_v1_capabilities_get
       parameters:
       - name: category
@@ -20146,6 +20154,74 @@ components:
       - company
       - role
       title: CareerEntry
+    CatalogSkillItem:
+      properties:
+        slug:
+          type: string
+          title: Slug
+        name:
+          type: string
+          title: Name
+        description:
+          type: string
+          title: Description
+        tags:
+          items:
+            type: string
+          type: array
+          title: Tags
+        version:
+          type: string
+          title: Version
+        author:
+          type: string
+          title: Author
+        required_scope:
+          type: string
+          title: Required Scope
+        autonomy:
+          type: string
+          title: Autonomy
+        trust_class:
+          type: string
+          title: Trust Class
+        triggers:
+          items:
+            type: string
+          type: array
+          title: Triggers
+        markdown_doc:
+          type: string
+          title: Markdown Doc
+        bundled:
+          type: boolean
+          title: Bundled
+        self_check:
+          type: string
+          title: Self Check
+      type: object
+      required:
+      - slug
+      - name
+      - description
+      - tags
+      - version
+      - author
+      - required_scope
+      - autonomy
+      - trust_class
+      - triggers
+      - markdown_doc
+      - bundled
+      - self_check
+      title: CatalogSkillItem
+      description: 'One browsable catalog entry, exactly as :func:`catalog_to_wire`
+        emits it.
+
+
+        Typed so the route''s contract is machine-checkable in the OpenAPI schema
+
+        rather than ``dict[str, Any]``, which told a generated client nothing.'
     ChatMessage:
       properties:
         workspaceId:
@@ -23588,12 +23664,14 @@ components:
           - type: 'null'
           title: Supersedes Id
         created_at:
-          type: string
-          format: date-time
+          anyOf:
+          - type: string
+          - type: 'null'
           title: Created At
         updated_at:
-          type: string
-          format: date-time
+          anyOf:
+          - type: string
+          - type: 'null'
           title: Updated At
       type: object
       required:
@@ -23614,8 +23692,9 @@ components:
           format: uuid
           title: Workspace Id
         exported_at:
-          type: string
-          format: date-time
+          anyOf:
+          - type: string
+          - type: 'null'
           title: Exported At
         total_count:
           type: integer
@@ -23823,16 +23902,17 @@ components:
         deleted_at:
           anyOf:
           - type: string
-            format: date-time
           - type: 'null'
           title: Deleted At
         created_at:
-          type: string
-          format: date-time
+          anyOf:
+          - type: string
+          - type: 'null'
           title: Created At
         updated_at:
-          type: string
-          format: date-time
+          anyOf:
+          - type: string
+          - type: 'null'
           title: Updated At
       type: object
       required:
@@ -27205,6 +27285,10 @@ components:
           type: boolean
           title: Executed
           default: false
+        recorded_usage:
+          type: boolean
+          title: Recorded Usage
+          default: true
       type: object
       required:
       - status
