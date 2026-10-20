@@ -510,6 +510,56 @@ describe('CapabilitiesPage', () => {
     expect(fakeDb.creates.map((body) => body['category'])).toEqual(['skill']);
   });
 
+  it('surfaces the enterprise gate error from a New Plugin create and records nothing', async () => {
+    await renderSkills();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('tab', { name: /Plugins/i }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'New Plugin' }));
+    });
+    const dialog = screen.getByRole('dialog');
+
+    capsApi()['create'].mockRejectedValueOnce(httpError(403, 'Plugin runtime is enterprise-gated'));
+    const listSkillsCalls = capsApi()['listSkills'].mock.calls.length;
+
+    fireEvent.change(within(dialog).getByPlaceholderText(/e\.g\. code-synthesizer/i), {
+      target: { value: 'test-plugin' },
+    });
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole('button', { name: /Create Capability/i }));
+    });
+
+    // The write reached the API exactly once, as a plugin capability.
+    expect(capsApi()['create']).toHaveBeenCalledTimes(1);
+    expect(capsApi()['create']).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'test-plugin', category: 'plugin' }),
+    );
+
+    // The gate message is surfaced verbatim...
+    await waitFor(() => expect(mockToast).toHaveBeenCalled());
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tone: 'error',
+        // api.ts turns the ApiError `detail` into `message`; errorMessage passes
+        // it through, so the 403 body is what the user reads.
+        detail: expect.stringContaining('Plugin runtime is enterprise-gated'),
+      }),
+    );
+    // ...and no success toast pretends the registry bind happened.
+    expect(
+      mockToast.mock.calls.some((call) =>
+        String((call[0] as { title?: string }).title).startsWith('Created '),
+      ),
+    ).toBe(false);
+
+    // The Once-mock replaced the fake server's impl, so fakeDb stays empty and
+    // a failed create must not re-run the page's loaders either.
+    expect(fakeDb.creates).toEqual([]);
+    expect(capsApi()['listSkills'].mock.calls.length).toBe(listSkillsCalls);
+  });
+
   it("routes a server row categorised 'skill' into the Skills tab", async () => {
     fakeDb.skills = [
       installedSkill({
@@ -601,6 +651,40 @@ describe('CapabilitiesPage', () => {
     await userClickRow('acceptance-criteria-review');
     expect(screen.getByText('2h ago')).toBeInTheDocument();
     expect(screen.getByText('7')).toBeInTheDocument();
+  });
+
+  it('sorts recently used newest-first and puts never-used rows last', async () => {
+    fakeDb.skills = [
+      installedSkill({
+        id: 'srv-old',
+        name: 'used-old',
+        usageCount: 5,
+        lastUsedAt: '2026-09-01T10:00:00Z',
+      }),
+      installedSkill({
+        id: 'srv-never',
+        name: 'never-used',
+        usageCount: 99,
+        lastUsedAt: null,
+      }),
+      installedSkill({
+        id: 'srv-new',
+        name: 'used-new',
+        usageCount: 1,
+        lastUsedAt: '2026-10-01T10:00:00Z',
+      }),
+    ];
+    await renderSkills();
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Sort skills' }), {
+      target: { value: 'recent' },
+    });
+
+    const list = screen.getByRole('list', { name: 'Skills' });
+    const names = within(list)
+      .getAllByRole('button', { name: /^(used-new|used-old|never-used)$/ })
+      .map((button) => button.getAttribute('aria-label'));
+    expect(names).toEqual(['used-new', 'used-old', 'never-used']);
   });
 
   // ─── C: writes ─────────────────────────────────────────────────────────────

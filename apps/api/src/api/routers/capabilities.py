@@ -7,15 +7,16 @@ import time
 import uuid
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
+from ..config import settings
 from ..dependencies import get_current_user, get_tenant_id, get_workspace_id
 from ..middleware.rate_limit import rate_limit
-from ..models.schema import Workspace, WorkspaceCapability, WorkspaceUser
+from ..models.schema import Plugin, Workspace, WorkspaceCapability, WorkspaceUser
 from ..schemas.capability_draft import (
     CapabilityDraftRequest,
     CapabilityDraftValidationResponse,
@@ -23,8 +24,8 @@ from ..schemas.capability_draft import (
     DraftViolation,
     Severity,
 )
-from ..services.capability_usage_service import record_usage
 from ..services.audit import AuditLogger
+from ..services.capability_usage_service import record_usage
 from ..services.github_skills_sync import GitHubSkillSyncResult
 from ..services.skill_catalog_service import (
     AUTONOMY_VALUES,
@@ -56,6 +57,20 @@ VALID_CATEGORIES = frozenset({"skill", "connector", "mcp", "plugin", "tool", "ag
 AutonomyLiteral = Literal["suggest", "autonomous", "approval_required"]
 
 MCP_PROBE_TIMEOUT_S = 5.0
+
+# A skill document is prompt payload, not a standalone file: the directive
+# budget is ``skill_injection.SKILL_DIRECTIVE_TOKEN_BUDGET`` (4000 tokens,
+# roughly 16KB of text), and a row past this cap cannot be rendered within any
+# realistic prompt envelope. Refused at write time so the failure is a 400 the
+# author sees, not a silently dropped layer at injection time.
+MARKDOWN_DOC_MAX_CHARS = 256 * 1024
+
+# Workspace rows returned by ``list_capabilities`` in one response. Nothing
+# enforced a bound before; a pathological workspace returned its entire row set
+# on every poll. Past the cap the response is truncated and says so via
+# ``X-Capabilities-Truncated`` / ``X-Capabilities-Limit`` headers -- a listing
+# endpoint must stay usable at the cap, so truncation is signalled, not an error.
+CAPABILITY_LIST_LIMIT = 500
 
 NO_EXECUTABLE_RUNTIME = (
     "This category has no executable runtime; only its configuration was validated."
@@ -126,6 +141,28 @@ class SkillListItem(CapabilityResponse):
     slug: str | None = None
 
 
+class CatalogSkillItem(BaseModel):
+    """One browsable catalog entry, exactly as :func:`catalog_to_wire` emits it.
+
+    Typed so the route's contract is machine-checkable in the OpenAPI schema
+    rather than ``dict[str, Any]``, which told a generated client nothing.
+    """
+
+    slug: str
+    name: str
+    description: str
+    tags: list[str]
+    version: str
+    author: str
+    required_scope: str
+    autonomy: str
+    trust_class: str
+    triggers: list[str]
+    markdown_doc: str
+    bundled: bool
+    self_check: str
+
+
 class TestCapabilityRequest(BaseModel):
     input: dict[str, Any] = Field(default_factory=dict)
 
@@ -136,6 +173,7 @@ class TestCapabilityResponse(BaseModel):
     output: Any = None
     error: str | None = None
     executed: bool = False
+    recorded_usage: bool = True
 
 
 def _get_user_id(current_user: dict | None) -> str | None:
@@ -922,7 +960,7 @@ def _validate_plugin_draft(
         )
 
 
-@router.get("/catalog", response_model=list[dict[str, Any]])
+@router.get("/catalog", response_model=list[CatalogSkillItem])
 async def list_catalog_capabilities(
     category: str | None = Query(default="skill"),
     db: AsyncSession = Depends(get_db),
@@ -1110,6 +1148,7 @@ async def validate_capability_draft(
 
 @router.get("", response_model=list[SkillListItem])
 async def list_capabilities(
+    response: Response,
     category: str | None = Query(default=None),
     include_catalog: bool = Query(default=False),
     db: AsyncSession = Depends(get_db),
@@ -1121,6 +1160,11 @@ async def list_capabilities(
     With ``include_catalog=true`` and ``category=skill`` the response also carries
     every bundled catalog skill the workspace has not installed, marked
     ``installed: false`` / ``enabled: false`` with no ``id``.
+
+    The workspace row set is capped at ``CAPABILITY_LIST_LIMIT`` rows; past the
+    cap the response is truncated and the ``X-Capabilities-Truncated`` /
+    ``X-Capabilities-Limit`` headers make that explicit. The catalog merge then
+    sees the returned, possibly truncated rows.
     """
     user_id = _get_user_id(current_user)
     wid = await _verify_workspace_access(db, user_id, workspace_id)
@@ -1130,9 +1174,21 @@ async def list_capabilities(
     if cat_clean:
         query = query.where(WorkspaceCapability.category == cat_clean)
 
-    query = query.order_by(WorkspaceCapability.created_at.desc())
+    query = (
+        query.order_by(WorkspaceCapability.created_at.desc())
+        .limit(CAPABILITY_LIST_LIMIT + 1)
+    )
     res = await db.execute(query)
-    items = res.scalars().all()
+    items = list(res.scalars().all())
+    if len(items) > CAPABILITY_LIST_LIMIT:
+        logger.warning(
+            "Capability list for workspace %s exceeded %d rows; truncating",
+            wid,
+            CAPABILITY_LIST_LIMIT,
+        )
+        items = items[:CAPABILITY_LIST_LIMIT]
+        response.headers["X-Capabilities-Truncated"] = "true"
+        response.headers["X-Capabilities-Limit"] = str(CAPABILITY_LIST_LIMIT)
 
     merged: list[SkillListItem] = [_to_list_item(c) for c in items]
     if not include_catalog or cat_clean not in ("skill", "skills"):
@@ -1160,10 +1216,23 @@ def _validate_config_claims(category: str, config: dict[str, Any] | None) -> Non
     it receives, and `/capabilities/{id}/test` exists precisely to diagnose a
     document that fails those rules. Hard-blocking on create would make a
     malformed document undiagnosable, because it could never be created. Draft
-    authors reach for `/validate` and `/test` for that.
+    authors reach for `/validate` and `/test` for that. Size is the one property
+    checked here: a document past `MARKDOWN_DOC_MAX_CHARS` is refused because
+    every copy -- storage, validation, prompt assembly -- scales with it.
     """
     if not isinstance(config, dict) or not config:
         return
+
+    markdown_doc = config.get("markdown_doc")
+    if isinstance(markdown_doc, str) and len(markdown_doc) > MARKDOWN_DOC_MAX_CHARS:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=(
+                f"markdown_doc is {len(markdown_doc)} characters; the maximum is "
+                f"{MARKDOWN_DOC_MAX_CHARS}. Skill documents are injected into the "
+                "prompt, so the cap bounds how much of a turn one row can own."
+            ),
+        )
 
     scope = config.get("required_scope")
     if isinstance(scope, str) and scope.strip():
@@ -1176,9 +1245,11 @@ def _validate_config_claims(category: str, config: dict[str, Any] | None) -> Non
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=(
-                    f"Unknown required_scope {unknown[0]!r}. A scope the backend does not "
-                    "emit fails closed at execution time with a permission error the user "
-                    "cannot act on."
+                    f"Unknown required_scope {', '.join(repr(item) for item in unknown)}. "
+                    "A scope the backend does not emit fails closed at execution time with "
+                    "a permission error the user cannot act on. Known scopes: "
+                    f"{', '.join(sorted(tool_scope_vocabulary()))} "
+                    "(canonical live list: GET /api/v1/capabilities/tools/definitions)."
                 ),
             )
 
@@ -1286,6 +1357,15 @@ async def create_capability(
             detail=f"Capability '{name}' is excluded by platform policy. Vaeloom workspace domain is restricted to career intelligence and verified platform tools.",
         )
 
+    # Plugin capabilities are a Registry-delivered executable payload, so they
+    # are enterprise-only. The duplicate/name checks below never run for a gated
+    # category: the gate is a read-and-write boundary, not a validation error.
+    if category == "plugin" and not settings.enterprise_routes_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Plugin runtime is enterprise-gated",
+        )
+
     # Check for duplicate within workspace and category
     existing = await db.execute(
         select(WorkspaceCapability.id).where(
@@ -1362,6 +1442,76 @@ async def create_capability(
                 register_dynamic_tool(td, _custom_tool_handler, workspace_id=str(wid))
         except Exception as e:
             logger.warning(f"Failed to register dynamic tool '{name}': {e}")
+
+    # The plugin registry binding rides the SAME transaction as the capability
+    # row: a plugin capability IS the executable, unlike the tool branch above,
+    # whose policy row survives a registration failure. Union semantics:
+    # capability insert + registry bind commit together or the error propagates.
+    if category == "plugin":
+        entry_point = payload.config.get("entry_point")
+        if not isinstance(entry_point, str) or not entry_point.strip():
+            # plugins.entry_point is NOT NULL and there is no truthful default;
+            # the server must never invent a filename the author never wrote.
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Plugin capabilities require config.entry_point; the server will not invent one.",
+            )
+
+        permissions = payload.config.get("permissions")
+        permissions = dict(permissions) if isinstance(permissions, dict) and permissions else {}
+        list_field = lambda key: payload.config.get(key) if isinstance(payload.config.get(key), list) else []
+
+        # Upsert-by-name. The registry's own name lookups are tenant-scoped
+        # when a tenant is attached and name-only otherwise (mirrors the
+        # readability query in the plugin router), so the re-bind target is
+        # resolve-deterministically the row this workspace's tenant already owns.
+        plugin_query = select(Plugin).where(Plugin.name == name)
+        if tid is not None:
+            plugin_query = plugin_query.where(Plugin.tenant_id == str(tid))
+        existing_plugin = (await db.execute(plugin_query)).scalar_one_or_none()
+
+        if existing_plugin is not None:
+            existing_plugin.version = payload.version
+            existing_plugin.author = cap.author
+            existing_plugin.description = payload.description or ""
+            existing_plugin.license = payload.config.get("license") if isinstance(payload.config.get("license"), str) else ""
+            existing_plugin.status = "REGISTERED"
+            existing_plugin.permissions = permissions
+            existing_plugin.capabilities = list_field("capabilities")
+            existing_plugin.hooks = list_field("hooks")
+            existing_plugin.tags = list_field("tags")
+            existing_plugin.entry_point = entry_point
+            existing_plugin.config_schema = None
+            existing_plugin.code = payload.config.get("code") if isinstance(payload.config.get("code"), str) else None
+            existing_plugin.min_app_version = (
+                payload.config.get("min_app_version")
+                if isinstance(payload.config.get("min_app_version"), str)
+                else None
+            )
+        else:
+            db.add(
+                Plugin(
+                    name=name,
+                    version=payload.version,
+                    author=cap.author,
+                    description=payload.description or "",
+                    license=payload.config.get("license") if isinstance(payload.config.get("license"), str) else "",
+                    status="REGISTERED",
+                    permissions=permissions,
+                    capabilities=list_field("capabilities"),
+                    hooks=list_field("hooks"),
+                    tags=list_field("tags"),
+                    entry_point=entry_point,
+                    tenant_id=str(tid) if tid is not None else None,
+                    config_schema=None,
+                    code=payload.config.get("code") if isinstance(payload.config.get("code"), str) else None,
+                    min_app_version=(
+                        payload.config.get("min_app_version")
+                        if isinstance(payload.config.get("min_app_version"), str)
+                        else None
+                    ),
+                )
+            )
 
     db.add(cap)
     await db.commit()
@@ -1677,8 +1827,36 @@ async def test_capability(
     if cap.category == "tool":
         await _require_workspace_owner(db, user_id, workspace_id)
 
-    await record_usage(db, cap)
-    await db.commit()
+    # Skill message-probes are dry runs and must not move `usage_count`: a probe
+    # that counted would answer "what would happen on a real turn" with a lie.
+    # The intent is read before the counter is. Scoped to the skill branch: a
+    # tool's payload may legitimately carry `message`/`pin` keys, and those must
+    # not change tool behaviour.
+    probe_message = ""
+    probe_pin: str | None = None
+    if cap.category == "skill" and isinstance(payload.input, dict):
+        from ..services.skill_injection import _PIN_SLUG_RE
+
+        probe_message = str(payload.input.get("message") or payload.input.get("prompt") or "")
+        raw_pin = payload.input.get("pin")
+        if raw_pin is not None:
+            if (
+                not isinstance(raw_pin, str)
+                or not _PIN_SLUG_RE.match(raw_pin)
+                or ".." in raw_pin
+            ):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=(
+                        "input.pin must be a skill slug matching "
+                        "^[a-z0-9][a-z0-9._-]{0,63}$ with no '..'"
+                    ),
+                )
+            probe_pin = raw_pin
+
+    if not (cap.category == "skill" and probe_message.strip()):
+        await record_usage(db, cap)
+        await db.commit()
 
     start_time = time.monotonic()
     try:
@@ -1786,9 +1964,7 @@ async def test_capability(
                 entry=catalog_entry,
             )
 
-            sample_msg = ""
-            if isinstance(payload.input, dict):
-                sample_msg = str(payload.input.get("message") or payload.input.get("prompt") or "")
+            sample_msg = probe_message
 
             if not sample_msg:
                 elapsed_ms = (time.monotonic() - start_time) * 1000.0
@@ -1809,7 +1985,12 @@ async def test_capability(
                 SKILL_DIRECTIVE_TOKEN_BUDGET,
                 EnabledSkill,
                 _normalize,
+                _render_block,
+                _resolve,
+                _skill_rows,
+                _trigger_hits,
                 _trigger_state,
+                evaluate_skill_gates,
             )
 
             temp_skill = EnabledSkill(
@@ -1832,6 +2013,105 @@ async def test_capability(
                 else (True, "No test message provided; trigger check skipped")
             )
 
+            # ── dry-run probe ──────────────────────────────────────────────
+            # `evaluate_skill_gates` is the same pure function production
+            # injection runs, so this verdict cannot disagree with what a real
+            # turn would do -- one code path, not a reimplementation. Granted
+            # scopes are the whole tool vocabulary: the probe answers "is this
+            # row injectable in this workspace at all", not "for one agent this
+            # route cannot resolve". Nothing is executed or recorded.
+            haystack = _normalize(sample_msg)
+            scope_vocab = set(tool_scope_vocabulary())
+            workspace_rows = await _skill_rows(db, wid)
+            probe_injected, probe_skipped = evaluate_skill_gates(
+                workspace_rows,
+                scope_vocab,
+                haystack,
+                pinned=probe_pin,
+                budget=SKILL_DIRECTIVE_TOKEN_BUDGET,
+            )
+            probed_injected = next(
+                (s for s in probe_injected if s.capability_id == str(cap.id)),
+                None,
+            )
+            probed_skip = next((s for s in probe_skipped if s.name == cap.name), None)
+            pin_unknown_skip = next(
+                (s for s in probe_skipped if s.reason == "pinned_unknown"), None
+            )
+            probed_row = next(
+                (r for r in workspace_rows if str(r.id) == str(cap.id)), None
+            )
+            probed_resolved = probed_injected or (
+                _resolve(probed_row) if probed_row is not None else temp_skill
+            )
+
+            gate_order = [
+                "enabled",
+                "domain_policy",
+                "required_scope",
+                "scope_granted",
+                "markdown_doc",
+                "pin",
+                "trigger",
+                "budget",
+            ]
+            reason_to_gate = {
+                "disabled": "enabled",
+                "domain_policy_exclusion": "domain_policy",
+                "no_required_scope": "required_scope",
+                "scope_not_granted": "scope_granted",
+                "no_markdown_doc": "markdown_doc",
+                "trigger_not_matched": "trigger",
+                "token_budget_exceeded": "budget",
+            }
+            # The row ladder: only a skip of this row's own advances the
+            # failing index. An unknown pin is deliberately NOT folded in here
+            # -- it never blocks rows (evaluate_skill_gates reports it and lets
+            # every row proceed), so it cannot make later row gates
+            # not_evaluated. It fails the pin gate on its own, below.
+            failing_gate = (
+                reason_to_gate.get(probed_skip.reason)
+                if probed_skip is not None
+                else None
+            )
+            failing_index = gate_order.index(failing_gate) if failing_gate else None
+            probed_is_pinned = bool(probe_pin and cap.name.lower() == probe_pin)
+
+            gates: list[dict[str, Any]] = []
+            for index, gate in enumerate(gate_order):
+                verdict = "passed"
+                reason: str | None = None
+                detail: str | None = None
+                if failing_index is not None and index > failing_index:
+                    verdict = "not_evaluated"
+                elif gate == "pin" and probe_pin is None:
+                    verdict = "not_supplied"
+                    detail = "No pin was supplied; trigger matching decides eligibility."
+                elif gate == "pin":
+                    detail = (
+                        f"Pin '{probe_pin}' matches this skill."
+                        if probed_is_pinned
+                        else f"Pin '{probe_pin}' matches a different workspace skill."
+                    )
+                elif gate == "trigger":
+                    if not trigger_matched and probed_is_pinned:
+                        detail = "Trigger gate bypassed by pin."
+                    else:
+                        detail = trigger_detail
+                if failing_index == index and probed_skip is not None:
+                    verdict = "failed"
+                    reason = probed_skip.reason
+                    detail = probed_skip.detail
+                if gate == "pin" and pin_unknown_skip is not None:
+                    verdict = "failed"
+                    reason = pin_unknown_skip.reason
+                    detail = pin_unknown_skip.detail
+                gates.append(
+                    {"gate": gate, "verdict": verdict, "reason": reason, "detail": detail}
+                )
+
+            matched_triggers = _trigger_hits(probed_resolved, haystack)
+
             safe_doc, flagged_markers = quarantine(doc, source=f"skill:{cap.name}")
             est_tokens = estimate_tokens(safe_doc)
 
@@ -1852,6 +2132,25 @@ async def test_capability(
                     "trigger_detail": trigger_detail,
                     "flagged_markers": flagged_markers,
                     "preview": safe_doc[:300] + ("..." if len(safe_doc) > 300 else ""),
+                    "probe": {
+                        "scope_context": "tool_scope_vocabulary",
+                        "granted_scope_count": len(scope_vocab),
+                        "outcome": (
+                            "injected" if probed_injected is not None else "skipped"
+                        ),
+                        "skip": (
+                            {"reason": probed_skip.reason, "detail": probed_skip.detail}
+                            if probed_skip is not None
+                            else None
+                        ),
+                        "gates": gates,
+                        "pin": probe_pin,
+                        "pin_unknown": pin_unknown_skip is not None,
+                        "matched_triggers": matched_triggers,
+                        "match_hits": len(matched_triggers),
+                        "would_inject": [s.name for s in probe_injected],
+                        "rendered_block": _render_block(probed_resolved),
+                    },
                 },
                 error=(
                     val_res.violations[0].message
@@ -1859,6 +2158,7 @@ async def test_capability(
                     else None
                 ),
                 executed=False,
+                recorded_usage=False,
             )
 
         elapsed_ms = (time.monotonic() - start_time) * 1000.0

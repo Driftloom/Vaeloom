@@ -5,6 +5,7 @@ import pytest
 from httpx import AsyncClient
 from sqlalchemy import update
 
+from api.config import settings
 from api.models.schema import WorkspaceCapability
 from api.services.skill_catalog_service import (
     CATALOG_BY_SLUG,
@@ -529,7 +530,10 @@ class TestSkillTestEndpoint:
             headers=headers,
         )
         assert res.status_code == 400
-        assert "system.observe" in res.json()["detail"]
+        detail = res.json()["detail"]
+        assert "system.observe" in detail
+        assert "memory.read" in detail
+        assert "GET /api/v1/capabilities/tools/definitions" in detail
 
     async def test_patch_refuses_a_scope_outside_the_vocabulary(self, client: AsyncClient):
         """A partial update must not be a way around the create guard."""
@@ -777,7 +781,13 @@ class TestHonestTestEndpointShapes:
         for scope in result["required_scopes"]:
             assert scope in tool_scope_vocabulary()
 
-    async def test_plugin_branch_validates_a_manifest(self, client: AsyncClient):
+    async def test_plugin_branch_validates_a_manifest(self, client: AsyncClient, monkeypatch):
+        # Plugin creation is enterprise-gated at the create path (Task 6). The
+        # subject here is the test engine's plugin branch, so the gate is pinned
+        # ON for the setup write and the row is created with a truthful
+        # entry_point; the config is then blanked to re-arm every manifest rule
+        # the engine reports. The assertions below are unchanged.
+        monkeypatch.setattr(settings, "enterprise_routes_enabled", True)
         headers, workspace_id = await _signup_workspace(client, "pluginbranch")
         res = await client.post(
             "/api/v1/capabilities",
@@ -785,11 +795,19 @@ class TestHonestTestEndpointShapes:
                 "name": "manifest-plugin",
                 "category": "plugin",
                 "description": "Plugin capability",
-                "config": {"entry_point": "", "name": "manifest-plugin"},
+                "config": {"entry_point": "main.py", "name": "manifest-plugin"},
             },
             headers=headers,
         )
         assert res.status_code == 201
+        cap_id = res.json()["id"]
+
+        res = await client.patch(
+            f"/api/v1/capabilities/{cap_id}",
+            json={"config": {"entry_point": ""}},
+            headers=headers,
+        )
+        assert res.status_code == 200
 
         res = await client.post(
             "/api/v1/agents/capabilities/test",
