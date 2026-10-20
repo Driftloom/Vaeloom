@@ -483,6 +483,16 @@ Fixes made during V1 (all justified, recorded): `EXPECTED_ALEMBIC_HEAD` `"0057"`
 
 Screenshots: `wave3-v1-*-apidown.png` (10 files, incl. vault-retry, chat-vault-tab, chat-drawer). Method note: full-API-down prevents surface-level walking (reload loop), so per-surface honesty was verified by family-level 503 interception with auth alive.
 
+### Final verification pass (2026-10-20)
+
+Live re-drill against the API launcher + Next dev stack (`E2E_WEB_MODE=dev npx playwright test e2e/final-verification.spec.ts --project=chromium` → **4 passed (2.1m)**). The spec was temporary: it was removed after the run, so the evidence is the assertions below plus the screenshots.
+
+- **F-corrections retraction closed.** The re-drill intercepts `/\/api\/v1\/memories(\?.*)?$/` — the bare endpoint the retraction requires — and captured exactly `GET /api/v1/memories?page=1&page_size=100&workspace_id=…&include_superseded=true`. The 503 produced the panel's `role="alert"` with "Could not load memories (HTTP 503)."; neither "No memories found" nor "No matching memories" rendered; "Try Again" re-issued the bare request. Evidence: `.playwright-mcp/final-verification-corrections-503.png`.
+- **KPI outage honesty re-proven live.** With `**/api/v1/memories/feed?*` returning 503, `/memory` renders "Memory stats unavailable" with retry, and none of "Total Memories" / "Agent Synthesized" / "Superseded / Corrected" render (no fabricated zeros); retry re-fired the feed. Evidence: `.playwright-mcp/final-verification-kpi-503.png`.
+- **Chat drawer outage honesty re-proven live.** With `/workspaces/{id}/memories` returning 503, the drawer's dialog shows the alert "Could not load memories" and no "No memories found"/"pin answers" copy; "Try Again" re-fetched. Evidence: `.playwright-mcp/final-verification-drawer-503.png`.
+- **Create → deep-link search end-to-end.** A `POST /memories` (type `note`, marker title/content) returned 201; `/memory?query=<marker>` prefilled the search box and server search returned "1 match" with the created row; a non-matching query removed it. Evidence: `.playwright-mcp/final-verification-deeplink.png`.
+- Remaining End State items stay covered by Wave 3 captures and their automated suites rather than this pass: graph honesty (`F-inspector-underreport`, 21/21), pagination (`wave3-s8`, plus panel cap 7/7), vault/sync truth (`memory-honesty.spec.ts`, Wave 3 s6), and invalid-type 422 (endpoint coverage).
+
 ### Post-run artifact completion (2026-10-18)
 
 - **OpenAPI regenerated** (`pnpm gen:openapi`): 296 paths. The committed specs were stale — the new `GET /api/v1/vault-sync/conflicts/history` path was missing entirely. Diff = exactly that one new path + `/report` and `/status` description updates from lane B (+118/−3 per file; `specs/api/openapi.yaml` and `docs/backend/openapi.yaml` mirrored). Two consecutive runs are **byte-stable** (file hashes identical), so the CI freshness gate (`ci-backend.yml:35` — `gen_openapi.py && git diff --exit-code`) is satisfied as soon as the branch is committed; it would have failed without this regen.
