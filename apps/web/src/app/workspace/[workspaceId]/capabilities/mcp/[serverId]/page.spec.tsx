@@ -1,6 +1,8 @@
 import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { SWRConfig } from 'swr';
 import McpSubpage from './page';
+import { connectorsApi } from '@/lib/api-client';
 
 const mockPush = jest.fn();
 let mockParams = { workspaceId: 'ws-test-123', serverId: 'mcp-filesystem' };
@@ -49,6 +51,14 @@ jest.mock('@/lib/api-client', () => {
   };
 });
 
+function renderSubpage() {
+  return render(
+    <SWRConfig value={{ provider: () => new Map(), dedupingInterval: 0 }}>
+      <McpSubpage />
+    </SWRConfig>,
+  );
+}
+
 describe('McpSubpage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -56,7 +66,7 @@ describe('McpSubpage', () => {
   });
 
   it('renders breadcrumbs and server title for a configured MCP server', async () => {
-    render(<McpSubpage />);
+    renderSubpage();
 
     await waitFor(() => {
       expect(
@@ -69,9 +79,33 @@ describe('McpSubpage', () => {
     expect(screen.getByRole('button', { name: /Sync Tools/i })).toBeInTheDocument();
   });
 
+  it('renders the live transport the configured connector declares', async () => {
+    connectorsApi.list.mockResolvedValueOnce([
+      {
+        id: 'mcp-filesystem',
+        name: 'Filesystem Server',
+        type: 'mcp',
+        status: 'connected',
+        config: { transport: 'http', url: 'http://127.0.0.1:7000/mcp' },
+      },
+    ]);
+
+    renderSubpage();
+
+    await waitFor(() => {
+      expect(
+        screen.getByRole('heading', { level: 1, name: /Filesystem Server/i }),
+      ).toBeInTheDocument();
+    });
+
+    expect(screen.queryByText('stdio')).not.toBeInTheDocument();
+    const transportNodes = await screen.findAllByText('http');
+    expect(transportNodes.length).toBeGreaterThan(0);
+  });
+
   it('renders empty state when MCP server is not found', async () => {
     mockParams = { workspaceId: 'ws-test-123', serverId: 'unknown-mcp-server-xyz' };
-    render(<McpSubpage />);
+    renderSubpage();
 
     await waitFor(() => {
       expect(

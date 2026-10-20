@@ -2,11 +2,9 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import useSWR from 'swr';
 import {
   Badge,
-  Breadcrumb,
   Button,
   EmptyState,
   FormField,
@@ -15,12 +13,11 @@ import {
   TabPanel,
   Tabs,
   Textarea,
-  Tooltip,
 } from '@vaeloom/ui-kit';
 import { connectorsApi, type ConnectorItem, type McpToolInfo } from '@/lib/api-client';
 import { MCP_CATALOG_TEMPLATES, type McpCatalogTemplate } from '@/components/capabilities/McpView';
 import { useToast } from '@/components/shared/Toast';
-import { PageHeader } from '@/components/shared/Page';
+import { CapabilityDetailLayout, MetaRow } from '@/components/capabilities/CapabilityDetailLayout';
 import { CapabilitySubpageSkeleton } from '@/components/capabilities/CapabilitySubpageSkeleton';
 
 type SubTab = 'transport' | 'tools' | 'rpc';
@@ -82,6 +79,17 @@ export default function McpSubpage() {
     (configuredServer as any)?.description ??
     templateServer?.description ??
     'Model Context Protocol Server';
+
+  // Transport truth: a configured server renders what ITS OWN config declares;
+  // a catalog template renders only the template's declared default. No
+  // invented fallback such as `stdio` — if the connector config does not
+  // declare a transport, the UI says so instead of guessing.
+  const displayTransport = isConfigured
+    ? typeof configuredServer?.config?.['transport'] === 'string' &&
+      configuredServer.config['transport']
+      ? (configuredServer.config['transport'] as string)
+      : 'not declared in connector config'
+    : (templateServer?.defaultConfig.transport ?? 'template transport not declared');
 
   const {
     data: toolsData,
@@ -178,244 +186,244 @@ export default function McpSubpage() {
   ];
 
   return (
-    <div className="flex flex-col h-full min-h-0 bg-background text-text antialiased overflow-hidden">
-      <div className="shrink-0 px-4 sm:px-6 pt-4 border-b border-border bg-surface">
-        <PageHeader
-          title={serverTitle}
-          description={serverDescription}
-          eyebrow="Model Context Protocol Server"
-          breadcrumb={<Breadcrumb items={breadcrumbItems} />}
-          actions={
-            <div className="flex items-center gap-3">
-              <Link
-                href={breadcrumbsBackUrl}
-                className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-lg"
-              >
-                <Button variant="secondary" size="sm">
-                  Back to MCP
-                </Button>
-              </Link>
-              {isConfigured && (
-                <Button
-                  variant="primary"
-                  size="sm"
-                  disabled={syncingTools}
-                  onClick={() => void handleSyncTools()}
-                >
-                  {syncingTools ? <Spinner size="sm" /> : 'Sync Tools'}
-                </Button>
-              )}
+    <CapabilityDetailLayout
+      eyebrow="Model Context Protocol Server"
+      title={serverTitle}
+      description={serverDescription}
+      backHref={breadcrumbsBackUrl}
+      backLabel="Back to MCP"
+      breadcrumbs={breadcrumbItems}
+      rail={
+        <>
+          {isConfigured && (
+            <Button
+              variant="primary"
+              size="sm"
+              disabled={syncingTools}
+              onClick={() => void handleSyncTools()}
+            >
+              {syncingTools ? <Spinner size="sm" /> : 'Sync Tools'}
+            </Button>
+          )}
+        </>
+      }
+      meta={
+        <>
+          <div className="flex items-center gap-2">
+            <StatusDot status={isConfigured ? 'active' : 'idle'} />
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-text truncate">{serverTitle}</div>
             </div>
-          }
-        />
-      </div>
-
-      <div className="flex-1 min-h-0 min-w-0 overflow-y-auto p-4 sm:p-6">
-        {loadingConnectors && !configuredServer && !templateServer ? (
-          <CapabilitySubpageSkeleton eyebrow="MCP Server" />
-        ) : !configuredServer && !templateServer ? (
-          <div className="max-w-xl mx-auto py-12">
-            <EmptyState
-              title={`MCP Server "${decodedServerId}" not found`}
-              description="This MCP server does not match any configured servers or verified templates."
-              action={{
-                label: 'View all MCP Servers',
-                onClick: () => router.push(breadcrumbsBackUrl),
-              }}
-            />
           </div>
-        ) : (
-          <div className="max-w-5xl mx-auto space-y-6">
-            {/* Server Status Header */}
-            <div className="p-4 rounded-xl border border-border-subtle bg-surface flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <StatusDot status={isConfigured ? 'active' : 'idle'} />
+          <MetaRow
+            label="State"
+            value={isConfigured ? 'Configured Connector' : 'Catalog Template'}
+          />
+          <MetaRow label="Transport" value={displayTransport} />
+          <MetaRow label="Category" value={templateServer?.category ?? 'Developer'} />
+        </>
+      }
+      tabs={
+        configuredServer || templateServer ? (
+          <Tabs
+            ariaLabel="MCP Inspection Subtabs"
+            size="sm"
+            tabs={subTabs}
+            activeTab={activeTab}
+            onTabChange={(id) => setActiveTab(id as SubTab)}
+          />
+        ) : undefined
+      }
+    >
+      {loadingConnectors && !configuredServer && !templateServer ? (
+        <CapabilitySubpageSkeleton eyebrow="MCP Server" />
+      ) : !configuredServer && !templateServer ? (
+        <div className="max-w-xl mx-auto py-12">
+          <EmptyState
+            title={`MCP Server "${decodedServerId}" not found`}
+            description="This MCP server does not match any configured servers or verified templates."
+            action={{
+              label: 'View all MCP Servers',
+              onClick: () => router.push(breadcrumbsBackUrl),
+            }}
+          />
+        </div>
+      ) : (
+        <div className="max-w-5xl mx-auto space-y-6">
+          <TabPanel id="transport" activeTab={activeTab}>
+            <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-4">
+              <h3 className="text-base font-semibold text-text">
+                Process & Transport Configuration
+              </h3>
+              <p className="text-sm text-text-secondary leading-relaxed">
+                MCP servers run as sandboxed local subprocesses over standard I/O (stdio) or via
+                Server-Sent Events (SSE) over HTTP.
+              </p>
+
+              <div className="p-4 rounded-lg bg-surface-elevated border border-border space-y-3 text-xs font-mono">
                 <div>
-                  <div className="text-sm font-semibold text-text">{serverTitle}</div>
-                  <div className="text-xs text-text-muted font-mono">
-                    {templateServer?.defaultConfig.transport ?? 'stdio'}
-                  </div>
+                  <span className="text-text-muted">Transport: </span>
+                  <span className="text-primary font-bold">{displayTransport}</span>
                 </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={isConfigured ? 'success' : 'default'} size="sm">
-                  {isConfigured ? 'Configured Connector' : 'Catalog Template'}
-                </Badge>
-                <Badge variant="mono" size="sm">
-                  {templateServer?.category ?? 'Developer'}
-                </Badge>
-              </div>
-            </div>
-
-            {/* Navigation Tabs */}
-            <div className="border-b border-border-subtle">
-              <Tabs
-                ariaLabel="MCP Inspection Subtabs"
-                size="sm"
-                tabs={subTabs}
-                activeTab={activeTab}
-                onTabChange={(id) => setActiveTab(id as SubTab)}
-              />
-            </div>
-
-            <TabPanel id="transport" activeTab={activeTab}>
-              <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-4">
-                <h3 className="text-base font-semibold text-text">
-                  Process & Transport Configuration
-                </h3>
-                <p className="text-sm text-text-secondary leading-relaxed">
-                  MCP servers run as sandboxed local subprocesses over standard I/O (stdio) or via
-                  Server-Sent Events (SSE) over HTTP.
-                </p>
-
-                <div className="p-4 rounded-lg bg-surface-elevated border border-border space-y-3 text-xs font-mono">
-                  <div>
-                    <span className="text-text-muted">Transport: </span>
-                    <span className="text-primary font-bold">
-                      {templateServer?.defaultConfig.transport ?? 'stdio'}
-                    </span>
-                  </div>
-                  {templateServer?.defaultConfig.command && (
-                    <div>
-                      <span className="text-text-muted">Command: </span>
-                      <span className="text-text">
-                        {templateServer.defaultConfig.command}{' '}
-                        {templateServer.defaultConfig.args?.join(' ')}
-                      </span>
-                    </div>
-                  )}
-                  {templateServer?.credentialNote && (
-                    <div className="pt-2 border-t border-border-subtle text-text-secondary font-sans text-xs">
-                      <span className="font-semibold text-warning">Credential Requirement: </span>
-                      {templateServer.credentialNote}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </TabPanel>
-
-            <TabPanel id="tools" activeTab={activeTab}>
-              <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-semibold text-text">Exposed MCP Tools</h3>
-                  {isConfigured && (
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      disabled={syncingTools}
-                      onClick={() => void handleSyncTools()}
-                    >
-                      Sync Tools
-                    </Button>
-                  )}
-                </div>
-
-                {loadingTools ? (
-                  <div className="py-8 flex justify-center">
-                    <Spinner size="md" />
-                  </div>
-                ) : tools.length === 0 ? (
-                  <div className="py-8 text-center text-xs text-text-muted">
-                    No tools currently recorded for this server. Sync tools when the server is
-                    connected.
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {tools.map((tool) => (
-                      <div
-                        key={tool.name}
-                        className="p-3.5 rounded-lg border border-border-subtle bg-surface-elevated space-y-2"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-mono text-xs font-semibold text-text">
-                            {tool.name}
-                          </span>
-                          <Badge variant="primary" size="sm">
-                            MCP Schema
-                          </Badge>
+                {isConfigured ? (
+                  <>
+                    {typeof configuredServer?.config?.['url'] === 'string' &&
+                      configuredServer.config['url'] && (
+                        <div>
+                          <span className="text-text-muted">URL: </span>
+                          <span className="text-text">{configuredServer.config['url']}</span>
                         </div>
-                        <p className="text-xs text-text-secondary">{tool.description}</p>
-                        {tool.inputSchema && (
-                          <details className="text-[11px] font-mono text-text-muted">
-                            <summary className="cursor-pointer hover:text-text">
-                              View Schema
-                            </summary>
-                            <pre className="p-2 mt-1 rounded bg-surface border border-border overflow-x-auto">
-                              {JSON.stringify(tool.inputSchema, null, 2)}
-                            </pre>
-                          </details>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </TabPanel>
-
-            <TabPanel id="rpc" activeTab={activeTab}>
-              <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-4">
-                <h3 className="text-base font-semibold text-text">Live RPC Execution Probe</h3>
-                <p className="text-xs text-text-muted">
-                  Issue an authenticated RPC invocation directly to this MCP daemon.
-                </p>
-
-                {tools.length === 0 ? (
-                  <div className="p-4 rounded-lg bg-surface-elevated border border-border text-xs text-text-muted">
-                    Please sync or register tools before executing live RPC probes.
-                  </div>
+                      )}
+                    {typeof configuredServer?.config?.['command'] === 'string' &&
+                      configuredServer.config['command'] && (
+                        <div>
+                          <span className="text-text-muted">Command: </span>
+                          <span className="text-text">{configuredServer.config['command']}</span>
+                        </div>
+                      )}
+                  </>
                 ) : (
                   <>
-                    <FormField label="Target Tool Name">
-                      <select
-                        value={selectedToolName}
-                        onChange={(e) => setSelectedToolName(e.target.value)}
-                        className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-surface-elevated text-text font-mono focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
-                      >
-                        {tools.map((t) => (
-                          <option key={t.name} value={t.name}>
-                            {t.name}
-                          </option>
-                        ))}
-                      </select>
-                    </FormField>
-
-                    <FormField label="JSON Arguments Payload">
-                      <Textarea
-                        value={toolArgsPayload}
-                        onChange={(e) => setToolArgsPayload(e.target.value)}
-                        rows={4}
-                        className="font-mono text-xs"
-                      />
-                    </FormField>
-
-                    <Button
-                      variant="primary"
-                      size="sm"
-                      disabled={callingTool}
-                      onClick={() => void handleCallTool()}
-                    >
-                      {callingTool ? <Spinner size="sm" /> : 'Send RPC Call'}
-                    </Button>
-
-                    {rpcError && (
-                      <div className="p-3 rounded bg-danger/10 border border-danger/20 text-danger text-xs">
-                        {rpcError}
+                    {templateServer?.defaultConfig.command && (
+                      <div>
+                        <span className="text-text-muted">Command: </span>
+                        <span className="text-text">
+                          {templateServer.defaultConfig.command}{' '}
+                          {templateServer.defaultConfig.args?.join(' ')}
+                        </span>
                       </div>
                     )}
-
-                    {rpcResult && (
-                      <div className="p-3 rounded bg-surface-elevated border border-border text-xs font-mono">
-                        <div className="font-semibold text-text mb-1">Daemon Output:</div>
-                        <pre className="overflow-x-auto">{JSON.stringify(rpcResult, null, 2)}</pre>
+                    {templateServer?.credentialNote && (
+                      <div className="pt-2 border-t border-border-subtle text-text-secondary font-sans text-xs">
+                        <span className="font-semibold text-warning">Credential Requirement: </span>
+                        {templateServer.credentialNote}
                       </div>
                     )}
                   </>
                 )}
               </div>
-            </TabPanel>
-          </div>
-        )}
-      </div>
-    </div>
+            </div>
+          </TabPanel>
+
+          <TabPanel id="tools" activeTab={activeTab}>
+            <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold text-text">Exposed MCP Tools</h3>
+                {isConfigured && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={syncingTools}
+                    onClick={() => void handleSyncTools()}
+                  >
+                    Sync Tools
+                  </Button>
+                )}
+              </div>
+
+              {loadingTools ? (
+                <div className="py-8 flex justify-center">
+                  <Spinner size="md" />
+                </div>
+              ) : tools.length === 0 ? (
+                <div className="py-8 text-center text-xs text-text-muted">
+                  No tools currently recorded for this server. Sync tools when the server is
+                  connected.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {tools.map((tool) => (
+                    <div
+                      key={tool.name}
+                      className="p-3.5 rounded-lg border border-border-subtle bg-surface-elevated space-y-2"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono text-xs font-semibold text-text">
+                          {tool.name}
+                        </span>
+                        <Badge variant="primary" size="sm">
+                          MCP Schema
+                        </Badge>
+                      </div>
+                      <p className="text-xs text-text-secondary">{tool.description}</p>
+                      {tool.inputSchema && (
+                        <details className="text-[11px] font-mono text-text-muted">
+                          <summary className="cursor-pointer hover:text-text">View Schema</summary>
+                          <pre className="p-2 mt-1 rounded bg-surface border border-border overflow-x-auto">
+                            {JSON.stringify(tool.inputSchema, null, 2)}
+                          </pre>
+                        </details>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </TabPanel>
+
+          <TabPanel id="rpc" activeTab={activeTab}>
+            <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-4">
+              <h3 className="text-base font-semibold text-text">Live RPC Execution Probe</h3>
+              <p className="text-xs text-text-muted">
+                Issue an authenticated RPC invocation directly to this MCP daemon.
+              </p>
+
+              {tools.length === 0 ? (
+                <div className="p-4 rounded-lg bg-surface-elevated border border-border text-xs text-text-muted">
+                  Please sync or register tools before executing live RPC probes.
+                </div>
+              ) : (
+                <>
+                  <FormField label="Target Tool Name">
+                    <select
+                      value={selectedToolName}
+                      onChange={(e) => setSelectedToolName(e.target.value)}
+                      className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-surface-elevated text-text font-mono focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+                    >
+                      {tools.map((t) => (
+                        <option key={t.name} value={t.name}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                  </FormField>
+
+                  <FormField label="JSON Arguments Payload">
+                    <Textarea
+                      value={toolArgsPayload}
+                      onChange={(e) => setToolArgsPayload(e.target.value)}
+                      rows={4}
+                      className="font-mono text-xs"
+                    />
+                  </FormField>
+
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    disabled={callingTool}
+                    onClick={() => void handleCallTool()}
+                  >
+                    {callingTool ? <Spinner size="sm" /> : 'Send RPC Call'}
+                  </Button>
+
+                  {rpcError && (
+                    <div className="p-3 rounded bg-danger/10 border border-danger/20 text-danger text-xs">
+                      {rpcError}
+                    </div>
+                  )}
+
+                  {rpcResult && (
+                    <div className="p-3 rounded bg-surface-elevated border border-border text-xs font-mono">
+                      <div className="font-semibold text-text mb-1">Daemon Output:</div>
+                      <pre className="overflow-x-auto">{JSON.stringify(rpcResult, null, 2)}</pre>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </TabPanel>
+        </div>
+      )}
+    </CapabilityDetailLayout>
   );
 }

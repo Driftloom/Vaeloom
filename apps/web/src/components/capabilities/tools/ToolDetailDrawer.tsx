@@ -150,7 +150,7 @@ export const ToolDetailDrawer: React.FC<ToolDetailDrawerProps> = ({
                 </p>
                 <p className="text-2xs font-mono text-text-muted mt-1">
                   {activeRow.definition
-                    ? 'definition from the tool catalog'
+                    ? 'definition served by the workspace tool catalog'
                     : 'not present in the tool catalog — the fields below come from the workspace capability row, which the server does not validate'}
                 </p>
               </div>

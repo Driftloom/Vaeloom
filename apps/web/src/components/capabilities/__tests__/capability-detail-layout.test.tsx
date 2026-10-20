@@ -107,6 +107,24 @@ describe('CapabilityDetailLayout', () => {
     expect(screen.getByText('Only content')).toBeInTheDocument();
     expect(screen.queryByText('Rail Controls')).not.toBeInTheDocument();
   });
+
+  it('suppresses the rail via showRail=false without losing the back control', () => {
+    const { container } = render(
+      <CapabilityDetailLayout
+        eyebrow="Capability Skill"
+        title="sample_skill"
+        backHref="/workspace/ws-1/capabilities?category=skills"
+        backLabel="Back to Skills"
+        showRail={false}
+      >
+        <div>Pane body</div>
+      </CapabilityDetailLayout>,
+    );
+    expect(container.querySelector('aside')).toBeNull();
+    const back = screen.getByRole('link', { name: /Back to Skills/i });
+    expect(back).toHaveAttribute('href', '/workspace/ws-1/capabilities?category=skills');
+    expect(screen.getByText('Pane body')).toBeInTheDocument();
+  });
 });
 
 describe('MetaRow', () => {

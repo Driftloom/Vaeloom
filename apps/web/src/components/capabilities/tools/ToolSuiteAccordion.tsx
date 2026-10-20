@@ -105,8 +105,9 @@ export const ToolSuiteAccordion: React.FC<ToolSuiteAccordionProps> = ({
         )}
         {definitionsStatus === 'failed' && (
           <p role="alert" className="text-2xs font-mono text-error leading-relaxed">
-            The served tool definitions could not be loaded: {definitionsError}. No suites are shown
-            because rendering any would mean guessing what the server holds.
+            The served tool definitions could not be loaded: {definitionsError}. Served suites are
+            not shown (rendering them would mean guessing what the server holds); workspace tool
+            rows below still render as the Workspace Tools suite.
           </p>
         )}
         {definitionsStatus === 'stale' && (
@@ -130,7 +131,7 @@ export const ToolSuiteAccordion: React.FC<ToolSuiteAccordionProps> = ({
                   : definitionsStatus === 'loading'
                     ? 'Loading the served tool definitions…'
                     : searchQuery.trim()
-                      ? `Nothing in the tool catalog matches “${searchQuery.trim()}”.`
+                      ? `Nothing in the workspace tool suites matches “${searchQuery.trim()}”.`
                       : 'The tool catalog is empty.'
               }
             />

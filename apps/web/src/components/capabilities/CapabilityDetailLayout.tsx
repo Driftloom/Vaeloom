@@ -38,6 +38,13 @@ export interface CapabilityDetailLayoutProps {
   actions?: React.ReactNode;
   /** Rail content (e.g. the Enabled switch for tools). */
   rail?: React.ReactNode;
+  /**
+   * Suppress the shared inspection rail entirely. For subpages whose body is
+   * a fuller composite component (e.g. SkillDetailPane) that owns its own
+   * secondary pane: hiding the rail keeps the shared chrome (back control,
+   * eyebrow, breadcrumbs) without reserving an empty 350px column.
+   */
+  showRail?: boolean;
   /** Section tab strip rendered above the page content. */
   tabs?: React.ReactNode;
   /** Optional bar pinned under the whole shell. */
@@ -77,6 +84,7 @@ export function CapabilityDetailLayout({
   meta,
   actions,
   rail,
+  showRail = true,
   tabs,
   footer,
   children,
@@ -94,27 +102,43 @@ export function CapabilityDetailLayout({
       <div className="flex-1 min-h-0 flex min-w-0">
         <div className="flex-1 min-w-0 min-h-0 overflow-y-auto p-4 sm:p-6">
           <div className={`${CAPABILITY_DETAIL_CONTENT_WIDTH} mx-auto space-y-6`}>
+            {/* When the rail is suppressed the back control moves to the
+                content column so the backHref/backLabel contract still holds. */}
+            {!showRail && (
+              <div>
+                <Link
+                  href={backHref}
+                  className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-lg"
+                >
+                  <Button variant="secondary" size="sm">
+                    {backLabel ?? 'Back'}
+                  </Button>
+                </Link>
+              </div>
+            )}
             {tabs && <div className="border-b border-border pb-3">{tabs}</div>}
             {children}
           </div>
         </div>
-        <aside
-          className={`${CAPABILITY_DETAIL_RAIL_WIDTH} shrink-0 border-l ${CAPABILITY_DETAIL_RAIL_BORDER} bg-surface flex flex-col overflow-y-auto`}
-        >
-          <div className="p-4 space-y-4">
-            <Link
-              href={backHref}
-              className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-lg"
-            >
-              <Button variant="secondary" size="sm">
-                {backLabel ?? 'Back'}
-              </Button>
-            </Link>
-            {rail && <div>{rail}</div>}
-            {actions && <div className="space-y-2">{actions}</div>}
-            {meta && <div className="pt-4 border-t border-border space-y-2">{meta}</div>}
-          </div>
-        </aside>
+        {showRail && (
+          <aside
+            className={`${CAPABILITY_DETAIL_RAIL_WIDTH} shrink-0 border-l ${CAPABILITY_DETAIL_RAIL_BORDER} bg-surface flex flex-col overflow-y-auto`}
+          >
+            <div className="p-4 space-y-4">
+              <Link
+                href={backHref}
+                className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-lg"
+              >
+                <Button variant="secondary" size="sm">
+                  {backLabel ?? 'Back'}
+                </Button>
+              </Link>
+              {rail && <div>{rail}</div>}
+              {actions && <div className="space-y-2">{actions}</div>}
+              {meta && <div className="pt-4 border-t border-border space-y-2">{meta}</div>}
+            </div>
+          </aside>
+        )}
       </div>
       {footer && (
         <div className="shrink-0 border-t border-border bg-surface px-4 sm:px-6 py-3">{footer}</div>
