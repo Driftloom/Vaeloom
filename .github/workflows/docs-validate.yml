@@ -19,6 +19,7 @@ jobs:
         uses: errata-ai/vale-action@v2
         with:
           files: '["specs", "docs"]'
+          filter_mode: nofilter
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
