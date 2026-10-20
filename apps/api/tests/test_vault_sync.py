@@ -426,3 +426,277 @@ class TestVaultSync:
             "workspace_id": ws_id, "machine": "anon",
         })
         assert res.status_code == 401, "client reports must be authenticated"
+
+    # ── conflict resolution history (0070) ─────────────────────────────────
+
+    async def _report_conflict(
+        self,
+        client: AsyncClient,
+        headers: dict,
+        ws_id: str,
+        conflict_id: str = "c-1",
+    ) -> None:
+        res = await client.post("/api/v1/vault-sync/report", json={
+            "workspace_id": ws_id,
+            "machine": "laptop",
+            "conflicts": [{
+                "id": conflict_id,
+                "file": "Notes/Ideas.md",
+                "conflict_file": "Notes/Ideas.conflict-2026-10-04.md",
+                "detected_at": "2026-10-04T10:00:00+00:00",
+                "local_head": "aaaaaaaabbbbbbbb",
+                "remote_head": "ccccccccdddddddd",
+            }],
+        }, headers=headers)
+        assert res.status_code == 200
+
+    async def test_resolve_records_history_and_clears_ledger(self, client: AsyncClient):
+        """Resolving must leave a durable record; the ledger alone forgets it."""
+        headers = await self._auth_header(client)
+        ws_id = await self._create_workspace(client, headers)
+        await self._report_conflict(client, headers, ws_id, "c-1")
+
+        res = await client.post(
+            f"/api/v1/vault-sync/conflicts/c-1/resolve?workspace_id={ws_id}",
+            json={"strategy": "keep-local"}, headers=headers,
+        )
+        assert res.status_code == 200
+        data = res.json()
+        assert data["success"] is True
+        assert data["conflict_id"] == "c-1"
+        assert data["resolution"] == "keep-local"
+        assert data["remaining_conflicts"] == 0
+
+        # Resolve removes it from the active ledger, as before.
+        conflicts = await client.get(
+            f"/api/v1/vault-sync/conflicts?workspace_id={ws_id}", headers=headers
+        )
+        assert conflicts.json() == []
+
+        # The history endpoint keeps the audit trail the ledger can't provide.
+        history = await client.get(
+            f"/api/v1/vault-sync/conflicts/history?workspace_id={ws_id}", headers=headers
+        )
+        assert history.status_code == 200
+        body = history.json()
+        assert body["total"] == 1
+        assert len(body["items"]) == 1
+        item = body["items"][0]
+        assert item["conflict_id"] == "c-1"
+        assert item["file"] == "Notes/Ideas.md"
+        assert item["conflict_file"] == "Notes/Ideas.conflict-2026-10-04.md"
+        assert item["local_head"] == "aaaaaaaabbbbbbbb"
+        assert item["remote_head"] == "ccccccccdddddddd"
+        assert item["detected_at"] == "2026-10-04T10:00:00+00:00"
+        assert item["resolution"] == "keep-local"
+        assert item["resolved_at"], "history must record when the resolution was recorded"
+        assert item["id"], "history rows carry their own id, never the client conflict id"
+        assert item["connector_id"]
+
+    async def test_re_resolve_echoes_recorded_resolution_without_mutation(
+        self, client: AsyncClient
+    ):
+        """First wins: a repeated resolve must never overwrite the recorded row."""
+        headers = await self._auth_header(client)
+        ws_id = await self._create_workspace(client, headers)
+        await self._report_conflict(client, headers, ws_id, "c-1")
+
+        first = await client.post(
+            f"/api/v1/vault-sync/conflicts/c-1/resolve?workspace_id={ws_id}",
+            json={"strategy": "keep-local"}, headers=headers,
+        )
+        assert first.status_code == 200
+
+        again = await client.post(
+            f"/api/v1/vault-sync/conflicts/c-1/resolve?workspace_id={ws_id}",
+            json={"strategy": "accept-incoming"}, headers=headers,
+        )
+        assert again.status_code == 200
+        assert again.json()["resolution"] == "keep-local", (
+            "the response must echo the recorded resolution, not the requested one"
+        )
+        assert again.json()["remaining_conflicts"] == 0
+
+        history = await client.get(
+            f"/api/v1/vault-sync/conflicts/history?workspace_id={ws_id}", headers=headers
+        )
+        body = history.json()
+        assert body["total"] == 1, "a repeated resolve must not duplicate the record"
+        assert body["items"][0]["resolution"] == "keep-local"
+
+    async def test_resolve_unknown_conflict_records_nothing(self, client: AsyncClient):
+        """An id with no ledger entry and no history must not fabricate a record."""
+        headers = await self._auth_header(client)
+        ws_id = await self._create_workspace(client, headers)
+
+        res = await client.post(
+            f"/api/v1/vault-sync/conflicts/ghost/resolve?workspace_id={ws_id}",
+            json={"strategy": "keep-local"}, headers=headers,
+        )
+        assert res.status_code == 404
+
+        history = await client.get(
+            f"/api/v1/vault-sync/conflicts/history?workspace_id={ws_id}", headers=headers
+        )
+        assert history.json()["total"] == 0
+
+    async def test_reported_resolved_conflict_is_not_resurrected(self, client: AsyncClient):
+        """A stale re-report must not bring back a conflict the server recorded as resolved."""
+        headers = await self._auth_header(client)
+        ws_id = await self._create_workspace(client, headers)
+        await self._report_conflict(client, headers, ws_id, "c-1")
+
+        await client.post(
+            f"/api/v1/vault-sync/conflicts/c-1/resolve?workspace_id={ws_id}",
+            json={"strategy": "accept-incoming"}, headers=headers,
+        )
+
+        # The client re-reports its ledger, still holding c-1, plus a new c-2.
+        res = await client.post("/api/v1/vault-sync/report", json={
+            "workspace_id": ws_id,
+            "machine": "laptop",
+            "conflicts": [
+                {
+                    "id": "c-1", "file": "Notes/Ideas.md",
+                    "conflict_file": "Notes/Ideas.conflict-2026-10-04.md",
+                },
+                {
+                    "id": "c-2", "file": "Notes/Plans.md",
+                    "conflict_file": "Notes/Plans.conflict-2026-10-04.md",
+                },
+            ],
+        }, headers=headers)
+        assert res.status_code == 200
+
+        conflicts = await client.get(
+            f"/api/v1/vault-sync/conflicts?workspace_id={ws_id}", headers=headers
+        )
+        rows = conflicts.json()
+        assert [r["id"] for r in rows] == ["c-2"], (
+            "c-1 was already recorded as resolved; only the new conflict may remain"
+        )
+
+    async def test_history_pagination_reports_total_before_pagination(self, client: AsyncClient):
+        headers = await self._auth_header(client)
+        ws_id = await self._create_workspace(client, headers)
+        for cid in ("c-1", "c-2", "c-3"):
+            await self._report_conflict(client, headers, ws_id, cid)
+            res = await client.post(
+                f"/api/v1/vault-sync/conflicts/{cid}/resolve?workspace_id={ws_id}",
+                json={"strategy": "keep-local"}, headers=headers,
+            )
+            assert res.status_code == 200
+
+        page1 = await client.get(
+            f"/api/v1/vault-sync/conflicts/history?workspace_id={ws_id}&limit=2&offset=0",
+            headers=headers,
+        )
+        assert page1.status_code == 200
+        assert len(page1.json()["items"]) == 2
+        assert page1.json()["total"] == 3, "total is the pre-pagination count"
+
+        page2 = await client.get(
+            f"/api/v1/vault-sync/conflicts/history?workspace_id={ws_id}&limit=2&offset=2",
+            headers=headers,
+        )
+        assert len(page2.json()["items"]) == 1
+        assert page2.json()["total"] == 3
+
+    async def test_history_cross_workspace_is_denied(self, client: AsyncClient):
+        """Negative control: another user must not read this workspace's history."""
+        headers_a = await self._auth_header(client)
+        ws_a = await self._create_workspace(client, headers_a)
+        await self._report_conflict(client, headers_a, ws_a, "c-1")
+        await client.post(
+            f"/api/v1/vault-sync/conflicts/c-1/resolve?workspace_id={ws_a}",
+            json={"strategy": "keep-local"}, headers=headers_a,
+        )
+
+        headers_b = await self._auth_header(client)
+        res = await client.get(
+            f"/api/v1/vault-sync/conflicts/history?workspace_id={ws_a}", headers=headers_b
+        )
+        assert res.status_code == 403, "cross-workspace history read must be denied"
+
+    # ── multi-machine device registry ──────────────────────────────────────
+
+    async def test_status_reports_devices_from_real_reports(self, client: AsyncClient):
+        """Both machines that reported must appear, newest heartbeat first."""
+        headers = await self._auth_header(client)
+        ws_id = await self._create_workspace(client, headers)
+
+        first = await client.post("/api/v1/vault-sync/report", json={
+            "workspace_id": ws_id,
+            "machine": "laptop",
+            "client_version": "0.1.0",
+            "conflicts": [],
+        }, headers=headers)
+        assert first.status_code == 200
+
+        second = await client.post("/api/v1/vault-sync/report", json={
+            "workspace_id": ws_id,
+            "machine": "desktop",
+            "client_version": "0.2.0",
+            "last_error": "PULL ERROR: rebase refused (unstaged changes)",
+            "conflicts": [],
+        }, headers=headers)
+        assert second.status_code == 200
+
+        data = (await client.get(
+            f"/api/v1/vault-sync/status?workspace_id={ws_id}", headers=headers
+        )).json()
+
+        devices = data["devices"]
+        assert [d["machine"] for d in devices] == ["desktop", "laptop"], (
+            "devices are ordered by last_heartbeat desc; desktop reported last"
+        )
+        for device in devices:
+            assert set(device) == {
+                "machine", "client_version", "last_heartbeat", "status",
+                "last_pull_time", "last_push_time", "last_error",
+            }
+        assert devices[0]["status"] == "error"
+        assert devices[0]["last_error"] == "PULL ERROR: rebase refused (unstaged changes)"
+        assert devices[0]["client_version"] == "0.2.0"
+        assert devices[1]["status"] == "in_sync"
+        assert devices[1]["client_version"] == "0.1.0"
+        assert devices[0]["last_heartbeat"] and devices[1]["last_heartbeat"]
+
+        # Top-level stays the alias of the latest reporter, not a merged blend.
+        assert data["machine"] == "desktop"
+        assert data["last_error"] == "PULL ERROR: rebase refused (unstaged changes)"
+
+    async def test_repeat_report_from_same_machine_updates_not_duplicates(
+        self, client: AsyncClient
+    ):
+        headers = await self._auth_header(client)
+        ws_id = await self._create_workspace(client, headers)
+
+        await client.post("/api/v1/vault-sync/report", json={
+            "workspace_id": ws_id, "machine": "laptop", "conflicts": [],
+        }, headers=headers)
+        await client.post("/api/v1/vault-sync/report", json={
+            "workspace_id": ws_id, "machine": "laptop",
+            "last_error": "PUSH ERROR: remote rejected", "conflicts": [],
+        }, headers=headers)
+
+        devices = (await client.get(
+            f"/api/v1/vault-sync/status?workspace_id={ws_id}", headers=headers
+        )).json()["devices"]
+        assert len(devices) == 1, "a machine key must upsert, never append duplicates"
+        assert devices[0]["status"] == "error"
+        assert devices[0]["last_error"] == "PUSH ERROR: remote rejected"
+
+    async def test_device_without_machine_is_keyed_unknown(self, client: AsyncClient):
+        headers = await self._auth_header(client)
+        ws_id = await self._create_workspace(client, headers)
+
+        res = await client.post("/api/v1/vault-sync/report", json={
+            "workspace_id": ws_id, "conflicts": [],
+        }, headers=headers)
+        assert res.status_code == 200
+
+        devices = (await client.get(
+            f"/api/v1/vault-sync/status?workspace_id={ws_id}", headers=headers
+        )).json()["devices"]
+        assert [d["machine"] for d in devices] == ["unknown"]

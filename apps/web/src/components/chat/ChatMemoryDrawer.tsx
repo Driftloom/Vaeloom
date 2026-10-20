@@ -21,6 +21,12 @@ export interface ChatMemoryDrawerProps {
   onRecallContext?: (contextSnippet: string) => void;
 }
 
+/**
+ * GET /workspaces/{id}/memories returns a bare `MemoryResponse[]`; older
+ * callers wrapped it in `{ memories }` / `{ items }`. Accept both.
+ */
+export type MemoryDrawerPayload = MemoryItem[] | { memories?: MemoryItem[]; items?: MemoryItem[] };
+
 export function ChatMemoryDrawer({
   isOpen,
   onClose,
@@ -40,22 +46,16 @@ export function ChatMemoryDrawer({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  const { data, isLoading, error } = useSWR<{ memories?: MemoryItem[]; items?: MemoryItem[] }>(
+  const { data, isLoading, error, mutate } = useSWR<MemoryDrawerPayload>(
     isOpen && workspaceId ? `/workspaces/${workspaceId}/memories` : null,
-    async (url: string) => {
-      try {
-        const res = await api.get<Record<string, unknown>>(url);
-        return res as unknown as { memories?: MemoryItem[]; items?: MemoryItem[] };
-      } catch {
-        return { memories: [] };
-      }
-    },
-    { revalidateOnFocus: false },
+    async (url: string) =>
+      (await api.get<Record<string, unknown>>(url)) as unknown as MemoryDrawerPayload,
+    { revalidateOnFocus: false, shouldRetryOnError: false },
   );
 
   if (!isOpen) return null;
 
-  const rawList = data?.memories ?? data?.items ?? [];
+  const rawList: MemoryItem[] = Array.isArray(data) ? data : (data?.memories ?? data?.items ?? []);
   const filteredMemories = rawList.filter((m) => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
@@ -119,7 +119,24 @@ export function ChatMemoryDrawer({
             </div>
           )}
 
-          {!isLoading && filteredMemories.length === 0 && (
+          {!isLoading && error && (
+            <div className="py-12 text-center space-y-2" role="alert">
+              <span className="text-2xl">⚠️</span>
+              <p className="text-xs text-text-muted font-medium">Could not load memories</p>
+              <p className="text-[11px] text-text-dim max-w-xs mx-auto">
+                The memory service did not answer. The vault is not necessarily empty.
+              </p>
+              <button
+                type="button"
+                onClick={() => mutate()}
+                className="mt-1 text-[11px] px-3 py-1 rounded-lg border border-border text-text-muted hover:text-text hover:bg-surface-hover transition-colors"
+              >
+                Try Again
+              </button>
+            </div>
+          )}
+
+          {!isLoading && !error && filteredMemories.length === 0 && (
             <div className="py-12 text-center space-y-2">
               <span className="text-2xl">🧠</span>
               <p className="text-xs text-text-muted font-medium">No memories found</p>

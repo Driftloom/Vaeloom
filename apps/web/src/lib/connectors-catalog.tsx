@@ -726,7 +726,7 @@ export function AppBrandIcon({
 
   return (
     <div
-      className={`w-7 h-7 rounded-lg ${scheme.bg} ${scheme.border} border flex items-center justify-center font-semibold text-xs ${scheme.text} shadow-inner select-none shrink-0`}
+      className={`w-7 h-7 rounded-lg ${scheme.bg} ${scheme.border} border flex items-center justify-center font-semibold text-xs text-foreground shadow-inner select-none shrink-0`}
     >
       {initials || name[0]?.toUpperCase() || 'S'}
     </div>

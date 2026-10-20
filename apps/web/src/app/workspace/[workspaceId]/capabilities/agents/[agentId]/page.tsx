@@ -6,7 +6,6 @@ import Link from 'next/link';
 import useSWR from 'swr';
 import {
   Badge,
-  Breadcrumb,
   Button,
   EmptyState,
   FormField,
@@ -16,7 +15,6 @@ import {
   TabPanel,
   Tabs,
   Textarea,
-  Tooltip,
 } from '@vaeloom/ui-kit';
 import { SEED_CAPABILITIES } from '@/lib/capabilities-data';
 import {
@@ -29,17 +27,13 @@ import {
   MIN_REACT_ROUNDS,
   type CapabilityTestResponse,
 } from '@/lib/api-client';
+import { capabilityKeys, invalidateCapabilities } from '@/lib/queries/capability-keys';
 import { useToast } from '@/components/shared/Toast';
-import { PageHeader } from '@/components/shared/Page';
+import { CapabilityDetailLayout } from '@/components/capabilities/CapabilityDetailLayout';
+import { AgentAutonomySelector } from '@/components/capabilities/agents/AgentAutonomySelector';
+import { formatAgentTitle, type AutonomyMode } from '@/components/capabilities/agents/types';
 import { CapabilitySubpageSkeleton } from '@/components/capabilities/CapabilitySubpageSkeleton';
 
-function formatAgentTitle(name: string): string {
-  const words = name.replace(/[_-]+/g, ' ').trim();
-  if (!words) return 'Agent';
-  return `${words.charAt(0).toUpperCase()}${words.slice(1)} Agent`;
-}
-
-type AutonomyMode = 'suggest' | 'autonomous' | 'approval_required';
 type SubTab = 'mission' | 'autonomy' | 'tools' | 'contract' | 'test';
 
 export default function AgentSubpage() {
@@ -59,12 +53,18 @@ export default function AgentSubpage() {
   const [roundsText, setRoundsText] = useState('6');
   const [savingRounds, setSavingRounds] = useState(false);
 
-  const { data: catalog, isLoading: catalogLoading } = useSWR('agent-catalog', () =>
-    agentCatalogApi.get(),
+  // The full catalog rides the literal 'agent-catalog' SWR key — the same key
+  // AgentsView uses for `agentCatalogApi.get()`, so both views share one
+  // revalidated cache entry. Deliberately NOT `capabilityKeys.agentCatalog`:
+  // that registry scope holds agent-category capability rows, not the catalog.
+  const { data: catalog, isLoading: catalogLoading } = useSWR(
+    'agent-catalog',
+    () => agentCatalogApi.get(),
+    { revalidateOnFocus: false, shouldRetryOnError: false },
   );
 
-  const { data: workspaceRows, mutate: mutateWorkspaceRows } = useSWR(
-    workspaceId ? ['workspace-capabilities', workspaceId] : null,
+  const { data: workspaceRows } = useSWR(
+    workspaceId ? capabilityKeys.list(workspaceId) : null,
     () => capabilitiesApi.list(undefined, workspaceId),
     { revalidateOnFocus: false, shouldRetryOnError: false },
   );
@@ -143,12 +143,26 @@ export default function AgentSubpage() {
     selectedAgent ? selectedAgent.defaultAutonomy : 'autonomous',
   );
 
+  // Catalog re-sync: when the shared 'agent-catalog' cache revalidates and
+  // hands back a NEW catalog identity (e.g. a sibling AgentsView fetch lands a
+  // fresher defaultAutonomy while this subpage stays mounted), re-read the
+  // selection baseline. The prior-catalog ref keeps mount/unrelated-row
+  // revalidations (workspace rows, after a save) from clobbering an
+  // optimistic selection the user just made.
+  const lastCatalogRef = React.useRef(catalog);
+  React.useEffect(() => {
+    if (!catalog) return;
+    if (lastCatalogRef.current === catalog) return;
+    lastCatalogRef.current = catalog;
+    if (selectedAgent) setAutonomyMode(selectedAgent.defaultAutonomy);
+  }, [catalog, selectedAgent]);
+
   const handleToggleEnabled = useCallback(
     async (next: boolean) => {
       if (!selectedAgent) return;
       try {
         await capabilitiesApi.update(selectedAgent.id, { enabled: next });
-        void mutateWorkspaceRows();
+        invalidateCapabilities(workspaceId, 'list');
         toast({
           tone: next ? 'success' : 'warning',
           title: `${next ? 'Enabled' : 'Disabled'} ${selectedAgent.title}`,
@@ -162,7 +176,7 @@ export default function AgentSubpage() {
         });
       }
     },
-    [selectedAgent, mutateWorkspaceRows, toast],
+    [selectedAgent, workspaceId, toast],
   );
 
   const handleSaveAutonomy = useCallback(
@@ -173,7 +187,7 @@ export default function AgentSubpage() {
         await capabilitiesApi.update(selectedAgent.id, {
           config: { autonomy: nextMode },
         });
-        void mutateWorkspaceRows();
+        invalidateCapabilities(workspaceId, 'list');
         toast({
           tone: 'success',
           title: `Autonomy updated to ${nextMode.replace('_', ' ')}`,
@@ -186,7 +200,7 @@ export default function AgentSubpage() {
         });
       }
     },
-    [selectedAgent, mutateWorkspaceRows, toast],
+    [selectedAgent, workspaceId, toast],
   );
 
   const handleSaveRounds = useCallback(async () => {
@@ -201,7 +215,7 @@ export default function AgentSubpage() {
       await capabilitiesApi.update(selectedAgent.id, {
         config: { [CAPABILITY_MAX_REACT_ROUNDS_KEY]: verdict.rounds },
       });
-      void mutateWorkspaceRows();
+      invalidateCapabilities(workspaceId, 'list');
       toast({
         tone: 'success',
         title: `ReAct round budget set to ${verdict.rounds}`,
@@ -215,7 +229,7 @@ export default function AgentSubpage() {
     } finally {
       setSavingRounds(false);
     }
-  }, [selectedAgent, roundsText, mutateWorkspaceRows, toast]);
+  }, [selectedAgent, roundsText, workspaceId, toast]);
 
   const handleRunDiagnostic = useCallback(async () => {
     if (!selectedAgent) return;
@@ -256,293 +270,257 @@ export default function AgentSubpage() {
   ];
 
   return (
-    <div className="flex flex-col h-full min-h-0 bg-background text-text antialiased overflow-hidden">
-      <div className="shrink-0 px-4 sm:px-6 pt-4 border-b border-border bg-surface">
-        <PageHeader
-          title={selectedAgent?.title ?? decodedAgentId}
-          description={
-            selectedAgent?.description ||
-            'Inspect, govern, and probe this autonomous workspace agent.'
-          }
-          eyebrow="Agent Capability"
-          breadcrumb={<Breadcrumb items={breadcrumbItems} />}
-          actions={
-            <div className="flex items-center gap-3">
-              <Link
-                href={breadcrumbsBackUrl}
-                className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-lg"
-              >
-                <Button variant="secondary" size="sm">
-                  Back to Agents
-                </Button>
-              </Link>
-              {selectedAgent && (
-                <>
-                  <Link
-                    href={`/workspace/${workspaceId}/chat?agent=${selectedAgent.name}`}
-                    className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-lg"
-                  >
-                    <Button variant="secondary" size="sm">
-                      Chat with Agent
-                    </Button>
-                  </Link>
-                  <div className="flex items-center gap-2 pl-2 border-l border-border-subtle">
-                    <span className="text-xs text-text-muted">Enabled:</span>
-                    <Switch
-                      checked={selectedAgent.enabled}
-                      onChange={(next) => void handleToggleEnabled(next)}
-                      label={`Enable ${selectedAgent.title}`}
-                    />
-                  </div>
-                </>
-              )}
-            </div>
-          }
-        />
-      </div>
-
-      <div className="flex-1 min-h-0 min-w-0 overflow-y-auto p-4 sm:p-6">
-        {catalogLoading && !selectedAgent ? (
-          <CapabilitySubpageSkeleton eyebrow="Agent Capability" />
-        ) : !selectedAgent ? (
-          <div className="max-w-xl mx-auto py-12">
-            <EmptyState
-              title={`Agent "${decodedAgentId}" not found`}
-              description="This agent was not found in the catalog or workspace registrations."
-              action={{
-                label: 'View all Agents',
-                onClick: () =>
-                  router.push(`/workspace/${workspaceId}/capabilities?category=agents`),
-              }}
-            />
-          </div>
-        ) : selectedAgent ? (
-          <div className="max-w-5xl mx-auto space-y-6">
-            {/* Metadata Bar */}
-            <div className="p-4 rounded-xl border border-border-subtle bg-surface flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <StatusDot status={selectedAgent.enabled ? 'active' : 'idle'} />
-                <div>
-                  <div className="text-sm font-semibold text-text">{selectedAgent.title}</div>
-                  <div className="text-xs text-text-muted font-mono">{selectedAgent.name}</div>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="mono" size="sm">
-                  v{selectedAgent.version}
-                </Badge>
-                <Badge variant="primary" size="sm">
-                  {selectedAgent.author}
-                </Badge>
-                {selectedAgent.requiredScope ? (
-                  <Badge variant="mono" size="sm">
-                    Scope: {String(selectedAgent.requiredScope)}
-                  </Badge>
-                ) : (
-                  <Badge variant="default" size="sm">
-                    Scope not declared
-                  </Badge>
-                )}
-                <Badge variant={selectedAgent.enabled ? 'success' : 'default'} size="sm">
-                  {selectedAgent.enabled ? 'Active' : 'Disabled'}
-                </Badge>
-              </div>
-            </div>
-
-            {/* Navigation Tabs */}
-            <div className="border-b border-border-subtle">
-              <Tabs
-                ariaLabel="Agent Inspection Subtabs"
-                size="sm"
-                tabs={subTabs}
-                activeTab={activeTab}
-                onTabChange={(id) => setActiveTab(id as SubTab)}
+    <CapabilityDetailLayout
+      eyebrow="Agent Capability"
+      title={selectedAgent?.title ?? decodedAgentId}
+      description={
+        selectedAgent?.description || 'Inspect, govern, and probe this autonomous workspace agent.'
+      }
+      backHref={breadcrumbsBackUrl}
+      backLabel="Back to Agents"
+      breadcrumbs={breadcrumbItems}
+      rail={
+        selectedAgent && (
+          <>
+            <Link
+              href={`/workspace/${workspaceId}/chat?agent=${selectedAgent.name}`}
+              className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-lg"
+            >
+              <Button variant="secondary" size="sm">
+                Chat with Agent
+              </Button>
+            </Link>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-text-muted">Enabled:</span>
+              <Switch
+                checked={selectedAgent.enabled}
+                onChange={(next) => void handleToggleEnabled(next)}
+                label={`Enable ${selectedAgent.title}`}
               />
             </div>
-
-            {/* Tab Contents */}
-            <TabPanel id="mission" activeTab={activeTab}>
-              <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-4">
-                <h3 className="text-base font-semibold text-text">
-                  Mission Statement & Directives
-                </h3>
-                <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap font-sans text-text-secondary text-sm leading-relaxed">
-                  {selectedAgent.markdownDoc}
+          </>
+        )
+      }
+      meta={
+        selectedAgent && (
+          <>
+            <div className="flex items-center gap-2">
+              <StatusDot status={selectedAgent.enabled ? 'active' : 'idle'} />
+              <div className="min-w-0">
+                <div className="text-sm font-semibold text-text truncate">
+                  {selectedAgent.title}
+                </div>
+                <div className="text-xs text-text-muted font-mono truncate">
+                  {selectedAgent.name}
                 </div>
               </div>
-            </TabPanel>
-
-            <TabPanel id="autonomy" activeTab={activeTab}>
-              <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-6">
-                <div>
-                  <h3 className="text-base font-semibold text-text mb-1">Autonomy Level</h3>
-                  <p className="text-xs text-text-muted mb-4">
-                    Governs whether the agent asks for confirmation before executing actions.
-                  </p>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {(['suggest', 'autonomous', 'approval_required'] as const).map((mode) => (
-                      <button
-                        key={mode}
-                        type="button"
-                        onClick={() => void handleSaveAutonomy(mode)}
-                        className={`p-3 text-left rounded-lg border transition-all text-xs ${
-                          autonomyMode === mode
-                            ? 'border-primary bg-primary/5 text-text font-medium'
-                            : 'border-border-subtle hover:border-border text-text-secondary'
-                        }`}
-                      >
-                        <div className="font-semibold capitalize mb-1">
-                          {mode.replace('_', ' ')}
-                        </div>
-                        <div className="text-[11px] text-text-muted">
-                          {mode === 'autonomous' && 'Runs actions directly without user approval.'}
-                          {mode === 'approval_required' &&
-                            'Requires explicit human confirmation for sensitive tools.'}
-                          {mode === 'suggest' &&
-                            'Suggests tool calls but never executes autonomously.'}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t border-border-subtle">
-                  <h3 className="text-base font-semibold text-text mb-1">ReAct Loop Budget</h3>
-                  <p className="text-xs text-text-muted mb-3">
-                    Maximum reasoning / action iterations per agent run ({MIN_REACT_ROUNDS} -{' '}
-                    {MAX_REACT_ROUNDS}).
-                  </p>
-                  <div className="flex items-center gap-3 max-w-xs">
-                    <input
-                      type="number"
-                      min={MIN_REACT_ROUNDS}
-                      max={MAX_REACT_ROUNDS}
-                      value={roundsText}
-                      onChange={(e) => setRoundsText(e.target.value)}
-                      className="w-24 px-3 py-1.5 text-xs rounded border border-border bg-surface-elevated text-text"
-                    />
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      disabled={savingRounds}
-                      onClick={() => void handleSaveRounds()}
-                    >
-                      {savingRounds ? 'Saving...' : 'Save Budget'}
-                    </Button>
-                  </div>
-                </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge variant="mono" size="sm">
+                v{selectedAgent.version}
+              </Badge>
+              <Badge variant="primary" size="sm">
+                {selectedAgent.author}
+              </Badge>
+              {selectedAgent.requiredScope ? (
+                <Badge variant="mono" size="sm">
+                  Scope: {String(selectedAgent.requiredScope)}
+                </Badge>
+              ) : (
+                <Badge variant="default" size="sm">
+                  Scope not declared
+                </Badge>
+              )}
+              <Badge variant={selectedAgent.enabled ? 'success' : 'default'} size="sm">
+                {selectedAgent.enabled ? 'Active' : 'Disabled'}
+              </Badge>
+            </div>
+          </>
+        )
+      }
+      tabs={
+        <Tabs
+          ariaLabel="Agent Inspection Subtabs"
+          size="sm"
+          tabs={subTabs}
+          activeTab={activeTab}
+          onTabChange={(id) => setActiveTab(id as SubTab)}
+        />
+      }
+    >
+      {catalogLoading && !selectedAgent ? (
+        <CapabilitySubpageSkeleton eyebrow="Agent Capability" />
+      ) : !selectedAgent ? (
+        <div className="max-w-xl mx-auto py-12">
+          <EmptyState
+            title={`Agent "${decodedAgentId}" not found`}
+            description="This agent was not found in the catalog or workspace registrations."
+            action={{
+              label: 'View all Agents',
+              onClick: () => router.push(`/workspace/${workspaceId}/capabilities?category=agents`),
+            }}
+          />
+        </div>
+      ) : selectedAgent ? (
+        <>
+          <TabPanel id="mission" activeTab={activeTab}>
+            <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-4">
+              <h3 className="text-base font-semibold text-text">Mission Statement & Directives</h3>
+              <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap font-sans text-text-secondary text-sm leading-relaxed">
+                {selectedAgent.markdownDoc}
               </div>
-            </TabPanel>
+            </div>
+          </TabPanel>
 
-            <TabPanel id="tools" activeTab={activeTab}>
-              <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-semibold text-text">Declared Tool Access</h3>
-                  <Badge variant="mono" size="sm">
-                    {selectedAgent.toolNames.length} tools attached
-                  </Badge>
-                </div>
-                {selectedAgent.toolNames.length === 0 ? (
-                  <p className="text-xs text-text-muted">No explicit tools bound to this agent.</p>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {selectedAgent.toolNames.map((toolName) => (
-                      <div
-                        key={toolName}
-                        className="p-3 rounded-lg border border-border-subtle bg-surface-elevated flex items-center justify-between"
-                      >
-                        <span className="font-mono text-xs text-text">{toolName}</span>
-                        <Link
-                          href={`/workspace/${workspaceId}/capabilities/tools/${encodeURIComponent(toolName)}`}
-                          className="text-xs text-primary hover:underline"
-                        >
-                          Inspect Schema &rarr;
-                        </Link>
-                      </div>
-                    ))}
-                  </div>
-                )}
+          <TabPanel id="autonomy" activeTab={activeTab}>
+            <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-6">
+              <div>
+                <h3 className="text-base font-semibold text-text mb-1">Autonomy Level</h3>
+                <p className="text-xs text-text-muted mb-4">
+                  Governs whether the agent asks for confirmation before executing actions.
+                </p>
+                <AgentAutonomySelector
+                  autonomyMode={autonomyMode}
+                  onAutonomyChange={(mode) => void handleSaveAutonomy(mode)}
+                />
               </div>
-            </TabPanel>
 
-            <TabPanel id="contract" activeTab={activeTab}>
-              <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-base font-semibold text-text">Agent Contract Schema</h3>
+              <div className="pt-4 border-t border-border-subtle">
+                <h3 className="text-base font-semibold text-text mb-1">ReAct Loop Budget</h3>
+                <p className="text-xs text-text-muted mb-3">
+                  Maximum reasoning / action iterations per agent run ({MIN_REACT_ROUNDS} -{' '}
+                  {MAX_REACT_ROUNDS}).
+                </p>
+                <div className="flex items-center gap-3 max-w-xs">
+                  <input
+                    type="number"
+                    min={MIN_REACT_ROUNDS}
+                    max={MAX_REACT_ROUNDS}
+                    value={roundsText}
+                    onChange={(e) => setRoundsText(e.target.value)}
+                    className="w-24 px-3 py-1.5 text-xs rounded border border-border bg-surface-elevated text-text"
+                  />
                   <Button
                     size="sm"
                     variant="secondary"
-                    onClick={() => {
-                      navigator.clipboard?.writeText(JSON.stringify(selectedAgent, null, 2));
-                      toast({ tone: 'success', title: 'Copied contract JSON' });
-                    }}
+                    disabled={savingRounds}
+                    onClick={() => void handleSaveRounds()}
                   >
-                    Copy Contract
+                    {savingRounds ? 'Saving...' : 'Save Budget'}
                   </Button>
                 </div>
-                <pre className="p-4 rounded-lg bg-surface-elevated border border-border text-xs font-mono text-text-secondary overflow-x-auto max-h-96">
-                  {JSON.stringify(selectedAgent, null, 2)}
-                </pre>
               </div>
-            </TabPanel>
+            </div>
+          </TabPanel>
 
-            <TabPanel id="test" activeTab={activeTab}>
-              <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-4">
-                <h3 className="text-base font-semibold text-text">Diagnostic Contract Probe</h3>
-                <p className="text-xs text-text-muted">
-                  Dispatches a non-destructive dry-run probe to validate parameter contracts and
-                  tool permissions.
-                </p>
-
-                <FormField label="Probe Input Prompt">
-                  <Textarea
-                    value={testPrompt}
-                    onChange={(e) => setTestPrompt(e.target.value)}
-                    placeholder={`e.g. Run a diagnostic check for ${selectedAgent.title}`}
-                    rows={3}
-                  />
-                </FormField>
-
-                <div className="flex items-center gap-3">
-                  <Button
-                    variant="primary"
-                    size="sm"
-                    disabled={testRunning}
-                    onClick={() => void handleRunDiagnostic()}
-                  >
-                    {testRunning ? <Spinner size="sm" /> : 'Run Diagnostic Probe'}
-                  </Button>
-                </div>
-
-                {testError && (
-                  <div className="p-3 rounded-lg bg-danger/10 border border-danger/20 text-danger text-xs">
-                    {testError}
-                  </div>
-                )}
-
-                {testResult && (
-                  <div className="p-4 rounded-lg border border-border-subtle bg-surface-elevated space-y-2 text-xs">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-text">Diagnostic Output:</span>
-                      <Badge
-                        variant={testResult.status === 'success' ? 'success' : 'warning'}
-                        size="sm"
+          <TabPanel id="tools" activeTab={activeTab}>
+            <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold text-text">Declared Tool Access</h3>
+                <Badge variant="mono" size="sm">
+                  {selectedAgent.toolNames.length} tools attached
+                </Badge>
+              </div>
+              {selectedAgent.toolNames.length === 0 ? (
+                <p className="text-xs text-text-muted">No explicit tools bound to this agent.</p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {selectedAgent.toolNames.map((toolName) => (
+                    <div
+                      key={toolName}
+                      className="p-3 rounded-lg border border-border-subtle bg-surface-elevated flex items-center justify-between"
+                    >
+                      <span className="font-mono text-xs text-text">{toolName}</span>
+                      <Link
+                        href={`/workspace/${workspaceId}/capabilities/tools/${encodeURIComponent(toolName)}`}
+                        className="text-xs text-primary hover:underline"
                       >
-                        {testResult.executionDurationMs == null
-                          ? 'no duration reported'
-                          : `${testResult.executionDurationMs}ms`}
-                      </Badge>
+                        Inspect Schema &rarr;
+                      </Link>
                     </div>
-                    <pre className="p-3 rounded bg-surface border border-border text-xs font-mono overflow-x-auto">
-                      {JSON.stringify(testResult, null, 2)}
-                    </pre>
-                  </div>
-                )}
+                  ))}
+                </div>
+              )}
+            </div>
+          </TabPanel>
+
+          <TabPanel id="contract" activeTab={activeTab}>
+            <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-base font-semibold text-text">Agent Contract Schema</h3>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  onClick={() => {
+                    navigator.clipboard?.writeText(JSON.stringify(selectedAgent, null, 2));
+                    toast({ tone: 'success', title: 'Copied contract JSON' });
+                  }}
+                >
+                  Copy Contract
+                </Button>
               </div>
-            </TabPanel>
-          </div>
-        ) : null}
-      </div>
-    </div>
+              <pre className="p-4 rounded-lg bg-surface-elevated border border-border text-xs font-mono text-text-secondary overflow-x-auto max-h-96">
+                {JSON.stringify(selectedAgent, null, 2)}
+              </pre>
+            </div>
+          </TabPanel>
+
+          <TabPanel id="test" activeTab={activeTab}>
+            <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-4">
+              <h3 className="text-base font-semibold text-text">Diagnostic Contract Probe</h3>
+              <p className="text-xs text-text-muted">
+                Dispatches a non-destructive dry-run probe to validate parameter contracts and tool
+                permissions.
+              </p>
+
+              <FormField label="Probe Input Prompt">
+                <Textarea
+                  value={testPrompt}
+                  onChange={(e) => setTestPrompt(e.target.value)}
+                  placeholder={`e.g. Run a diagnostic check for ${selectedAgent.title}`}
+                  rows={3}
+                />
+              </FormField>
+
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="primary"
+                  size="sm"
+                  disabled={testRunning}
+                  onClick={() => void handleRunDiagnostic()}
+                >
+                  {testRunning ? <Spinner size="sm" /> : 'Run Diagnostic Probe'}
+                </Button>
+              </div>
+
+              {testError && (
+                <div className="p-3 rounded-lg bg-danger/10 border border-danger/20 text-danger text-xs">
+                  {testError}
+                </div>
+              )}
+
+              {testResult && (
+                <div className="p-4 rounded-lg border border-border-subtle bg-surface-elevated space-y-2 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-text">Diagnostic Output:</span>
+                    <Badge
+                      variant={testResult.status === 'success' ? 'success' : 'warning'}
+                      size="sm"
+                    >
+                      {testResult.executionDurationMs == null
+                        ? 'no duration reported'
+                        : `${testResult.executionDurationMs}ms`}
+                    </Badge>
+                  </div>
+                  <pre className="p-3 rounded bg-surface border border-border text-xs font-mono overflow-x-auto">
+                    {JSON.stringify(testResult, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+          </TabPanel>
+        </>
+      ) : null}
+    </CapabilityDetailLayout>
   );
 }

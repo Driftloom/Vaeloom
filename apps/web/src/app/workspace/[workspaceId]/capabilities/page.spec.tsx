@@ -275,13 +275,27 @@ jest.mock('@/lib/api-client', () => {
 // Real enough to drive the data path: the fetcher runs, its resolution becomes
 // `data`, its rejection becomes `error`, and `mutate` refetches. Keyed cache is
 // omitted because each test asserts on a freshly rendered tree.
+//
+// The named `mutate` export backs the shared `invalidateCapabilities` helper:
+// the page no longer reloads through the hook-local `mutate` from useSWR, so a
+// post-write reload must reach the mounted hooks through the module-level
+// mutate. It therefore re-runs the loaders of every currently mounted hook
+// whose cacheKey matches the key being revalidated -- the same contract real
+// SWR gives the global mutate. Without it the write flows ('create', toggle,
+// refresh) would settle on pre-write data, and a crash if it stayed undefined.
 
 jest.mock('swr', () => {
   const react = jest.requireActual('react');
+  const loaderRegistry = new Map<string, Set<() => void>>();
+  const keyOf = (key: unknown) => (Array.isArray(key) ? key.join('|') : String(key));
   return {
     __esModule: true,
+    mutate: async (key: unknown) => {
+      const cacheKey = keyOf(key);
+      for (const loader of loaderRegistry.get(cacheKey) ?? []) loader();
+    },
     default: (key: unknown, fetcher?: () => Promise<unknown>) => {
-      const cacheKey = Array.isArray(key) ? key.join('|') : String(key);
+      const cacheKey = keyOf(key);
       const [data, setData] = react.useState<unknown>(undefined);
       const [error, setError] = react.useState<unknown>(undefined);
       const fetcherRef = react.useRef(fetcher);
@@ -304,7 +318,14 @@ jest.mock('swr', () => {
       }, []);
 
       react.useEffect(() => {
+        const loaders = loaderRegistry.get(cacheKey) ?? new Set<() => void>();
+        loaders.add(load);
+        loaderRegistry.set(cacheKey, loaders);
         load();
+        return () => {
+          loaders.delete(load);
+          if (loaders.size === 0) loaderRegistry.delete(cacheKey);
+        };
       }, [load, cacheKey]);
 
       return {
@@ -489,6 +510,56 @@ describe('CapabilitiesPage', () => {
     expect(fakeDb.creates.map((body) => body['category'])).toEqual(['skill']);
   });
 
+  it('surfaces the enterprise gate error from a New Plugin create and records nothing', async () => {
+    await renderSkills();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('tab', { name: /Plugins/i }));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'New Plugin' }));
+    });
+    const dialog = screen.getByRole('dialog');
+
+    capsApi()['create'].mockRejectedValueOnce(httpError(403, 'Plugin runtime is enterprise-gated'));
+    const listSkillsCalls = capsApi()['listSkills'].mock.calls.length;
+
+    fireEvent.change(within(dialog).getByPlaceholderText(/e\.g\. code-synthesizer/i), {
+      target: { value: 'test-plugin' },
+    });
+    await act(async () => {
+      fireEvent.click(within(dialog).getByRole('button', { name: /Create Capability/i }));
+    });
+
+    // The write reached the API exactly once, as a plugin capability.
+    expect(capsApi()['create']).toHaveBeenCalledTimes(1);
+    expect(capsApi()['create']).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'test-plugin', category: 'plugin' }),
+    );
+
+    // The gate message is surfaced verbatim...
+    await waitFor(() => expect(mockToast).toHaveBeenCalled());
+    expect(mockToast).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tone: 'error',
+        // api.ts turns the ApiError `detail` into `message`; errorMessage passes
+        // it through, so the 403 body is what the user reads.
+        detail: expect.stringContaining('Plugin runtime is enterprise-gated'),
+      }),
+    );
+    // ...and no success toast pretends the registry bind happened.
+    expect(
+      mockToast.mock.calls.some((call) =>
+        String((call[0] as { title?: string }).title).startsWith('Created '),
+      ),
+    ).toBe(false);
+
+    // The Once-mock replaced the fake server's impl, so fakeDb stays empty and
+    // a failed create must not re-run the page's loaders either.
+    expect(fakeDb.creates).toEqual([]);
+    expect(capsApi()['listSkills'].mock.calls.length).toBe(listSkillsCalls);
+  });
+
   it("routes a server row categorised 'skill' into the Skills tab", async () => {
     fakeDb.skills = [
       installedSkill({
@@ -580,6 +651,40 @@ describe('CapabilitiesPage', () => {
     await userClickRow('acceptance-criteria-review');
     expect(screen.getByText('2h ago')).toBeInTheDocument();
     expect(screen.getByText('7')).toBeInTheDocument();
+  });
+
+  it('sorts recently used newest-first and puts never-used rows last', async () => {
+    fakeDb.skills = [
+      installedSkill({
+        id: 'srv-old',
+        name: 'used-old',
+        usageCount: 5,
+        lastUsedAt: '2026-09-01T10:00:00Z',
+      }),
+      installedSkill({
+        id: 'srv-never',
+        name: 'never-used',
+        usageCount: 99,
+        lastUsedAt: null,
+      }),
+      installedSkill({
+        id: 'srv-new',
+        name: 'used-new',
+        usageCount: 1,
+        lastUsedAt: '2026-10-01T10:00:00Z',
+      }),
+    ];
+    await renderSkills();
+
+    fireEvent.change(screen.getByRole('combobox', { name: 'Sort skills' }), {
+      target: { value: 'recent' },
+    });
+
+    const list = screen.getByRole('list', { name: 'Skills' });
+    const names = within(list)
+      .getAllByRole('button', { name: /^(used-new|used-old|never-used)$/ })
+      .map((button) => button.getAttribute('aria-label'));
+    expect(names).toEqual(['used-new', 'used-old', 'never-used']);
   });
 
   // ─── C: writes ─────────────────────────────────────────────────────────────
@@ -771,6 +876,46 @@ describe('CapabilitiesPage', () => {
         { id: 'srv-skill-1', body: { enabled: true } },
       ]),
     );
+  });
+
+  it('disables the detail-pane actions while a toggle is in flight', async () => {
+    fakeDb.skills = [
+      installedSkill({ id: 'srv-skill-1', name: 'acceptance-criteria-review', enabled: true }),
+    ];
+    await renderSkills();
+
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    capsApi()['update'].mockImplementationOnce(
+      async (id: string, body: Record<string, unknown>) => {
+        await gate;
+        fakeDb.updates.push({ id, body });
+        const row = fakeDb.skills.find((entry) => entry.id === id);
+        if (!row) throw httpError(404, 'Capability not found');
+        if (body['enabled'] !== undefined) row.enabled = body['enabled'] as boolean;
+        return { ...row };
+      },
+    );
+
+    const disableButton = screen.getByRole('button', { name: 'Disable' });
+    await act(async () => {
+      fireEvent.click(disableButton);
+    });
+
+    // In flight: a second click must not slip a second write out.
+    fireEvent.click(disableButton);
+    expect(disableButton).toBeDisabled();
+
+    await act(async () => {
+      release();
+    });
+
+    await waitFor(() =>
+      expect(fakeDb.updates).toEqual([{ id: 'srv-skill-1', body: { enabled: false } }]),
+    );
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Enable' })).toBeEnabled());
   });
 
   it('registers a catalog skill with the singular category when installing', async () => {

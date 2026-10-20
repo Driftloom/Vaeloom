@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useToast } from '@/components/shared/Toast';
 import { useWorkspaceConnectors } from '../../../hooks/useWorkspace';
+import { invalidateCapabilities } from '../../../lib/queries/capability-keys';
 import { api } from '../../../lib/api';
 import {
   temporalApi,
@@ -56,7 +57,7 @@ export function useConnectorsState({
   openAddTrigger,
 }: UseConnectorsStateProps) {
   const { toast } = useToast();
-  const { connectors, isLoading: workspaceLoading, mutate } = useWorkspaceConnectors(workspaceId);
+  const { connectors, isLoading: workspaceLoading } = useWorkspaceConnectors(workspaceId);
 
   const [activeSubTab, setActiveSubTab] = useState<'discover' | 'yours' | 'studio'>('discover');
   const [internalSearch, setInternalSearch] = useState('');
@@ -193,7 +194,7 @@ export function useConnectorsState({
           oauthPollRef.current = null;
         }
         void loadDynamicData();
-        void mutate();
+        void invalidateCapabilities(workspaceId, 'connectors');
         toast({
           tone: 'success',
           title: `${data.app || 'App'} connected`,
@@ -214,7 +215,7 @@ export function useConnectorsState({
 
     window.addEventListener('message', handleOAuthMessage);
     return () => window.removeEventListener('message', handleOAuthMessage);
-  }, [loadDynamicData, mutate, toast]);
+  }, [loadDynamicData, workspaceId, toast]);
 
   const byProvider = useMemo(
     () =>
@@ -414,7 +415,7 @@ export function useConnectorsState({
       }
 
       void loadDynamicData();
-      await mutate();
+      await invalidateCapabilities(workspaceId, 'connectors');
     } catch (err) {
       toast({
         tone: 'error',
@@ -424,7 +425,7 @@ export function useConnectorsState({
     } finally {
       setBusyAction(null);
     }
-  }, [loadDynamicData, mutate, toast, workspaceId]);
+  }, [loadDynamicData, workspaceId, toast]);
 
   const handleInitiateConnect = useCallback(
     (row: CatalogRow) => {
@@ -486,7 +487,7 @@ export function useConnectorsState({
           return;
         }
         await api.integrations.create({ name: meta?.name ?? provider, provider });
-        await mutate();
+        await invalidateCapabilities(workspaceId, 'connectors');
         toast({
           tone: 'info',
           title: 'Connector registered',
@@ -504,7 +505,7 @@ export function useConnectorsState({
         setBusyAction(null);
       }
     },
-    [composioCatalogApps, handleComposioOAuth, loadDynamicData, mutate, toast],
+    [composioCatalogApps, handleComposioOAuth, loadDynamicData, workspaceId, toast],
   );
 
   const handleSyncAllComposio = useCallback(async () => {
@@ -557,7 +558,7 @@ export function useConnectorsState({
             detail: res?.message ?? 'Sync requested.',
           });
         }
-        await mutate();
+        await invalidateCapabilities(workspaceId, 'connectors');
       } catch (err) {
         toast({
           tone: 'error',
@@ -569,7 +570,7 @@ export function useConnectorsState({
         setSyncBusyId(null);
       }
     },
-    [mutate, toast, workspaceId],
+    [workspaceId, toast],
   );
 
   const handleDynamicSync = useCallback(
@@ -678,7 +679,7 @@ export function useConnectorsState({
     try {
       if (target.isWorkspaceIntegration) {
         await api.integrations.delete(target.id);
-        await mutate();
+        await invalidateCapabilities(workspaceId, 'connectors');
       } else {
         await connectorsApi.delete(target.id);
         void loadDynamicData();
@@ -695,7 +696,7 @@ export function useConnectorsState({
     } finally {
       setBusyAction(null);
     }
-  }, [loadDynamicData, mutate, pendingDisconnect, toast]);
+  }, [loadDynamicData, pendingDisconnect, toast, workspaceId]);
 
   const handleCreateCustomConnector = useCallback(
     async (event: React.FormEvent) => {

@@ -98,6 +98,34 @@ describe('PluginSubpage', () => {
     expect(mockPush).toHaveBeenCalledWith('/workspace/ws-test-123/capabilities?category=plugins');
   });
 
+  it('does not invent an entrypoint the registry did not declare', async () => {
+    pluginApi.list.mockResolvedValueOnce({
+      plugins: [
+        {
+          id: 'plug-summarizer',
+          name: 'summarizer',
+          description: 'Extracts executive bullet summaries',
+          status: 'ACTIVE',
+          author: 'Vaeloom Core Team',
+          version: '1.0.0',
+          tags: ['Summarization'],
+          hooks: ['post_process'],
+          permissions: {},
+        },
+      ],
+    });
+
+    renderSubpage();
+
+    expect(
+      (await screen.findAllByText(/Extracts executive bullet summaries/i)).length,
+    ).toBeGreaterThan(0);
+
+    expect(screen.queryByText('summarizer.py')).not.toBeInTheDocument();
+    const notReportedNodes = await screen.findAllByText('Not reported (by the registry)');
+    expect(notReportedNodes.length).toBeGreaterThan(0);
+  });
+
   it('requires confirmation before an irreversible delete', async () => {
     // This was the only destructive action in the capabilities feature that
     // fired on a single click, with no dialog and no undo.

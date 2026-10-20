@@ -312,7 +312,7 @@ async def test_search_memories_requires_a_query(db_session, monkeypatch):
 
 
 async def test_execute_sync_vault_and_ingest_vault_notes(db_session, monkeypatch):
-    """Verify sync_vault updates connector state and ingest_vault_notes processes markdown notes."""
+    """sync_vault records an honest sync *request* (no fabricated sync state); ingest_vault_notes processes markdown notes."""
     import api.tools.executor as executor_mod
 
     monkeypatch.setattr(executor_mod, "_ws_session", lambda wid: _SessionCtx(db_session))
@@ -320,21 +320,46 @@ async def test_execute_sync_vault_and_ingest_vault_notes(db_session, monkeypatch
 
     # 1. Sync vault initially
     sync_res = await _execute_sync_vault(
-        params={"force": False},
+        params={"force": True},
         workspace_id=str(ws_id),
     )
     assert sync_res["status"] == "success"
     assert sync_res["tool"] == "sync_vault"
-    assert sync_res["result"]["status"] == "completed"
-    assert "files_synced" in sync_res["result"]
+    result = sync_res["result"]
+    # Honesty contract: there is no server-side git engine, so the tool reports
+    # a recorded request — never an executed sync. `force` is a no-op.
+    assert result["success"] is True
+    assert result["executed"] is False
+    assert result["workspace_id"] == str(ws_id)
+    assert result["daemon_status"] == "not_connected"
+    assert result["files_found"] == 0
+    assert result["conflicts_count"] == 0
+    assert result["last_pull_time"] is None
+    assert result["last_push_time"] is None
+    assert "Sync request recorded" in result["message"]
+    assert "files found: 0" in result["message"]
+    assert "files_synced" not in result
+    assert "files_updated" not in result
+    assert "files_skipped" not in result
+    assert "status" not in result
 
-    # Verify Connector was created
+    # Verify Connector was created with honest defaults
     conn = (await db_session.execute(
         select(Connector).where(Connector.workspace_id == ws_id, Connector.type == "vault_sync")
     )).scalar_one_or_none()
     assert conn is not None
     assert conn.status == "CONNECTED"
-    assert conn.config.get("status") == "in_sync"
+    # No sync ran, so none of these fabricated values may be written back.
+    assert "last_pull_time" not in conn.config
+    assert "last_push_time" not in conn.config
+    assert "vault_path" not in conn.config
+    assert "status" not in conn.config
+    assert all(v != "in_sync" for v in conn.config.values())
+    logs = conn.config.get("sync_logs", [])
+    assert len(logs) == 1
+    assert logs[0]["event"] == "manual_sync_requested"
+    assert logs[0]["executed"] is False
+    assert "Sync request recorded" in logs[0]["message"]
 
     # 2. Ingest notes via tool
     notes_payload = [
@@ -470,7 +495,9 @@ async def test_memory_agent_handler_tools():
         assert required in tool_names, f"{required} missing from MemoryAgentHandler.tools"
 
     sync_t = next(t for t in handler.tools if t.name == "sync_vault")
-    assert "2-way Git pull/rebase" in sync_t.description
+    assert "desktop vaultsync client" in sync_t.description
+    assert "no server-side sync engine" in sync_t.description
+    assert "2-way Git" not in sync_t.description
 
     ingest_t = next(t for t in handler.tools if t.name == "ingest_vault_notes")
     assert "Ingest and index Markdown notes" in ingest_t.description
@@ -513,13 +540,16 @@ async def test_action_proposal_engine_vault_conflict_and_graph(db_session):
     vault_prop = next((p for p in proposals if p.binding and p.binding.tool_name == "sync_vault"), None)
     assert vault_prop is not None, "Vault conflict proposal not generated"
     assert vault_prop.proposal_id.startswith("prop_vault_")
-    assert vault_prop.title == "⚡ Resolve 1 Vault Conflict"
-    assert vault_prop.description == "Vault sync detected remote rebase conflicts requiring resolution."
+    assert vault_prop.title == "🔄 Request Vault Sync — 1 Conflict Pending"
+    assert vault_prop.description == (
+        "Records a sync request for this workspace's vaultsync client. "
+        "Conflicts are resolved from the Vault Sync panel — this request does not resolve them."
+    )
     assert vault_prop.proposal_type == ProposalType.WORKFLOW
     assert vault_prop.risk_class == RiskClass.MEDIUM
     assert vault_prop.requires_approval is True
     assert vault_prop.binding.tool_name == "sync_vault"
-    assert vault_prop.binding.arguments == {"force": True, "workspace_id": str(ws_id)}
+    assert vault_prop.binding.arguments == {"workspace_id": str(ws_id)}
     assert vault_prop.binding.required_scope == "memory.write"
 
     # Verify second brain graph exploration proposal

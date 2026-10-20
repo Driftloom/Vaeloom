@@ -15,6 +15,14 @@ export interface ToolRow {
   approvalGated: boolean | null;
 }
 
+/**
+ * State of the server-side gate read. `stale` means the last fetch failed but
+ * previously fetched rows are still on screen: the view is honest about the
+ * refresh having failed, yet the rows and switches keep working, because a
+ * write re-reads the server anyway.
+ */
+export type GateStatus = 'loading' | 'ready' | 'failed' | 'stale';
+
 export interface ToolSuite {
   id: string;
   name: string;

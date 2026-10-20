@@ -92,7 +92,7 @@ async def _detect_subtasks(message: str) -> list[tuple[str, float]]:
     # MVP scope lock: filter to canonical agents when enforced (AC-02 fix)
     try:
         from ..config import settings as _settings
-        if _settings.mvp_scope_enforced:
+        if _settings.mvp_scope_enforced and not getattr(_settings, "enterprise_routes_enabled", False):
             from .router import MVP_CANONICAL_AGENTS
             candidates = [c for c in candidates if c[0] in MVP_CANONICAL_AGENTS]
     except Exception:
@@ -206,7 +206,7 @@ def is_multi_agent_request(message: str) -> bool:
     # When MVP scope is enforced, only count canonical categories
     try:
         from ..config import settings as _settings
-        if _settings.mvp_scope_enforced:
+        if _settings.mvp_scope_enforced and not getattr(_settings, "enterprise_routes_enabled", False):
             from .router import MVP_CATEGORY_AGENT_MAP
             # Only count keywords for canonical categories
             canonical_cats = set(MVP_CATEGORY_AGENT_MAP.keys())
@@ -907,12 +907,12 @@ async def run_supervisor_stream(
                 agent_cls = AGENT_REGISTRY.get(ag)
                 if not agent_cls:
                     res = await _safe_stream_single(ag, context)
-                    agent_results_map[ag] = res
-                    await queue.put({"event": "agent_done", "data": {"agent": ag, "agent_name": ag, "status": "error", "result": res.get("result", {})}})
-                    await queue.put({"event": "supervisor_agent_done", "data": res})
+                    agent_results_map[ag] = res  # noqa: B023 - `queue` and `agent_results_map` are assigned once in the enclosing scope before this loop and never rebound inside it, so there is no late binding to bind.
+                    await queue.put({"event": "agent_done", "data": {"agent": ag, "agent_name": ag, "status": "error", "result": res.get("result", {})}})  # noqa: B023 - `queue` and `agent_results_map` are assigned once in the enclosing scope before this loop and never rebound inside it, so there is no late binding to bind.
+                    await queue.put({"event": "supervisor_agent_done", "data": res})  # noqa: B023 - `queue` and `agent_results_map` are assigned once in the enclosing scope before this loop and never rebound inside it, so there is no late binding to bind.
                     return
 
-                await queue.put({"event": "agent_start", "data": {"agent": ag, "agent_name": ag, "phase": "plan"}})
+                await queue.put({"event": "agent_start", "data": {"agent": ag, "agent_name": ag, "phase": "plan"}})  # noqa: B023 - `queue` and `agent_results_map` are assigned once in the enclosing scope before this loop and never rebound inside it, so there is no late binding to bind.
                 enriched_msg = message
                 if context:
                     ctx_parts = [f"[from:{k} untrusted]{str(v)[:300]}[end:{k}]" for k, v in context.items()]
@@ -942,9 +942,9 @@ async def run_supervisor_stream(
                         if etype == "token":
                             tok = edata.get("token") or edata.get("text") or ""
                             accumulated_text += tok
-                            await queue.put({"event": "agent_token", "data": {"agent": ag, "agent_name": ag, "token": tok}})
+                            await queue.put({"event": "agent_token", "data": {"agent": ag, "agent_name": ag, "token": tok}})  # noqa: B023 - `queue` and `agent_results_map` are assigned once in the enclosing scope before this loop and never rebound inside it, so there is no late binding to bind.
                         elif etype in ("act", "tool_start", "tool_result", "reflect", "observe"):
-                            await queue.put({"event": "agent_phase", "data": {"agent": ag, "agent_name": ag, "phase": etype, "data": edata}})
+                            await queue.put({"event": "agent_phase", "data": {"agent": ag, "agent_name": ag, "phase": etype, "data": edata}})  # noqa: B023 - `queue` and `agent_results_map` are assigned once in the enclosing scope before this loop and never rebound inside it, so there is no late binding to bind.
                         elif etype == "done":
                             status = edata.get("status", "success")
                             if edata.get("result"):
@@ -962,9 +962,9 @@ async def run_supervisor_stream(
                     "result": {"summary": accumulated_text, "details": accumulated_text, "proposals": [], "questions": []},
                     "status": status,
                 }
-                agent_results_map[ag] = res
-                await queue.put({"event": "agent_done", "data": {"agent": ag, "agent_name": ag, "status": status, "result": res["result"]}})
-                await queue.put({"event": "supervisor_agent_done", "data": res})
+                agent_results_map[ag] = res  # noqa: B023 - `queue` and `agent_results_map` are assigned once in the enclosing scope before this loop and never rebound inside it, so there is no late binding to bind.
+                await queue.put({"event": "agent_done", "data": {"agent": ag, "agent_name": ag, "status": status, "result": res["result"]}})  # noqa: B023 - `queue` and `agent_results_map` are assigned once in the enclosing scope before this loop and never rebound inside it, so there is no late binding to bind.
+                await queue.put({"event": "supervisor_agent_done", "data": res})  # noqa: B023 - `queue` and `agent_results_map` are assigned once in the enclosing scope before this loop and never rebound inside it, so there is no late binding to bind.
 
             tasks = [asyncio.create_task(_stream_worker(ag)) for ag in layer]
             while any(not t.done() for t in tasks) or not queue.empty():
@@ -972,7 +972,7 @@ async def run_supervisor_stream(
                     item = await asyncio.wait_for(queue.get(), timeout=0.05)
                     yield item
                     queue.task_done()
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     pass
 
             await asyncio.gather(*tasks, return_exceptions=True)

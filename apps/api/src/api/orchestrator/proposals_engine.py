@@ -113,14 +113,17 @@ class ActionProposalEngine:
             proposals.append(
                 ActionProposal(
                     proposal_id=f"prop_vault_{uuid.uuid4().hex[:6]}",
-                    title=f"⚡ Resolve {len(conflicts)} Vault Conflict{'s' if len(conflicts) > 1 else ''}",
-                    description="Vault sync detected remote rebase conflicts requiring resolution.",
+                    title=f"🔄 Request Vault Sync — {len(conflicts)} Conflict{'s' if len(conflicts) > 1 else ''} Pending",
+                    description=(
+                        "Records a sync request for this workspace's vaultsync client. "
+                        "Conflicts are resolved from the Vault Sync panel — this request does not resolve them."
+                    ),
                     proposal_type=ProposalType.WORKFLOW,
                     risk_class=RiskClass.MEDIUM,
                     requires_approval=True,
                     binding=ProposalActionBinding(
                         tool_name="sync_vault",
-                        arguments={"force": True, "workspace_id": workspace_id},
+                        arguments={"workspace_id": workspace_id},
                         required_scope="memory.write",
                     ),
                 )

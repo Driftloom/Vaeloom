@@ -1,0 +1,5 @@
+extends: existence
+message: 'This sentence (%s words) exceeds the recommended maximum of 35 words. Consider splitting it.'
+level: suggestion
+scope: sentence
+limit: 35

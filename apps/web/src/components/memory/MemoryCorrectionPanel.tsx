@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useState, useMemo } from 'react';
+import Link from 'next/link';
 import useSWR from 'swr';
 import { Modal, ErrorState, Button, SearchField, Badge, EmptyState } from '@vaeloom/ui-kit';
 import { memoryApi, ApiError } from '@/lib/api-client';
@@ -12,6 +13,22 @@ interface MemoryCorrectionPanelProps {
   workspaceId?: string;
 }
 
+// Correction windows are fetched in pages of this size; the API caps page_size
+// at 100. Superseded rows can sit on any page, so the footer continues the
+// window until the server-reported total is reached.
+const PANEL_PAGE_SIZE = 100;
+
+function readSupersedesId(memory: Memory): string {
+  const raw = memory as unknown as Record<string, unknown>;
+  const metadata = (raw['metadata'] ?? {}) as Record<string, unknown>;
+  const candidate =
+    raw['supersedesId'] ??
+    raw['supersedes_id'] ??
+    metadata['supersedesId'] ??
+    metadata['supersedes_id'];
+  return typeof candidate === 'string' ? candidate : '';
+}
+
 export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProps = {}) {
   const [editing, setEditing] = useState<Memory | null>(null);
   const [draftTitle, setDraftTitle] = useState('');
@@ -21,20 +38,40 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'superseded'>('all');
   const [saving, setSaving] = useState(false);
+  const [loadedPages, setLoadedPages] = useState(1);
   const { toast } = useToast();
 
-  // SWR instead of useState+useEffect+manual load(): the Corrections tab and the
-  // /memory/corrections route each ran their own GET /memories, and neither
-  // revalidated when the memory page superseded a record. Now they share the
-  // parent page's cache key and stay in step.
+  // The Corrections view must include superseded rows - that is its entire job -
+  // so it fetches with include_superseded=true under its own cache key. It cannot
+  // share the active-memories key: SWR dedupes the two mismatched param sets and
+  // the superseded rows vanish. Beyond the first window the server's total is
+  // kept so the footer can offer Load more, the same shape the memory list page
+  // uses. The params object is built here because this call carries the
+  // include_superseded flag the list page does not use.
+  const listKeyBase = workspaceId
+    ? `memories-${workspaceId}-with-superseded`
+    : 'memories-all-with-superseded';
   const {
     data: memoriesData,
     error: loadErrorRaw,
     isLoading: loading,
     mutate: reload,
-  } = useSWR(workspaceId ? `memories-${workspaceId}` : 'memories-all', () =>
-    memoryApi.list({ page_size: 100, ...(workspaceId ? { workspace_id: workspaceId } : {}) }),
-  );
+  } = useSWR([listKeyBase, loadedPages], async () => {
+    const pages = await Promise.all(
+      Array.from({ length: loadedPages }, (_, i) =>
+        memoryApi.list({
+          page: i + 1,
+          page_size: PANEL_PAGE_SIZE,
+          ...(workspaceId ? { workspace_id: workspaceId } : {}),
+          include_superseded: true,
+        }),
+      ),
+    );
+    return {
+      memories: pages.flatMap((p) => (Array.isArray(p.memories) ? p.memories : [])),
+      total: pages[0]?.total ?? 0,
+    };
+  });
 
   const memories: Memory[] = useMemo(() => {
     if (!memoriesData) return [];
@@ -45,6 +82,16 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
         []);
     return rows.filter((m) => m.status !== 'deleted');
   }, [memoriesData]);
+
+  // The server-reported corpus size, kept separately from the fetched rows so a
+  // truncated window never reads as the whole workspace.
+  const memoriesTotal = useMemo(() => {
+    if (!memoriesData || Array.isArray(memoriesData)) return memories.length;
+    const total = (memoriesData as { total?: number }).total;
+    return typeof total === 'number' ? total : memories.length;
+  }, [memoriesData, memories]);
+
+  const loadMoreMemories = useCallback(() => setLoadedPages((p) => p + 1), []);
 
   const loadError: string | null = loadErrorRaw
     ? loadErrorRaw instanceof ApiError
@@ -134,20 +181,20 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
 
   return (
     <section
-      className="p-6 rounded-xl border border-[var(--color-border)] bg-[var(--color-surface)] space-y-5"
+      className="p-6 rounded-xl border border-border bg-surface space-y-5"
       aria-label="Memory corrections and supersession"
     >
-      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[var(--color-border)]">
+      <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-display font-medium text-[var(--color-text-primary)]">
+            <h2 className="text-lg font-display font-medium text-text">
               Memory Corrections & Supersession
             </h2>
             <Badge variant="mono" size="sm">
               Immutable Ledger
             </Badge>
           </div>
-          <p className="text-xs text-[var(--color-text-secondary)] mt-0.5">
+          <p className="text-xs text-text-secondary mt-0.5">
             Modify any belief or note. Corrections automatically fork an immutable superseded
             version linked by <code className="font-mono text-xs">supersedes_id</code> with zero
             data loss.
@@ -176,8 +223,8 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
               onClick={() => setStatusFilter(s)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition ${
                 statusFilter === s
-                  ? 'bg-[var(--color-brand-primary,#818cf8)] text-white shadow-sm'
-                  : 'bg-[var(--color-surface-subtle)] text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] border border-[var(--color-border)]'
+                  ? 'bg-accent text-accent-fg shadow-sm'
+                  : 'bg-surface-100 text-text-secondary hover:bg-surface-hover border border-border'
               }`}
             >
               {s} (
@@ -202,7 +249,7 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="h-16 animate-pulse rounded-lg bg-[var(--color-surface-subtle)] border border-[var(--color-border)]"
+              className="h-16 animate-pulse rounded-lg bg-surface-100 border border-border"
             />
           ))}
         </div>
@@ -218,59 +265,82 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
           }
         />
       ) : (
-        <ul
-          role="list"
-          className="divide-y divide-[var(--color-border)] rounded-lg border border-[var(--color-border)] overflow-hidden"
-        >
-          {filteredMemories.map((m) => {
-            const isSuperseded =
-              (m.status as string) === 'superseded' ||
-              (m.metadata?.['status'] as string) === 'superseded';
-            const supersedesId =
-              (m.metadata?.['supersedes_id'] as string) ||
-              ((m as unknown as Record<string, unknown>)['supersedes_id'] as string) ||
-              '';
+        <div className="space-y-3">
+          <ul
+            role="list"
+            className="divide-y divide-border rounded-lg border border-border overflow-hidden"
+          >
+            {filteredMemories.map((m) => {
+              const isSuperseded =
+                (m.status as string) === 'superseded' ||
+                (m.metadata?.['status'] as string) === 'superseded';
+              const supersedesId = readSupersedesId(m);
 
-            return (
-              <li
-                key={m.id}
-                className="p-4 bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)] transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <Badge variant={isSuperseded ? 'warning' : 'primary'} size="sm">
-                      {m.type || 'note'}
-                    </Badge>
-                    {isSuperseded && (
-                      <Badge variant="warning" size="sm">
-                        SUPERSEDED
+              return (
+                <li
+                  key={m.id}
+                  className="p-4 bg-surface hover:bg-surface-hover transition-colors flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <Badge variant={isSuperseded ? 'warning' : 'primary'} size="sm">
+                        {m.type || 'note'}
                       </Badge>
-                    )}
-                    <h3 className="truncate text-sm font-semibold text-[var(--color-text-primary)]">
-                      {m.title || 'Untitled Memory'}
-                    </h3>
+                      {isSuperseded && (
+                        <Badge variant="warning" size="sm">
+                          SUPERSEDED
+                        </Badge>
+                      )}
+                      <h3 className="truncate text-sm font-semibold text-text">
+                        {m.title || 'Untitled Memory'}
+                      </h3>
+                    </div>
+                    <p className="text-xs text-text-secondary mt-1 line-clamp-2">
+                      {typeof m.summary === 'string' ? m.summary : 'No summary'}
+                    </p>
+                    <div className="flex items-center gap-3 mt-1.5 text-[11px] text-text-muted font-mono">
+                      <span>ID: {m.id.slice(0, 8)}</span>
+                      {supersedesId && (
+                        <span>
+                          Supersedes:{' '}
+                          {workspaceId ? (
+                            <Link
+                              href={`/workspace/${workspaceId}/memory/${supersedesId}`}
+                              className="text-accent hover:underline"
+                            >
+                              {supersedesId.slice(0, 8)}
+                            </Link>
+                          ) : (
+                            supersedesId.slice(0, 8)
+                          )}
+                        </span>
+                      )}
+                      {Array.isArray(m.tags) && m.tags.length > 0 && (
+                        <span>Tags: {m.tags.join(', ')}</span>
+                      )}
+                    </div>
                   </div>
-                  <p className="text-xs text-[var(--color-text-secondary)] mt-1 line-clamp-2">
-                    {typeof m.summary === 'string' ? m.summary : 'No summary'}
-                  </p>
-                  <div className="flex items-center gap-3 mt-1.5 text-[11px] text-[var(--color-text-muted)] font-mono">
-                    <span>ID: {m.id.slice(0, 8)}</span>
-                    {supersedesId && <span>Supersedes: {supersedesId.slice(0, 8)}</span>}
-                    {Array.isArray(m.tags) && m.tags.length > 0 && (
-                      <span>Tags: {m.tags.join(', ')}</span>
-                    )}
-                  </div>
-                </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button variant="secondary" size="sm" onClick={() => openEditor(m)}>
-                    {isSuperseded ? 'Re-Correct' : 'Correct'}
-                  </Button>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button variant="secondary" size="sm" onClick={() => openEditor(m)}>
+                      {isSuperseded ? 'Re-Correct' : 'Correct'}
+                    </Button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-xs text-text-muted">
+              {`Showing ${filteredMemories.length} of ${memoriesTotal} memories`}
+            </p>
+            {memories.length < memoriesTotal && (
+              <Button variant="secondary" size="sm" onClick={loadMoreMemories}>
+                Load more
+              </Button>
+            )}
+          </div>
+        </div>
       )}
 
       {/* Interactive Correction Modal with Live Diff */}
@@ -284,27 +354,27 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
       >
         {editing && (
           <div className="space-y-4">
-            <p className="text-xs text-[var(--color-text-secondary)]">
+            <p className="text-xs text-text-secondary">
               Edit the fields below. A live word-level diff compares your changes against the active
               record. Saving creates an immutable new memory revision without overwriting history.
             </p>
 
             <div>
-              <label className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
+              <label className="block text-xs font-semibold text-text uppercase tracking-wider mb-1">
                 Memory Title
               </label>
               <input
                 type="text"
                 value={draftTitle}
                 onChange={(e) => setDraftTitle(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] text-[var(--color-text-primary)] font-mono focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)]"
+                className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface-100 text-text font-mono focus:outline-none focus:ring-1 focus:ring-accent"
               />
             </div>
 
             <div>
               <label
                 htmlFor="memory-summary"
-                className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1"
+                className="block text-xs font-semibold text-text uppercase tracking-wider mb-1"
               >
                 Executive Summary
               </label>
@@ -313,13 +383,13 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
                 rows={3}
                 value={draftSummary}
                 onChange={(e) => setDraftSummary(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)]"
+                className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface-100 text-text focus:outline-none focus:ring-1 focus:ring-accent"
               />
             </div>
 
             {/* Live Diff Comparison */}
             <div>
-              <h4 className="text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1.5">
+              <h4 className="text-xs font-semibold text-text uppercase tracking-wider mb-1.5">
                 Live Diff Comparison (Original vs Proposed)
               </h4>
               <DiffViewer
@@ -329,19 +399,19 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
+              <label className="block text-xs font-semibold text-text uppercase tracking-wider mb-1">
                 Content & Raw Notes (Optional)
               </label>
               <textarea
                 rows={4}
                 value={draftContent}
                 onChange={(e) => setDraftContent(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] text-[var(--color-text-primary)] font-mono focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)]"
+                className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface-100 text-text font-mono focus:outline-none focus:ring-1 focus:ring-accent"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
+              <label className="block text-xs font-semibold text-text uppercase tracking-wider mb-1">
                 Correction / Revision Reason (Audit Trail)
               </label>
               <input
@@ -349,14 +419,14 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
                 placeholder="e.g., Promoted to Principal Architect; Corrected graduation year"
                 value={draftReason}
                 onChange={(e) => setDraftReason(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-md border border-[var(--color-border)] bg-[var(--color-surface-sunken)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)]"
+                className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface-100 text-text focus:outline-none focus:ring-1 focus:ring-accent"
               />
-              <p className="text-[11px] text-[var(--color-text-muted)] mt-0.5">
+              <p className="text-[11px] text-text-muted mt-0.5">
                 Preserved immutably in provenance ledger alongside cryptographic lineage.
               </p>
             </div>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-[var(--color-border)]">
+            <div className="flex justify-end gap-2 pt-3 border-t border-border">
               <Button variant="ghost" onClick={() => setEditing(null)}>
                 Cancel
               </Button>

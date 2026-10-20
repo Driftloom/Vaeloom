@@ -9188,8 +9188,7 @@ paths:
               schema:
                 type: array
                 items:
-                  type: object
-                  additionalProperties: true
+                  $ref: '#/components/schemas/CatalogSkillItem'
                 title: Response List Catalog Capabilities Api V1 Capabilities Catalog
                   Get
         '422':
@@ -9345,7 +9344,16 @@ paths:
 
         every bundled catalog skill the workspace has not installed, marked
 
-        ``installed: false`` / ``enabled: false`` with no ``id``.'
+        ``installed: false`` / ``enabled: false`` with no ``id``.
+
+
+        The workspace row set is capped at ``CAPABILITY_LIST_LIMIT`` rows; past the
+
+        cap the response is truncated and the ``X-Capabilities-Truncated`` /
+
+        ``X-Capabilities-Limit`` headers make that explicit. The catalog merge then
+
+        sees the returned, possibly truncated rows.'
       operationId: list_capabilities_api_v1_capabilities_get
       parameters:
       - name: category
@@ -18398,7 +18406,21 @@ paths:
 
         Only unresolved conflicts are retained, so a client that clears its queue
 
-        visibly empties the server''s view.'
+        visibly empties the server''s view. Conflicts already recorded as resolved
+        in
+
+        the history table are filtered out too: a client''s ledger is a snapshot,
+        its
+
+        queue can still hold entries the server has adjudicated, and a stale re-report
+
+        must not resurrect them.
+
+
+        Each report also upserts this machine into the device registry, so /status
+        can
+
+        show every machine that syncs this workspace rather than only the last one.'
       operationId: report_vault_client_state_api_v1_vault_sync_report_post
       requestBody:
         content:
@@ -18501,13 +18523,114 @@ paths:
         '429': *id001
       security:
       - BearerAuth: []
+  /api/v1/vault-sync/conflicts/history:
+    get:
+      tags:
+      - vault-sync
+      summary: List Vault Conflict History
+      description: 'Resolutions recorded for this workspace''s connector, newest first.
+
+
+        The active ledger (/conflicts) forgets: resolving removes the entry and the
+
+        next client report replaces the rest. This is the durable record — one row
+
+        per conflict ever resolved here, echoed back so the Corrections UI can show
+
+        what happened after the queue drained.'
+      operationId: list_vault_conflict_history_api_v1_vault_sync_conflicts_history_get
+      parameters:
+      - name: workspace_id
+        in: query
+        required: true
+        schema:
+          type: string
+          format: uuid
+          description: Workspace ID
+          title: Workspace Id
+        description: Workspace ID
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          maximum: 200
+          minimum: 1
+          description: Max rows to return
+          default: 50
+          title: Limit
+        description: Max rows to return
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          description: Rows to skip
+          default: 0
+          title: Offset
+        description: Rows to skip
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                title: Response List Vault Conflict History Api V1 Vault Sync Conflicts
+                  History Get
+        '422':
+          description: Validation Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HTTPValidationError'
+        '401':
+          description: Unauthorized — missing or invalid Bearer JWT access token.
+          content:
+            application/problem+json:
+              schema:
+                type: object
+                properties:
+                  type:
+                    type: string
+                  title:
+                    type: string
+                  status:
+                    type: integer
+                  detail:
+                    type: string
+                required:
+                - detail
+        '429': *id001
+      security:
+      - BearerAuth: []
   /api/v1/vault-sync/conflicts/{conflict_id}/resolve:
     post:
       tags:
       - vault-sync
       summary: Resolve Vault Conflict
-      description: Mark a conflict resolved using either 'keep-local' or 'accept-incoming'
-        strategy.
+      description: 'Record a resolution for a conflict, then clear it from the active
+        ledger.
+
+
+        The recorded row is insert-once, keyed by (connector_id, conflict_id): the
+
+        first resolution wins, and a repeated resolve echoes the recorded one instead
+
+        of overwriting it. The local client applies the recorded resolution to its
+
+        ledger on its next sync — the server has no git engine and does not pretend
+
+        to apply it here.
+
+
+        A conflict id that is neither in the ledger nor in the history is a 404:
+
+        recording a resolution for a conflict the server never saw would fabricate
+
+        an audit trail.'
       operationId: resolve_vault_conflict_api_v1_vault_sync_conflicts__conflict_id__resolve_post
       parameters:
       - name: conflict_id
@@ -20031,6 +20154,74 @@ components:
       - company
       - role
       title: CareerEntry
+    CatalogSkillItem:
+      properties:
+        slug:
+          type: string
+          title: Slug
+        name:
+          type: string
+          title: Name
+        description:
+          type: string
+          title: Description
+        tags:
+          items:
+            type: string
+          type: array
+          title: Tags
+        version:
+          type: string
+          title: Version
+        author:
+          type: string
+          title: Author
+        required_scope:
+          type: string
+          title: Required Scope
+        autonomy:
+          type: string
+          title: Autonomy
+        trust_class:
+          type: string
+          title: Trust Class
+        triggers:
+          items:
+            type: string
+          type: array
+          title: Triggers
+        markdown_doc:
+          type: string
+          title: Markdown Doc
+        bundled:
+          type: boolean
+          title: Bundled
+        self_check:
+          type: string
+          title: Self Check
+      type: object
+      required:
+      - slug
+      - name
+      - description
+      - tags
+      - version
+      - author
+      - required_scope
+      - autonomy
+      - trust_class
+      - triggers
+      - markdown_doc
+      - bundled
+      - self_check
+      title: CatalogSkillItem
+      description: 'One browsable catalog entry, exactly as :func:`catalog_to_wire`
+        emits it.
+
+
+        Typed so the route''s contract is machine-checkable in the OpenAPI schema
+
+        rather than ``dict[str, Any]``, which told a generated client nothing.'
     ChatMessage:
       properties:
         workspaceId:
@@ -23473,12 +23664,14 @@ components:
           - type: 'null'
           title: Supersedes Id
         created_at:
-          type: string
-          format: date-time
+          anyOf:
+          - type: string
+          - type: 'null'
           title: Created At
         updated_at:
-          type: string
-          format: date-time
+          anyOf:
+          - type: string
+          - type: 'null'
           title: Updated At
       type: object
       required:
@@ -23499,8 +23692,9 @@ components:
           format: uuid
           title: Workspace Id
         exported_at:
-          type: string
-          format: date-time
+          anyOf:
+          - type: string
+          - type: 'null'
           title: Exported At
         total_count:
           type: integer
@@ -23708,16 +23902,17 @@ components:
         deleted_at:
           anyOf:
           - type: string
-            format: date-time
           - type: 'null'
           title: Deleted At
         created_at:
-          type: string
-          format: date-time
+          anyOf:
+          - type: string
+          - type: 'null'
           title: Created At
         updated_at:
-          type: string
-          format: date-time
+          anyOf:
+          - type: string
+          - type: 'null'
           title: Updated At
       type: object
       required:
@@ -27090,6 +27285,10 @@ components:
           type: boolean
           title: Executed
           default: false
+        recorded_usage:
+          type: boolean
+          title: Recorded Usage
+          default: true
       type: object
       required:
       - status

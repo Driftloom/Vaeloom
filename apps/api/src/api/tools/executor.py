@@ -963,7 +963,6 @@ async def _execute_categorize_document(params: dict[str, Any], workspace_id: str
 
 
 async def _execute_sync_vault(params: dict[str, Any], workspace_id: str) -> dict[str, Any]:
-    force = bool(params.get("force", False))
     try:
         import uuid as _uuid
         from datetime import UTC, datetime
@@ -971,10 +970,13 @@ async def _execute_sync_vault(params: dict[str, Any], workspace_id: str) -> dict
         from sqlalchemy import select
 
         from api.models.schema import Connector, Document
+        from api.routers.vault_sync import _derive_daemon_status
 
         ws_uuid = _uuid.UUID(str(workspace_id)) if not isinstance(workspace_id, _uuid.UUID) else workspace_id
         async with _ws_session(workspace_id) as session:
-            # 1. Get or create vault_sync connector
+            # 1. Get or create the vault_sync connector. A fresh connector has no
+            # client and no history — same shape as _get_or_create_vault_connector
+            # in routers/vault_sync.py, with no seeded sync state.
             stmt = select(Connector).where(
                 Connector.workspace_id == ws_uuid,
                 Connector.type == "vault_sync",
@@ -988,52 +990,70 @@ async def _execute_sync_vault(params: dict[str, Any], workspace_id: str) -> dict
                     name="Vault Sync",
                     status="CONNECTED",
                     config={
-                        "status": "in_sync",
                         "branch": "main",
-                        "vault_path": "~/Documents/VaeloomVault",
                         "auto_ingest": True,
                         "conflicts": [],
+                        "sync_logs": [],
                     },
                 )
                 session.add(connector)
                 await session.flush()
 
-            # 2. Count synced markdown notes
+            cfg = dict(connector.config or {})
+            daemon_status = _derive_daemon_status(
+                cfg.get("last_client_heartbeat"), cfg.get("daemon_status")
+            )
+
+            # 2. Report what is already in the document store. There is no
+            # server-side git engine, so this is a *found* count, never a
+            # "synced" one.
             doc_stmt = select(Document).where(
                 Document.workspace_id == ws_uuid,
                 Document.deleted_at.is_(None),
             )
             docs = (await session.execute(doc_stmt)).scalars().all()
             markdown_docs = [d for d in docs if d.type == "markdown" or (d.path and d.path.endswith(".md"))]
-            files_synced = len(markdown_docs)
-            files_updated = files_synced if force else 0
-            files_skipped = 0
+            files_found = len(markdown_docs)
 
-            # 3. Update connector config
-            now_iso = datetime.now(UTC).isoformat()
-            cfg = dict(connector.config or {})
-            cfg["last_pull_time"] = now_iso
-            cfg["last_push_time"] = now_iso
-            cfg["status"] = "in_sync"
+            if daemon_status == "running":
+                message = (
+                    f"Sync request recorded; files found: {files_found}. The vaultsync client performs "
+                    "the git pull/rebase/commit/push cycle on the machine that holds the vault."
+                )
+            else:
+                message = (
+                    f"Sync request recorded; files found: {files_found}. No vaultsync client is "
+                    "connected to this workspace, so nothing was synced yet."
+                )
+
+            # 3. Record the request. No pull/push ran, so no times and no sync
+            # status are written back — emitting them would be fabrication.
             logs = list(cfg.get("sync_logs", []))
             logs.append({
-                "timestamp": now_iso,
-                "event": "tool_sync_vault",
-                "message": f"Vault sync executed via agent tool. Files synced: {files_synced}.",
-                "level": "info",
+                "timestamp": datetime.now(UTC).isoformat(),
+                "event": "manual_sync_requested",
+                "message": message,
+                "level": "info" if daemon_status == "running" else "warning",
+                "executed": False,
             })
             cfg["sync_logs"] = logs[-50:]
             connector.config = cfg
             await session.commit()
 
+            conflicts = cfg.get("conflicts") or []
             return {
                 "status": "success",
                 "tool": "sync_vault",
                 "result": {
-                    "status": "completed",
-                    "files_synced": files_synced,
-                    "files_updated": files_updated,
-                    "files_skipped": files_skipped,
+                    "success": True,
+                    "executed": False,
+                    "workspace_id": str(workspace_id),
+                    "daemon_status": daemon_status,
+                    "files_found": files_found,
+                    "last_pull_time": cfg.get("last_pull_time"),
+                    "last_push_time": cfg.get("last_push_time"),
+                    "conflicts_count": len([c for c in conflicts if not c.get("resolved")]),
+                    "message": message,
                 },
             }
     except Exception as e:
@@ -1042,10 +1062,9 @@ async def _execute_sync_vault(params: dict[str, Any], workspace_id: str) -> dict
             "status": "error",
             "tool": "sync_vault",
             "result": {
-                "status": "error",
-                "files_synced": 0,
-                "files_updated": 0,
-                "files_skipped": 0,
+                "success": False,
+                "executed": False,
+                "message": f"Vault sync request failed: {e}",
             },
             "error": str(e),
         }

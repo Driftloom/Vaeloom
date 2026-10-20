@@ -1,20 +1,29 @@
 'use client';
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
+import useSWR from 'swr';
 import { CapabilityItem } from '@/lib/capabilities-data';
 import { useToast } from '@/components/shared/Toast';
-import { capabilitiesApi } from '@/lib/api-client';
-import { TOOL_DEFINITIONS_CATALOG } from '@/lib/tool-definitions-catalog';
+import { capabilitiesApi, type ToolDefinitionRecord } from '@/lib/api-client';
+import { capabilityKeys, invalidateCapabilities } from '@/lib/queries/capability-keys';
+import {
+  OTHER_SUITE_KEY,
+  OTHER_SUITE_LABEL,
+  TOOL_DEFINITIONS_SWR_KEY,
+  TOOL_SUITE_LABELS,
+  definitionFromRecord,
+  suiteKeyForScope,
+} from '@/lib/tool-definitions-catalog';
 
 import {
   buildRow,
-  formatSuiteName,
   CUSTOM_SUITE_ID,
   type DetailSubTab,
   type ToolGateRow,
   type ToolRow,
   type ToolSort,
   type ToolSuite,
+  type GateStatus,
 } from './tools/types';
 import { ToolSuiteAccordion } from './tools/ToolSuiteAccordion';
 import { ToolDetailDrawer } from './tools/ToolDetailDrawer';
@@ -48,57 +57,131 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
     [onSortChange],
   );
 
-  const [selectedSuiteId, setSelectedSuiteId] = useState<string>('memory-graph');
+  const [selectedSuiteId, setSelectedSuiteId] = useState<string>('memory');
   const [selectedToolName, setSelectedToolName] = useState<string | null>(null);
   const [detailSubTab, setDetailSubTab] = useState<DetailSubTab>('contract');
 
-  const [gateRows, setGateRows] = useState<ReadonlyMap<string, ToolGateRow>>(() => new Map());
-  const [gateStatus, setGateStatus] = useState<'loading' | 'ready' | 'failed'>('loading');
-  const [gateError, setGateError] = useState<string | null>(null);
+  // The gate reads the shared capability-row key the workbench page fetches,
+  // so a write from either surface revalidates one cache entry and both stay
+  // in step. Rows of other categories ride along in that response and are
+  // filtered out here.
+  const {
+    data: serverRows,
+    error: gateFetchError,
+    isLoading: gateLoading,
+  } = useSWR(
+    workspaceId ? capabilityKeys.list(workspaceId) : null,
+    () => capabilitiesApi.list(undefined, workspaceId),
+    { revalidateOnFocus: false, shouldRetryOnError: false },
+  );
+
+  const gateRows = useMemo(() => {
+    const next = new Map<string, ToolGateRow>();
+    for (const row of serverRows ?? []) {
+      if (row.category === 'tool') next.set(row.name, { id: row.id, enabled: row.enabled });
+    }
+    return next;
+  }, [serverRows]);
+
+  // A failed refetch does not brick the view: SWR retains the last good
+  // response, so error + data is `stale` (rows stay operable, notice shown),
+  // while error without data is `failed` (nothing on screen can be trusted).
+  const gateStatus: GateStatus = gateFetchError
+    ? serverRows
+      ? 'stale'
+      : 'failed'
+    : gateLoading || !serverRows
+      ? 'loading'
+      : 'ready';
+
+  const gateError = gateFetchError
+    ? gateFetchError instanceof Error
+      ? gateFetchError.message
+      : 'The tool rows could not be read.'
+    : null;
+
+  // The definitions registry is workspace-independent, so it fetches under its
+  // own shared key; the `[toolName]` subpage reads the same entry. Its failure
+  // states are surfaced the same way the workspace-rows gate reports its own —
+  // a failed fetch must never degrade into the accordion's "The tool catalog
+  // is empty." copy, which claims the server answered and holds nothing.
+  const {
+    data: definitions,
+    error: definitionsFetchError,
+    isLoading: definitionsLoading,
+  } = useSWR(TOOL_DEFINITIONS_SWR_KEY, () => capabilitiesApi.listToolDefinitions(), {
+    revalidateOnFocus: false,
+    shouldRetryOnError: false,
+  });
+
+  // Same shape the gate computes for its rows: error without data is `failed`
+  // (nothing on screen can be trusted), error with data is `stale` (rows stay
+  // operable, notice shown).
+  const definitionsStatus: GateStatus = definitionsFetchError
+    ? definitions
+      ? 'stale'
+      : 'failed'
+    : definitionsLoading || !definitions
+      ? 'loading'
+      : 'ready';
+  const definitionsError = definitionsFetchError
+    ? definitionsFetchError instanceof Error
+      ? definitionsFetchError.message
+      : 'The served tool definitions could not be read.'
+    : null;
+
   const [pendingTools, setPendingTools] = useState<ReadonlySet<string>>(() => new Set());
 
-  useEffect(() => {
-    let cancelled = false;
-    setGateStatus('loading');
-    setGateError(null);
-    capabilitiesApi
-      .list('tool', workspaceId)
-      .then((rows) => {
-        if (cancelled) return;
-        const next = new Map<string, ToolGateRow>();
-        for (const row of rows) next.set(row.name, { id: row.id, enabled: row.enabled });
-        setGateRows(next);
-        setGateStatus('ready');
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        setGateError(err instanceof Error ? err.message : 'The tool rows could not be read.');
-        setGateStatus('failed');
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [workspaceId]);
-
   const suites = useMemo<ToolSuite[]>(() => {
-    const builtIn: ToolSuite[] = Object.entries(TOOL_DEFINITIONS_CATALOG)
-      .filter(([suiteId]) => suiteId !== 'custom-workspace')
-      .map(([suiteId, catalog]) => ({
-        id: suiteId,
-        name: formatSuiteName(suiteId),
-        description: catalog.description,
-        origin: 'built-in' as const,
-        rows: catalog.tools.map((t) => buildRow(t.name, t, null)),
-      }));
+    const served = definitions ?? [];
+    const servedNames = new Set(served.map((d) => d.name));
 
-    const knownNames = new Set(builtIn.flatMap((s) => s.rows.map((r) => r.name)));
+    // Workspace rows the registry has never heard of. They carry no served
+    // definition, so the drawer shows their capability row fields with its
+    // "no server definition" notice instead.
     const customRows = tools
-      .filter((t) => !knownNames.has(t.name))
-      .map((item) => {
-        const catalog = TOOL_DEFINITIONS_CATALOG['custom-workspace'];
-        const def = catalog?.tools.find((t) => t.name === item.name) ?? null;
-        return buildRow(item.name, def, item);
+      .filter((t) => !servedNames.has(t.name))
+      .map((item) => buildRow(item.name, null, item));
+
+    // Group by the first dotted segment of each tool's required scope,
+    // preserving the registry's first-seen order for the labeled suites; the
+    // catch-all 'Other' suite collects every unlabeled prefix and sorts last.
+    const groups = new Map<string, ToolDefinitionRecord[]>();
+    for (const record of served) {
+      const key = suiteKeyForScope(record.requiredScope);
+      const bucket = groups.get(key);
+      if (bucket) bucket.push(record);
+      else groups.set(key, [record]);
+    }
+
+    const builtIn: ToolSuite[] = [];
+    const otherRows: ToolRow[] = [];
+    for (const [key, records] of groups) {
+      const rows = records.map((record) =>
+        buildRow(record.name, definitionFromRecord(record), null),
+      );
+      const label = TOOL_SUITE_LABELS[key];
+      if (label) {
+        builtIn.push({
+          id: key,
+          name: label,
+          description: `Registry tools whose required scope begins with "${key}".`,
+          origin: 'built-in',
+          rows,
+        });
+      } else {
+        otherRows.push(...rows);
+      }
+    }
+    if (otherRows.length > 0) {
+      builtIn.push({
+        id: OTHER_SUITE_KEY,
+        name: OTHER_SUITE_LABEL,
+        description: 'Registry tools whose scope prefix has no suite label.',
+        origin: 'built-in',
+        rows: otherRows,
       });
+    }
 
     if (customRows.length === 0) return builtIn;
     return [
@@ -106,13 +189,13 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
         id: CUSTOM_SUITE_ID,
         name: 'Workspace Tools',
         description:
-          'Tools registered against this workspace. Definitions shown for these come from the tool catalog, not from the capability row.',
+          'Tools registered against this workspace. No server definition exists for them; the fields shown come from their workspace capability row.',
         origin: 'workspace',
         rows: customRows,
       },
       ...builtIn,
     ];
-  }, [tools]);
+  }, [definitions, tools]);
 
   const filteredSuites = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -166,12 +249,7 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
         });
         id = created.id;
       }
-      const updated = await capabilitiesApi.update(id, { enabled });
-      setGateRows((previous) => {
-        const next = new Map(previous);
-        next.set(row.name, { id: updated.id, enabled: updated.enabled });
-        return next;
-      });
+      await capabilitiesApi.update(id, { enabled });
     },
     [gateRows],
   );
@@ -181,6 +259,9 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
       setPendingTools((previous) => new Set(previous).add(row.name));
       try {
         await writeToolEnabled(row, enabled);
+        // The optimistic local map is gone: the switch now reads what the
+        // server stores, so revalidation is the only way the row lands.
+        await invalidateCapabilities(workspaceId, 'list');
         toast({
           tone: enabled ? 'success' : 'info',
           title: `${row.name} ${enabled ? 'enabled' : 'disabled'} for this workspace`,
@@ -202,7 +283,7 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
         });
       }
     },
-    [toast, writeToolEnabled],
+    [toast, workspaceId, writeToolEnabled],
   );
 
   const handleToggleSuite = useCallback(
@@ -230,6 +311,9 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
         for (const row of suite.rows) next.delete(row.name);
         return next;
       });
+      // Refresh from what actually landed, including when some writes failed:
+      // the switch state the user sees next is the server's, not the local guess.
+      await invalidateCapabilities(workspaceId, 'list');
 
       const moved = suite.rows.length - failures.length;
       if (failures.length === 0) {
@@ -250,7 +334,7 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
         detail: `${failures.map((failure) => failure.name).join(', ')}: ${failures[0]?.reason ?? 'The server write failed.'} Those tools are still enabled server-side because no enabled=false row was written. The other ${moved} did change.`,
       });
     },
-    [toast, writeToolEnabled],
+    [toast, workspaceId, writeToolEnabled],
   );
 
   return (
@@ -262,6 +346,8 @@ export const ToolsView: React.FC<ToolsViewProps> = ({
         gateStatus={gateStatus}
         gateError={gateError}
         pendingTools={pendingTools}
+        definitionsStatus={definitionsStatus}
+        definitionsError={definitionsError}
         sortBy={sortBy}
         onSortChange={handleSortChange}
         searchQuery={searchQuery}

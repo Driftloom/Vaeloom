@@ -18,7 +18,9 @@ jobs:
       - name: Vale Lint
         uses: errata-ai/vale-action@v2
         with:
-          files: 'specs docs'
+          files: '["specs", "docs"]'
+          filter_mode: nofilter
+          reporter: local
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

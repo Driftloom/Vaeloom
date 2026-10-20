@@ -29,64 +29,50 @@ export default function MemoryVaultPage() {
       {/* Page Header */}
       <PageHeader
         title="Vault Git Sync"
-        description="Built-in zero-telemetry Git synchronization for local Markdown notes. Replaces Obsidian Sync out of the box with 30s debounce commits, 5m rebase pulls, and automatic Memory ingestion."
-        actions={
-          <div className="flex items-center gap-2">
-            <Badge variant="success" size="sm">
-              ● Installed & Active
-            </Badge>
-            <Badge variant="mono" size="sm">
-              v1.0.0 Native
-            </Badge>
-          </div>
-        }
+        description="Git synchronization for local Markdown notes, driven by the vaultsync client that runs on your machine. Commit and pull intervals are configurable below; Memory ingestion is optional."
       />
 
       {/* Main Interactive Sync Control Plane */}
       <VaultSyncPanel workspaceId={workspaceId} />
 
       {/* Built-in Architecture Summary */}
-      <Card
-        padding="md"
-        className="p-6 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl space-y-4"
-      >
+      <Card padding="md" className="p-6 bg-surface border border-border rounded-xl space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-[var(--color-text-primary)] uppercase tracking-wider">
-            How Vaeloom Vault Sync Works (Default Built-in Architecture)
+          <h3 className="text-sm font-semibold text-text uppercase tracking-wider">
+            How Vaeloom Vault Sync Works
           </h3>
           <Badge variant="mono">Enterprise Plumbing</Badge>
         </div>
 
-        <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed">
-          Vault Sync is an integral, native part of Vaeloom. You do not need any external services,
-          extra subscriptions, or separate installations. The sync engine operates as background
-          plumbing directly on your local Markdown vault.
+        <p className="text-sm text-text-secondary leading-relaxed">
+          Vault Sync is an integral part of Vaeloom - no external subscriptions or hosted sync
+          service. The vaultsync client runs on your machine and syncs your local Markdown vault to
+          a private Git repository you control.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
-          <div className="bg-[var(--color-surface-subtle)] p-4 rounded-lg text-xs space-y-1.5 border border-[var(--color-border)]">
-            <h4 className="font-semibold text-[var(--color-text-primary)]">1. Debounced Push</h4>
-            <p className="text-[var(--color-text-secondary)]">
-              Watches your markdown files. 30 seconds after you finish typing, changes are
-              automatically committed and pushed to your private Git repository.
+          <div className="bg-surface-100 p-4 rounded-lg text-xs space-y-1.5 border border-border">
+            <h4 className="font-semibold text-text">1. Debounced Push</h4>
+            <p className="text-text-secondary">
+              The vaultsync client watches your markdown files. After edits settle (default 30s,
+              configurable), changes are committed and pushed to your private Git repository.
             </p>
           </div>
 
-          <div className="bg-[var(--color-surface-subtle)] p-4 rounded-lg text-xs space-y-1.5 border border-[var(--color-border)]">
-            <h4 className="font-semibold text-[var(--color-text-primary)]">
-              2. 5-Minute Pull with Rebase
-            </h4>
-            <p className="text-[var(--color-text-secondary)]">
-              Pulls remote updates with rebase every 5 minutes. On conflict, incoming notes are
-              safely saved as <code>*.conflict-YYYY-MM-DD.md</code> without overwriting local work.
+          <div className="bg-surface-100 p-4 rounded-lg text-xs space-y-1.5 border border-border">
+            <h4 className="font-semibold text-text">2. Pull with Rebase</h4>
+            <p className="text-text-secondary">
+              Pulls remote updates with rebase on the configured interval (default 5m). On conflict,
+              incoming notes are saved as <code>*.conflict-YYYY-MM-DD.md</code> without overwriting
+              local work, and the conflict is reported in the panel above.
             </p>
           </div>
 
-          <div className="bg-[var(--color-surface-subtle)] p-4 rounded-lg text-xs space-y-1.5 border border-[var(--color-border)]">
-            <h4 className="font-semibold text-[var(--color-text-primary)]">3. Memory Ingestion</h4>
-            <p className="text-[var(--color-text-secondary)]">
-              Markdown notes are automatically indexed into Vaeloom Documents and the Multi-Scale
-              Memory Graph, making all thoughts queryable by your AI copilot.
+          <div className="bg-surface-100 p-4 rounded-lg text-xs space-y-1.5 border border-border">
+            <h4 className="font-semibold text-text">3. Memory Ingestion</h4>
+            <p className="text-text-secondary">
+              When auto-indexing is enabled, notes you ingest are written into workspace Documents
+              and the memory graph, where your agents can retrieve them.
             </p>
           </div>
         </div>

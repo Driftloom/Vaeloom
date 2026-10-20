@@ -2,11 +2,9 @@
 
 import React, { useCallback, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
 import useSWR from 'swr';
 import {
   Badge,
-  Breadcrumb,
   Button,
   ConfirmationDialog,
   EmptyState,
@@ -21,7 +19,7 @@ import {
 } from '@vaeloom/ui-kit';
 import { pluginApi, type PluginResponse } from '@/lib/api-client';
 import { useToast } from '@/components/shared/Toast';
-import { PageHeader } from '@/components/shared/Page';
+import { CapabilityDetailLayout, MetaRow } from '@/components/capabilities/CapabilityDetailLayout';
 import { CapabilitySubpageSkeleton } from '@/components/capabilities/CapabilitySubpageSkeleton';
 
 // No `BUILTIN_PLUGINS` fallback.
@@ -188,278 +186,264 @@ export default function PluginSubpage() {
   ];
 
   return (
-    <div className="flex flex-col h-full min-h-0 bg-background text-text antialiased overflow-hidden">
-      <div className="shrink-0 px-4 sm:px-6 pt-4 border-b border-border bg-surface">
-        <PageHeader
-          title={plugin?.name ?? decodedPluginId}
-          description={
-            plugin?.description ||
-            'Inspect entrypoints, execution status, and sandboxing rules for this plugin.'
-          }
-          eyebrow="Workspace Plugin"
-          breadcrumb={<Breadcrumb items={breadcrumbItems} />}
-          actions={
-            <div className="flex items-center gap-3">
-              <Link
-                href={breadcrumbsBackUrl}
-                className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-lg"
+    <CapabilityDetailLayout
+      eyebrow="Workspace Plugin"
+      title={plugin?.name ?? decodedPluginId}
+      description={
+        plugin?.description ||
+        'Inspect entrypoints, execution status, and sandboxing rules for this plugin.'
+      }
+      backHref={breadcrumbsBackUrl}
+      backLabel="Back to Plugins"
+      breadcrumbs={breadcrumbItems}
+      rail={
+        plugin && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-text-muted">Enabled:</span>
+            <Switch
+              checked={isActive}
+              onChange={(next) => void handleToggleStatus(next)}
+              label={`Enable ${plugin.name}`}
+            />
+          </div>
+        )
+      }
+      actions={
+        plugin && (
+          <Button variant="danger" size="sm" onClick={() => setConfirmDelete(true)}>
+            Delete Plugin
+          </Button>
+        )
+      }
+      meta={
+        plugin && (
+          <>
+            <div className="flex items-center gap-2">
+              <StatusDot status={isActive ? 'active' : 'idle'} />
+              <div className="min-w-0">
+                <div className="text-sm font-semibold font-mono text-text truncate">
+                  {plugin.name}
+                </div>
+              </div>
+            </div>
+            <MetaRow label="Status" value={plugin.status} />
+            <MetaRow label="Version" value={`v${plugin.version}`} />
+            <MetaRow
+              label="Entrypoint"
+              value={plugin.entry_point ?? 'Not reported (by the registry)'}
+            />
+          </>
+        )
+      }
+      tabs={
+        plugin ? (
+          <Tabs
+            ariaLabel="Plugin Inspection Subtabs"
+            size="sm"
+            tabs={subTabs}
+            activeTab={activeTab}
+            onTabChange={(id) => setActiveTab(id as SubTab)}
+          />
+        ) : undefined
+      }
+    >
+      {loadingRegistry && !plugin ? (
+        <CapabilitySubpageSkeleton eyebrow="Workspace Plugin" />
+      ) : !plugin ? (
+        <div className="max-w-xl mx-auto py-12">
+          <EmptyState
+            title={`Plugin "${decodedPluginId}" not found`}
+            description="This plugin does not exist in this workspace."
+            action={{
+              label: 'View all Plugins',
+              onClick: () => router.push(breadcrumbsBackUrl),
+            }}
+          />
+        </div>
+      ) : plugin ? (
+        <div className="max-w-5xl mx-auto space-y-6">
+          <TabPanel id="overview" activeTab={activeTab}>
+            <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-4">
+              <h3 className="text-base font-semibold text-text">Plugin Description</h3>
+              <p className="text-sm text-text-secondary leading-relaxed">{plugin.description}</p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-border-subtle text-xs">
+                <div>
+                  <span className="text-text-muted">Author:</span>
+                  <span className="ml-2 font-medium text-text">{plugin.author}</span>
+                </div>
+                <div>
+                  <span className="text-text-muted">Entrypoint:</span>
+                  {plugin.entry_point ? (
+                    <span className="ml-2 font-mono text-text">{plugin.entry_point}</span>
+                  ) : (
+                    // The registry declares `entry_point`. Guessing
+                    // `${name}.py` printed a path that may not exist, which is
+                    // exactly what an operator reads to decide whether to grant
+                    // this plugin a hook.
+                    <span className="ml-2 text-text-muted">not reported by the registry</span>
+                  )}
+                </div>
+                <div>
+                  <span className="text-text-muted">Status:</span>
+                  <span className="ml-2 font-medium text-text">{plugin.status}</span>
+                </div>
+                <div>
+                  <span className="text-text-muted">Tags:</span>
+                  <span className="ml-2 text-text">{(plugin.tags ?? []).join(', ') || 'None'}</span>
+                </div>
+              </div>
+            </div>
+          </TabPanel>
+
+          <TabPanel id="runtime" activeTab={activeTab}>
+            <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-4">
+              <h3 className="text-base font-semibold text-text">
+                Runtime Environment & Sandboxing
+              </h3>
+              <div className="space-y-3 text-xs text-text-secondary leading-relaxed">
+                <div className="p-3 rounded-lg border border-border-subtle bg-surface-elevated">
+                  <div className="font-semibold text-text mb-1">Process Isolation</div>
+                  <div>
+                    Plugins run inside isolated sub-processes with restricted environment variables
+                    and memory limits. Filesystem access is locked to the workspace vault.
+                  </div>
+                </div>
+                <div className="p-3 rounded-lg border border-border-subtle bg-surface-elevated">
+                  <div className="font-semibold text-text mb-1">Entrypoint Binding</div>
+                  <div className="font-mono text-[11px] text-text-muted mt-1">
+                    Path: plugins/{plugin.name}/
+                    {plugin.entry_point ?? 'Not reported (by the registry)'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </TabPanel>
+
+          <TabPanel id="activity" activeTab={activeTab}>
+            <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-4">
+              <h3 className="text-base font-semibold text-text">Recorded Executions</h3>
+
+              <div>
+                <span className="text-xs text-text-muted">Declared permissions:</span>
+                {permissionPayload?.permissions &&
+                Object.keys(permissionPayload.permissions).length > 0 ? (
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {Object.entries(permissionPayload.permissions).map(([scope, value]) => (
+                      <Badge key={scope} variant="mono" size="sm">
+                        {String(value) === 'true' || value === true
+                          ? scope
+                          : `${scope}=${String(value)}`}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs text-text-muted">
+                    The registry declares no permissions for this plugin.
+                  </p>
+                )}
+              </div>
+
+              {executionsLoading ? (
+                <p role="status" className="text-xs text-text-muted">
+                  Loading execution history…
+                </p>
+              ) : executionsError ? (
+                <p role="alert" className="text-xs text-error">
+                  Execution history is unavailable: {executionsError.message}
+                </p>
+              ) : executionPage && executionPage.executions.length > 0 ? (
+                <>
+                  <p className="text-xs text-text-muted">
+                    {executionPage.total} recorded run{executionPage.total === 1 ? '' : 's'}, newest
+                    first.
+                  </p>
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-border-subtle text-left">
+                        <th scope="col" className="py-1.5 pr-3 font-medium text-text-muted">
+                          When
+                        </th>
+                        <th scope="col" className="py-1.5 pr-3 font-medium text-text-muted">
+                          Status
+                        </th>
+                        <th scope="col" className="py-1.5 font-medium text-text-muted">
+                          Duration
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {executionPage.executions.map((execution) => (
+                        <tr key={execution.id} className="border-b border-border-subtle/60">
+                          <td className="py-1.5 pr-3 font-mono text-text-secondary">
+                            {execution.created_at}
+                          </td>
+                          <td className="py-1.5 pr-3">
+                            <Badge
+                              variant={execution.status === 'success' ? 'success' : 'warning'}
+                              size="sm"
+                            >
+                              {execution.status}
+                            </Badge>
+                          </td>
+                          <td className="py-1.5 font-mono text-text-secondary">
+                            {execution.duration_ms == null
+                              ? 'not reported'
+                              : `${execution.duration_ms}ms`}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </>
+              ) : (
+                <p className="text-xs text-text-muted">
+                  No executions have been recorded for this plugin. Nothing has run it.
+                </p>
+              )}
+            </div>
+          </TabPanel>
+
+          <TabPanel id="test" activeTab={activeTab}>
+            <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-4">
+              <h3 className="text-base font-semibold text-text">Test Plugin Execution</h3>
+              <p className="text-xs text-text-muted">
+                Dispatch a sample payload to verify the plugin entrypoint response.
+              </p>
+
+              <FormField label="Sample Input Text">
+                <Textarea
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  rows={4}
+                />
+              </FormField>
+
+              <Button
+                variant="primary"
+                size="sm"
+                disabled={runningTest}
+                onClick={() => void handleRunProbe()}
               >
-                <Button variant="secondary" size="sm">
-                  Back to Plugins
-                </Button>
-              </Link>
-              {plugin && (
-                <div className="flex items-center gap-2 pl-2 border-l border-border-subtle">
-                  <span className="text-xs text-text-muted">Enabled:</span>
-                  <Switch
-                    checked={isActive}
-                    onChange={(next) => void handleToggleStatus(next)}
-                    label={`Enable ${plugin.name}`}
-                  />
+                {runningTest ? <Spinner size="sm" /> : 'Run Plugin Probe'}
+              </Button>
+
+              {testOutput && (
+                <div className="p-4 rounded-lg border border-border-subtle bg-surface-elevated space-y-2 text-xs">
+                  <span className="font-semibold text-text">Execution Output:</span>
+                  <pre className="p-3 rounded bg-surface border border-border text-xs font-mono overflow-x-auto">
+                    {testOutput}
+                  </pre>
                 </div>
               )}
             </div>
-          }
-        />
-      </div>
-
-      <div className="flex-1 min-h-0 min-w-0 overflow-y-auto p-4 sm:p-6">
-        {loadingRegistry && !plugin ? (
-          <CapabilitySubpageSkeleton eyebrow="Workspace Plugin" />
-        ) : !plugin ? (
-          <div className="max-w-xl mx-auto py-12">
-            <EmptyState
-              title={`Plugin "${decodedPluginId}" not found`}
-              description="This plugin does not exist in this workspace."
-              action={{
-                label: 'View all Plugins',
-                onClick: () => router.push(breadcrumbsBackUrl),
-              }}
-            />
-          </div>
-        ) : plugin ? (
-          <div className="max-w-5xl mx-auto space-y-6">
-            {/* Metadata Card */}
-            <div className="p-4 rounded-xl border border-border-subtle bg-surface flex flex-wrap items-center justify-between gap-4">
-              <div className="flex items-center gap-3">
-                <StatusDot status={isActive ? 'active' : 'idle'} />
-                <div>
-                  <div className="text-sm font-semibold font-mono text-text">{plugin.name}</div>
-                  <div className="text-xs text-text-muted">
-                    {(plugin as any).entrypoint ?? `${plugin.name}.py`}
-                  </div>
-                </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="primary" size="sm">
-                  v{plugin.version}
-                </Badge>
-                <Badge variant={isActive ? 'success' : 'default'} size="sm">
-                  {plugin.status}
-                </Badge>
-                <Button variant="danger" size="sm" onClick={() => setConfirmDelete(true)}>
-                  Delete Plugin
-                </Button>
-              </div>
-            </div>
-
-            {/* Navigation Tabs */}
-            <div className="border-b border-border-subtle">
-              <Tabs
-                ariaLabel="Plugin Inspection Subtabs"
-                size="sm"
-                tabs={subTabs}
-                activeTab={activeTab}
-                onTabChange={(id) => setActiveTab(id as SubTab)}
-              />
-            </div>
-
-            <TabPanel id="overview" activeTab={activeTab}>
-              <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-4">
-                <h3 className="text-base font-semibold text-text">Plugin Description</h3>
-                <p className="text-sm text-text-secondary leading-relaxed">{plugin.description}</p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-border-subtle text-xs">
-                  <div>
-                    <span className="text-text-muted">Author:</span>
-                    <span className="ml-2 font-medium text-text">{plugin.author}</span>
-                  </div>
-                  <div>
-                    <span className="text-text-muted">Entrypoint:</span>
-                    {plugin.entry_point ? (
-                      <span className="ml-2 font-mono text-text">{plugin.entry_point}</span>
-                    ) : (
-                      // The registry declares `entry_point`. Guessing
-                      // `${name}.py` printed a path that may not exist, which is
-                      // exactly what an operator reads to decide whether to grant
-                      // this plugin a hook.
-                      <span className="ml-2 text-text-muted">not reported by the registry</span>
-                    )}
-                  </div>
-                  <div>
-                    <span className="text-text-muted">Status:</span>
-                    <span className="ml-2 font-medium text-text">{plugin.status}</span>
-                  </div>
-                  <div>
-                    <span className="text-text-muted">Tags:</span>
-                    <span className="ml-2 text-text">
-                      {(plugin.tags ?? []).join(', ') || 'None'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </TabPanel>
-
-            <TabPanel id="runtime" activeTab={activeTab}>
-              <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-4">
-                <h3 className="text-base font-semibold text-text">
-                  Runtime Environment & Sandboxing
-                </h3>
-                <div className="space-y-3 text-xs text-text-secondary leading-relaxed">
-                  <div className="p-3 rounded-lg border border-border-subtle bg-surface-elevated">
-                    <div className="font-semibold text-text mb-1">Process Isolation</div>
-                    <div>
-                      Plugins run inside isolated sub-processes with restricted environment
-                      variables and memory limits. Filesystem access is locked to the workspace
-                      vault.
-                    </div>
-                  </div>
-                  <div className="p-3 rounded-lg border border-border-subtle bg-surface-elevated">
-                    <div className="font-semibold text-text mb-1">Entrypoint Binding</div>
-                    <div className="font-mono text-[11px] text-text-muted mt-1">
-                      Path: plugins/{plugin.name}/
-                      {(plugin as any).entrypoint ?? `${plugin.name}.py`}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </TabPanel>
-
-            <TabPanel id="activity" activeTab={activeTab}>
-              <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-4">
-                <h3 className="text-base font-semibold text-text">Recorded Executions</h3>
-
-                <div>
-                  <span className="text-xs text-text-muted">Declared permissions:</span>
-                  {permissionPayload?.permissions &&
-                  Object.keys(permissionPayload.permissions).length > 0 ? (
-                    <div className="mt-2 flex flex-wrap gap-1.5">
-                      {Object.entries(permissionPayload.permissions).map(([scope, value]) => (
-                        <Badge key={scope} variant="mono" size="sm">
-                          {String(value) === 'true' || value === true
-                            ? scope
-                            : `${scope}=${String(value)}`}
-                        </Badge>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="mt-2 text-xs text-text-muted">
-                      The registry declares no permissions for this plugin.
-                    </p>
-                  )}
-                </div>
-
-                {executionsLoading ? (
-                  <p role="status" className="text-xs text-text-muted">
-                    Loading execution history…
-                  </p>
-                ) : executionsError ? (
-                  <p role="alert" className="text-xs text-error">
-                    Execution history is unavailable: {executionsError.message}
-                  </p>
-                ) : executionPage && executionPage.executions.length > 0 ? (
-                  <>
-                    <p className="text-xs text-text-muted">
-                      {executionPage.total} recorded run{executionPage.total === 1 ? '' : 's'},
-                      newest first.
-                    </p>
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b border-border-subtle text-left">
-                          <th scope="col" className="py-1.5 pr-3 font-medium text-text-muted">
-                            When
-                          </th>
-                          <th scope="col" className="py-1.5 pr-3 font-medium text-text-muted">
-                            Status
-                          </th>
-                          <th scope="col" className="py-1.5 font-medium text-text-muted">
-                            Duration
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {executionPage.executions.map((execution) => (
-                          <tr key={execution.id} className="border-b border-border-subtle/60">
-                            <td className="py-1.5 pr-3 font-mono text-text-secondary">
-                              {execution.created_at}
-                            </td>
-                            <td className="py-1.5 pr-3">
-                              <Badge
-                                variant={execution.status === 'success' ? 'success' : 'warning'}
-                                size="sm"
-                              >
-                                {execution.status}
-                              </Badge>
-                            </td>
-                            <td className="py-1.5 font-mono text-text-secondary">
-                              {execution.duration_ms == null
-                                ? 'not reported'
-                                : `${execution.duration_ms}ms`}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </>
-                ) : (
-                  <p className="text-xs text-text-muted">
-                    No executions have been recorded for this plugin. Nothing has run it.
-                  </p>
-                )}
-              </div>
-            </TabPanel>
-
-            <TabPanel id="test" activeTab={activeTab}>
-              <div className="p-5 rounded-xl border border-border-subtle bg-surface space-y-4">
-                <h3 className="text-base font-semibold text-text">Test Plugin Execution</h3>
-                <p className="text-xs text-text-muted">
-                  Dispatch a sample payload to verify the plugin entrypoint response.
-                </p>
-
-                <FormField label="Sample Input Text">
-                  <Textarea
-                    value={inputText}
-                    onChange={(e) => setInputText(e.target.value)}
-                    rows={4}
-                  />
-                </FormField>
-
-                <Button
-                  variant="primary"
-                  size="sm"
-                  disabled={runningTest}
-                  onClick={() => void handleRunProbe()}
-                >
-                  {runningTest ? <Spinner size="sm" /> : 'Run Plugin Probe'}
-                </Button>
-
-                {testOutput && (
-                  <div className="p-4 rounded-lg border border-border-subtle bg-surface-elevated space-y-2 text-xs">
-                    <span className="font-semibold text-text">Execution Output:</span>
-                    <pre className="p-3 rounded bg-surface border border-border text-xs font-mono overflow-x-auto">
-                      {testOutput}
-                    </pre>
-                  </div>
-                )}
-              </div>
-            </TabPanel>
-          </div>
-        ) : null}
-      </div>
+          </TabPanel>
+        </div>
+      ) : null}
 
       {/* Every other destructive action in this feature confirms first
-          (SkillsView, McpServerCard, ConnectorModals). This was the only
-          one-click irreversible delete, with no undo. */}
+            (SkillsView, McpServerCard, ConnectorModals). This was the only
+            one-click irreversible delete, with no undo. */}
       <ConfirmationDialog
         isOpen={confirmDelete}
         onClose={() => setConfirmDelete(false)}
@@ -477,6 +461,6 @@ export default function PluginSubpage() {
         cancelLabel="Keep plugin"
         variant="destructive"
       />
-    </div>
+    </CapabilityDetailLayout>
   );
 }

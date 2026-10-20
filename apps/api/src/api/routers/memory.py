@@ -25,7 +25,7 @@ from ..schemas.memory import (
     MemorySupersedeRequest,
     MemoryUpdate,
 )
-from ..services.memory_service import memory_service
+from ..services.memory_service import MemoryStatusRejected, memory_service
 from ..services.memory_type_packs import MemoryTypeRejected
 
 logger = logging.getLogger(__name__)
@@ -49,6 +49,17 @@ def _type_rejected(exc: MemoryTypeRejected) -> HTTPException:
     rejection is meaningful only on these three write paths: elsewhere a
     ``MemoryTypeRejected`` is a bug, and only ``MemoryTypeRejected`` is mapped,
     so an unrelated internal ``ValueError`` still surfaces as the 500 it is.
+    """
+    return HTTPException(status_code=422, detail=str(exc))
+
+
+def _status_rejected(exc: MemoryStatusRejected) -> HTTPException:
+    """Translate "status outside the vocabulary" into a 422.
+
+    Same rationale and per-handler placement as ``_type_rejected``: a typo in a
+    status field is a client mistake, not a server fault, and an unmapped
+    ``ValueError`` from anywhere else still surfaces as the 500 it is. The
+    message echoes the accepted vocabulary so a client can self-correct.
     """
     return HTTPException(status_code=422, detail=str(exc))
 
@@ -243,19 +254,19 @@ async def get_agentic_feed(
     # Page slice already applied to memories; truncate feed to page_size for consistency
     feed = feed[:page_size]
 
-    # Stats for header
-    total_memories = total
-    superseded_count = sum(1 for m in memories if m.status == "superseded")
-    agent_created = sum(1 for m in memories if (m.source_type or "").startswith("agent") or m.source_type in ("memory_agent", "organization"))
+    # Stats for header -- corpus-wide SQL counts, not sums over the page slice
+    # (F-slice-stats): the slice only ever described itself while the header
+    # claimed to describe the workspace.
+    stats = await memory_service.count_memory_stats(db, tenant_id, workspace_id)
     return {
         "feed": feed,
-        "total": total_memories,
+        "total": total,
         "page": page,
         "page_size": page_size,
         "stats": {
-            "total_memories": total_memories,
-            "superseded": superseded_count,
-            "agent_created": agent_created,
+            "total_memories": total,
+            "superseded": stats["superseded"],
+            "agent_created": stats["agent_created"],
             "recent_actions": len(actions),
         },
     }
@@ -437,6 +448,8 @@ async def create_memory(
         )
     except MemoryTypeRejected as exc:
         raise _type_rejected(exc) from exc
+    except MemoryStatusRejected as exc:
+        raise _status_rejected(exc) from exc
     return MemoryResponse.model_validate(memory)
 
 
@@ -562,13 +575,16 @@ async def bulk_update_status(
         if not has_access:
             raise HTTPException(status_code=403, detail="Forbidden: User does not have access to specified workspace")
 
-    updated_ids = await memory_service.bulk_status(
-        db=db,
-        memory_ids=req.memory_ids,
-        status=req.status,
-        workspace_id=target_ws,
-        tenant_id=tenant_id,
-    )
+    try:
+        updated_ids = await memory_service.bulk_status(
+            db=db,
+            memory_ids=req.memory_ids,
+            status=req.status,
+            workspace_id=target_ws,
+            tenant_id=tenant_id,
+        )
+    except MemoryStatusRejected as exc:
+        raise _status_rejected(exc) from exc
     return MemoryBulkResult(
         success_count=len(updated_ids),
         failed_count=len(req.memory_ids) - len(updated_ids),
@@ -673,6 +689,8 @@ async def update_memory(
         )
     except MemoryTypeRejected as exc:
         raise _type_rejected(exc) from exc
+    except MemoryStatusRejected as exc:
+        raise _status_rejected(exc) from exc
     if not updated:
         raise HTTPException(status_code=404, detail="Memory not found")
     return MemoryResponse.model_validate(updated)

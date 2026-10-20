@@ -36,6 +36,37 @@ def _to_uuid(value: str | uuid.UUID | None) -> uuid.UUID | None:
         return None
 
 
+# The status vocabulary the system itself writes (``active`` from create,
+# ``READY``/``PROCESSING`` from ingestion stages, ``superseded`` from the
+# supersede path, ``deleted`` from every delete path) plus ``archived``, the one
+# status only a user chooses (bulk archive on the memory page). Membership is
+# exact-match: ``"ACTIVE"`` is the *documents* vocabulary and on a memory would
+# render it invisible to every filtered view, whose default admits only
+# ``active``/``READY``/``PROCESSING`` -- a typo here is silent data loss, not a
+# bad label.
+MEMORY_STATUSES: frozenset[str] = frozenset(
+    {"active", "archived", "deleted", "superseded", "READY", "PROCESSING"}
+)
+
+
+class MemoryStatusRejected(ValueError):
+    """A caller-supplied memory status outside ``MEMORY_STATUSES``.
+
+    Mirrors ``MemoryTypeRejected`` (``memory_type_packs.py:70``): a dedicated
+    class so ``except MemoryStatusRejected -> 422`` is honest rather than a
+    catch-all for every ``ValueError`` the write paths can raise.
+    """
+
+
+def _validate_status(value: str) -> str:
+    if value not in MEMORY_STATUSES:
+        raise MemoryStatusRejected(
+            f"Unknown memory status {value!r}; expected one of: "
+            + ", ".join(sorted(MEMORY_STATUSES))
+        )
+    return value
+
+
 class MemoryService:
     async def _record_taxonomy_change(
         self,
@@ -136,7 +167,14 @@ class MemoryService:
                     ),
                     timeout=3.0,
                 )
-            except Exception:
+            except Exception as exc:
+                # Absence is honest; silence is not. Without this a mock or an
+                # expired provider key leaves memories vectorless with no signal.
+                logger.warning(
+                    "Embedding generation failed for memory '%s' (%s); storing without a vector",
+                    dto.title,
+                    exc,
+                )
                 embedding = None
 
         # CONT-P12 expand-contract: taxonomy_version 1 (legacy 6) vs 2 (expanded 22) — no guess
@@ -154,7 +192,7 @@ class MemoryService:
         if not derived_summary and dto.content:
             derived_summary = dto.content[:240].strip()
 
-        initial_status = getattr(dto, "status", None) or "active"
+        initial_status = _validate_status(getattr(dto, "status", None) or "active")
         memory = Memory(
             id=uuid.uuid4(),
             type=dto.type,
@@ -176,6 +214,10 @@ class MemoryService:
             source_label=dto.source_label,
             connector_id=dto.connector_id,
             supersedes_id=dto.supersedes_id,
+            # `deleted_at` stays an exact function of the status on every write
+            # path that admits one: the grounding dossier filters on this column
+            # alone, so a row created as deleted without it would ground answers.
+            deleted_at=datetime.now(UTC) if initial_status == "deleted" else None,
             # Provenance from the pack that legalised the type -- never a literal
             # slug, or every row would be attributed to the career pack after the
             # second domain ships.
@@ -219,19 +261,23 @@ class MemoryService:
                 logger.debug(f"Vector store upsert bypassed or failed: {e}")
         return memory
 
-    async def list_memories(
+    def _memory_conditions(
         self,
-        db: AsyncSession,
         query: MemoryQuery,
         tenant_id: str | None,
-        workspace_id: str | None = None,
+        workspace_id: str | None,
         allow_tenant_wide: bool = False,
-    ) -> tuple[list[Memory], int]:
-        stmt = select(Memory)
-        count_stmt = select(func.count(Memory.id))
+    ) -> tuple[list[Any], uuid.UUID | None]:
+        """Shared WHERE builder for reads of ``memories``.
+
+        The list and the feed's corpus counts must resolve "this workspace"
+        identically -- a stat header that silently disagreed with the list it
+        sits above would be invisible in both. Returns the conditions plus the
+        enforced workspace UUID so callers can set the RLS session vars.
+        """
+        conditions: list[Any] = []
 
         # Status handling: default "active" means exclude superseded/deleted unless requested
-        conditions: list[Any] = []
         if query.status and query.status != "all":
             if query.status == "active":
                 if query.include_superseded:
@@ -256,14 +302,31 @@ class MemoryService:
         enforced_ws = workspace_id or query.workspace_id
         if not enforced_ws and not allow_tenant_wide:
             raise ValueError("workspace_id is required for memory operations")
+        ws_uuid: uuid.UUID | None = None
         if enforced_ws:
             ws_uuid = _to_uuid(enforced_ws)
             if ws_uuid is not None:
                 conditions.append(Memory.workspace_id == ws_uuid)
-                from ..middleware.tenant import set_rls_session_vars
-                await set_rls_session_vars(db, workspace_id=str(ws_uuid))
         if query.tags:
             conditions.append(Memory.tags.overlap(query.tags))
+
+        return conditions, ws_uuid
+
+    async def list_memories(
+        self,
+        db: AsyncSession,
+        query: MemoryQuery,
+        tenant_id: str | None,
+        workspace_id: str | None = None,
+        allow_tenant_wide: bool = False,
+    ) -> tuple[list[Memory], int]:
+        stmt = select(Memory)
+        count_stmt = select(func.count(Memory.id))
+
+        conditions, ws_uuid = self._memory_conditions(query, tenant_id, workspace_id, allow_tenant_wide)
+        if ws_uuid is not None:
+            from ..middleware.tenant import set_rls_session_vars
+            await set_rls_session_vars(db, workspace_id=str(ws_uuid))
 
         stmt = stmt.where(*conditions).order_by(Memory.created_at.desc())
         count_stmt = count_stmt.where(*conditions)
@@ -278,6 +341,37 @@ class MemoryService:
         memories = list(result.scalars().all())
 
         return memories, total
+
+    async def count_memory_stats(
+        self,
+        db: AsyncSession,
+        tenant_id: str | None,
+        workspace_id: str | None,
+    ) -> dict[str, int]:
+        """Corpus-wide feed stats (F-slice-stats).
+
+        Same universe as the feed's ``total`` (every row, ``status="all"``):
+        summing the page slice undercounted superseded/agent-sourced rows
+        silently whenever the workspace held more memories than one page.
+        """
+        query = MemoryQuery(workspace_id=workspace_id, status="all", page=1, page_size=1)
+        conditions, ws_uuid = self._memory_conditions(query, tenant_id, workspace_id)
+        if ws_uuid is not None:
+            from ..middleware.tenant import set_rls_session_vars
+            await set_rls_session_vars(db, workspace_id=str(ws_uuid))
+
+        superseded_stmt = select(func.count(Memory.id)).where(
+            *conditions, Memory.status == "superseded"
+        )
+        agent_stmt = select(func.count(Memory.id)).where(
+            *conditions,
+            (Memory.source_type.like("agent%"))
+            | (Memory.source_type.in_(["memory_agent", "organization"])),
+        )
+
+        superseded = (await db.execute(superseded_stmt)).scalar_one()
+        agent_created = (await db.execute(agent_stmt)).scalar_one()
+        return {"superseded": int(superseded), "agent_created": int(agent_created)}
 
     async def get_memory(
         self,
@@ -333,6 +427,16 @@ class MemoryService:
 
         update_data = dto.model_dump(exclude_unset=True)
 
+        # Status is a closed vocabulary and `deleted_at` an exact function of it.
+        # Only enforced when `status` is actually carried: `exclude_unset` again,
+        # for the same reason as the type check below -- a row whose stored status
+        # predates this vocabulary must stay editable.
+        if update_data.get("status") is not None:
+            _validate_status(update_data["status"])
+            update_data["deleted_at"] = (
+                datetime.now(UTC) if update_data["status"] == "deleted" else None
+            )
+
         # 0068 dropped `ck_memories_type_valid`, so this is the only guard on the
         # update path as well -- a PATCH carrying an unrepresentable type would
         # otherwise land unrepresented and unreported. It runs only when `type` is
@@ -353,12 +457,20 @@ class MemoryService:
             update_data["content"] = sanitize_text(update_data["content"])
             content_for_embedding = update_data.get("content") or memory.content or ""
             if content_for_embedding.strip():
-                with contextlib.suppress(LLMProviderError):
+                try:
                     update_data["embedding"] = await llm_service.generate_embedding(
                         content_for_embedding,
                         user_id=str(memory.user_id) if memory.user_id else None,
                         workspace_id=str(memory.workspace_id) if memory.workspace_id else None,
                         db=db,
+                    )
+                except LLMProviderError as exc:
+                    # Keep the previous vector: a real vector of the prior text
+                    # beats both a fabricated one and a silent no-op.
+                    logger.warning(
+                        "Embedding regeneration failed for memory '%s' (%s); keeping the previous vector",
+                        memory.id,
+                        exc,
                     )
                 update_data["content_hash"] = llm_service.compute_content_hash(content_for_embedding)
                 update_data["size"] = len(content_for_embedding)
@@ -552,20 +664,22 @@ class MemoryService:
         if strategy == "vector" and vector_results:
             return vector_results
 
-        # Keyword text search across title/summary/content for precision & SQLite parity
+        # Keyword text search across the indexed textual columns (title/summary).
+        # ``Memory.content`` is Fernet-encrypted at rest (non-deterministic IV per
+        # write), so an ILIKE bind against it can never match — the content arm
+        # that used to sit here was silently dead. Content-only hits come from
+        # the decrypted scan below.
         pattern = f"%{dto.query}%"
         words = [w.strip() for w in dto.query.split() if len(w.strip()) > 2]
         match_expr = or_(
             Memory.title.ilike(pattern),
             Memory.summary.ilike(pattern),
-            Memory.content.ilike(pattern),
         )
         if words and len(words) > 1:
             word_conditions = [
                 or_(
                     Memory.title.ilike(f"%{w}%"),
                     Memory.summary.ilike(f"%{w}%"),
-                    Memory.content.ilike(f"%{w}%"),
                 )
                 for w in words
             ]
@@ -587,12 +701,19 @@ class MemoryService:
         fb_res = await db.execute(fallback_stmt)
         fb_mems = list(fb_res.scalars().all())
 
-        # Check decrypted content for memory records in workspace if matches are below top_k
+        # Content matching is done here, on decrypted rows, because the column is
+        # ciphertext in SQL. The scan is ordered recent-first and is deliberately
+        # not truncated: the old unordered ``limit(100)`` window silently dropped
+        # every content-only match past the workspace's first 100 rows.
         if len(fb_mems) < dto.top_k and target_ws:
-            content_stmt = select(Memory).where(
-                *status_filter,
-                Memory.workspace_id == _to_uuid(target_ws),
-            ).limit(100)
+            content_stmt = (
+                select(Memory)
+                .where(
+                    *status_filter,
+                    Memory.workspace_id == _to_uuid(target_ws),
+                )
+                .order_by(Memory.updated_at.desc(), Memory.id)
+            )
             if tenant_id:
                 content_stmt = content_stmt.where(Memory.tenant_id == tenant_id)
             if dto.type:
@@ -990,6 +1111,7 @@ class MemoryService:
         tenant_id: str | None,
     ) -> list[uuid.UUID]:
         """Atomically update status across multiple workspace memories."""
+        _validate_status(status)
         ws_uuid = _to_uuid(workspace_id)
         if not ws_uuid or not memory_ids:
             return []
@@ -1006,8 +1128,10 @@ class MemoryService:
         for m in mems:
             m.status = status
             m.updated_at = now
-            if status == "deleted":
-                m.deleted_at = now
+            # Exact function of the status, both directions: a restore that left
+            # the stamp behind kept the row invisible to the grounding dossier
+            # (the only reader of this column) forever.
+            m.deleted_at = now if status == "deleted" else None
             updated.append(m.id)
         await db.flush()
         return updated

@@ -21,14 +21,16 @@ import {
 import { useWorkspaceConnectors } from '../../../../hooks/useWorkspace';
 import { SkillsView } from '@/components/capabilities/SkillsView';
 import type { ImportOutcome } from '@/components/capabilities/AddCapabilityModal';
-import type {
-  SkillRow,
-  SkillSaveOutcome,
-  SkillSort,
-  SkillTab,
-} from '@/components/capabilities/SkillsView';
-import { isSkill, mergeSkillRows } from '@/components/capabilities/skills/skill-row-helpers';
+import type { SkillRow, SkillSort, SkillTab } from '@/components/capabilities/SkillsView';
+import {
+  errorMessage,
+  isNotFound,
+  isSkill,
+  mergeSkillRows,
+} from '@/components/capabilities/skills/skill-row-helpers';
+import { useSkillActions } from '@/components/capabilities/skills/useSkillActions';
 import { CapabilitiesWorkbenchSkeleton } from '@/components/capabilities/CapabilitiesWorkbenchSkeleton';
+import { capabilityKeys, invalidateCapabilities } from '@/lib/queries/capability-keys';
 
 // ─── Code-split heavy panes (plan E4) ────────────────────────────────────────
 const paneFallback = () => <CapabilitiesWorkbenchSkeleton />;
@@ -134,18 +136,6 @@ function toServerCategory(uiCategory: CapabilityCategory): string {
   return UI_TO_SERVER_CATEGORY[uiCategory];
 }
 
-function isNotFound(err: unknown): boolean {
-  return (err as { status?: number } | null)?.status === 404;
-}
-
-function isConflict(err: unknown): boolean {
-  return (err as { status?: number } | null)?.status === 409;
-}
-
-function errorMessage(err: unknown, fallback: string): string {
-  return err instanceof Error && err.message ? err.message : fallback;
-}
-
 const isInstalledRow = (row: SkillRow): boolean => row.installed;
 const countInstalled = (rows: SkillRow[]): number => rows.filter(isInstalledRow).length;
 
@@ -206,7 +196,6 @@ function CapabilitiesContent() {
   const [skillTab, setSkillTab] = useState<SkillTab>(initialSkillTab);
   const [skillSort, setSkillSort] = useState<SkillSort>('most-used');
   const [selectedSkillKey, setSelectedSkillKey] = useState(initialSkillParam ?? '');
-  const [pendingSkillKey, setPendingSkillKey] = useState<string | null>(null);
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [connectorsAddTrigger, setConnectorsAddTrigger] = useState(0);
   const [importModalOpen, setImportModalOpen] = useState(false);
@@ -238,15 +227,14 @@ function CapabilitiesContent() {
     data: serverSkills,
     error: skillsError,
     isLoading: skillsLoading,
-    mutate: mutateSkills,
   } = useSWR(
-    workspaceId ? ['workspace-skills', workspaceId] : null,
+    workspaceId ? capabilityKeys.skills(workspaceId) : null,
     () => capabilitiesApi.listSkills(workspaceId),
     { revalidateOnFocus: false, shouldRetryOnError: false },
   );
 
-  const { data: serverRows, mutate: mutateServerRows } = useSWR(
-    workspaceId ? ['workspace-capabilities', workspaceId] : null,
+  const { data: serverRows } = useSWR(
+    workspaceId ? capabilityKeys.list(workspaceId) : null,
     () => capabilitiesApi.list(undefined, workspaceId),
     { revalidateOnFocus: false, shouldRetryOnError: false },
   );
@@ -390,208 +378,25 @@ function CapabilitiesContent() {
     [allSkills],
   );
 
-  const handleToggleSkill = useCallback(
-    async (key: string, next: boolean) => {
-      const row = findSkillRow(key);
-      if (!row) return;
-      const name = row.item.name;
+  const handleSkillDeleted = useCallback(() => setSelectedSkillKey(''), []);
 
-      if (!row.serverBacked || row.item.id === null) {
-        toast({
-          tone: 'warning',
-          title: `Cannot ${next ? 'enable' : 'disable'} ${name}`,
-          detail:
-            'This skill has no workspace capability row, so nothing was written to the server.',
-        });
-        return;
-      }
-
-      setPendingSkillKey(key);
-      try {
-        await capabilitiesApi.update(row.item.id, { enabled: next });
-        void mutateSkills();
-        toast({
-          tone: next ? 'success' : 'warning',
-          title: `${next ? 'Enabled' : 'Disabled'} ${name}`,
-          detail: 'Saved to the workspace capability row.',
-        });
-      } catch (err) {
-        toast({
-          tone: 'error',
-          title: `Could not ${next ? 'enable' : 'disable'} ${name}`,
-          detail: errorMessage(err, 'The workspace was not changed.'),
-        });
-      } finally {
-        setPendingSkillKey(null);
-      }
-    },
-    [findSkillRow, mutateSkills, toast],
+  const reloadSkills = useCallback(
+    () => invalidateCapabilities(workspaceId, 'skills'),
+    [workspaceId],
   );
 
-  const handleInstallSkill = useCallback(
-    async (key: string) => {
-      const row = findSkillRow(key);
-      if (!row || row.installed) return;
-
-      setPendingSkillKey(key);
-      try {
-        const created = await capabilitiesApi.create({
-          name: row.item.name,
-          category: toServerCategory('skills'),
-          description: row.item.description,
-          version: row.item.version ?? '1.0.0',
-          author: row.item.author ?? 'Catalog',
-          type: row.item.source,
-          // `markdown_doc` is the key the runtime reads (`skill_injection.py`
-          // build_skill_directive) and the only one `GET /capabilities` returns.
-          // Writing `doc` here leaves the skill inert: it is never injected.
-          config: {
-            markdown_doc: row.item.markdownDoc,
-            tags: row.item.tags,
-            autonomy: row.item.autonomy,
-            ...(row.item.requiredScope ? { required_scope: row.item.requiredScope } : {}),
-          },
-        });
-        void mutateSkills();
-        toast({
-          tone: 'success',
-          title: `Installed ${row.item.name}`,
-          detail: `Registered in this workspace as ${created.id}.`,
-        });
-      } catch (err) {
-        toast({
-          tone: 'error',
-          title: `Could not install ${row.item.name}`,
-          detail: errorMessage(err, 'The workspace was not changed.'),
-        });
-      } finally {
-        setPendingSkillKey(null);
-      }
-    },
-    [findSkillRow, mutateSkills, toast],
-  );
-
-  const handleSaveSkillDoc = useCallback(
-    async (key: string, doc: string): Promise<SkillSaveOutcome> => {
-      const row = findSkillRow(key);
-      if (!row) return 'failed';
-
-      if (!row.serverBacked || row.item.id === null) {
-        toast({
-          tone: 'error',
-          title: `Could not save instructions for ${row.item.name}`,
-          detail:
-            'This skill has no workspace capability row, so it was not persisted to the workspace.',
-        });
-        return 'failed';
-      }
-
-      try {
-        await capabilitiesApi.update(row.item.id, { config: { markdown_doc: doc } });
-        void mutateSkills();
-        toast({
-          tone: 'success',
-          title: `Saved instructions for ${row.item.name}`,
-          detail: 'Written to the workspace capability row.',
-        });
-        return 'server';
-      } catch (err) {
-        toast({
-          tone: 'error',
-          title: `Could not save ${row.item.name}`,
-          detail: errorMessage(err, 'The workspace was not changed.'),
-        });
-        return 'failed';
-      }
-    },
-    [findSkillRow, mutateSkills, toast],
-  );
-
-  const handleDeleteSkill = useCallback(
-    async (key: string) => {
-      const row = findSkillRow(key);
-      if (!row || row.item.id === null) {
-        toast({
-          tone: 'info',
-          title: 'Removed from this browser',
-          detail: 'The skill had no workspace capability row to delete.',
-        });
-        return;
-      }
-
-      try {
-        await capabilitiesApi.delete(row.item.id);
-      } catch (err) {
-        if (isConflict(err)) {
-          toast({
-            tone: 'error',
-            title: 'Bundled skills cannot be deleted',
-            detail:
-              'The server answers 409 for any capability that is not custom. Disable it instead if you want it out of an agent run.',
-          });
-          return;
-        }
-        if (!isNotFound(err)) {
-          toast({
-            tone: 'error',
-            title: 'Delete failed',
-            detail: errorMessage(err, 'The capability was not deleted.'),
-          });
-          return;
-        }
-      }
-
-      setSelectedSkillKey('');
-      void mutateSkills();
-      toast({
-        tone: 'info',
-        title: 'Skill deleted',
-        detail: 'Removed from this workspace.',
-      });
-    },
-    [findSkillRow, mutateSkills, toast],
-  );
-
-  const handleCopySkillDoc = useCallback(
-    (key: string) => {
-      const row = findSkillRow(key);
-      if (!row) return;
-      const text = row.item.markdownDoc;
-      if (!text) {
-        toast({
-          tone: 'warning',
-          title: `Nothing to copy for ${row.item.name}`,
-          detail: 'The server sent no markdown for this skill.',
-        });
-        return;
-      }
-      const clipboard = navigator.clipboard;
-      if (!clipboard?.writeText) {
-        toast({
-          tone: 'error',
-          title: 'Clipboard unavailable',
-          detail: 'This browser blocked clipboard access.',
-        });
-        return;
-      }
-      clipboard
-        .writeText(text)
-        .then(() =>
-          toast({
-            tone: 'info',
-            title: `Copied instructions for ${row.item.name}`,
-          }),
-        )
-        .catch(() =>
-          toast({
-            tone: 'error',
-            title: 'Copy failed',
-            detail: 'The browser refused clipboard access.',
-          }),
-        );
-    },
-    [findSkillRow, toast],
-  );
+  const {
+    pendingKey: pendingSkillKey,
+    toggleEnabled: handleToggleSkill,
+    install: handleInstallSkill,
+    saveDoc: handleSaveSkillDoc,
+    deleteSkill: handleDeleteSkill,
+    copyDoc: handleCopySkillDoc,
+  } = useSkillActions({
+    resolveRow: findSkillRow,
+    mutateSkills: reloadSkills,
+    onDeleted: handleSkillDeleted,
+  });
 
   const handleToggleCapability = useCallback(
     async (id: string, event?: React.MouseEvent) => {
@@ -606,7 +411,7 @@ function CapabilitiesContent() {
 
       try {
         await capabilitiesApi.update(id, { enabled: nextState });
-        void mutateServerRows();
+        void invalidateCapabilities(workspaceId, 'list');
       } catch (err) {
         // Roll the optimistic flip back on every failure, 404 included.
         //
@@ -641,7 +446,7 @@ function CapabilitiesContent() {
         detail: 'Applies to new agent sessions in this workspace.',
       });
     },
-    [nonSkillRows, mutateServerRows, toast],
+    [nonSkillRows, workspaceId, toast],
   );
 
   const handleCategoryChange = useCallback((id: string) => {
@@ -667,8 +472,7 @@ function CapabilitiesContent() {
               data-new-item
               onClick={() => {
                 void mutateCatalog();
-                void mutateSkills();
-                void mutateServerRows();
+                void invalidateCapabilities(workspaceId);
               }}
             >
               Refresh from server
@@ -766,7 +570,7 @@ function CapabilitiesContent() {
             onOpenCreate={handleOpenCreate}
             isLoading={skillsLoading}
             error={skillsError as Error | undefined}
-            onRetry={() => void mutateSkills()}
+            onRetry={reloadSkills}
             pendingKey={pendingSkillKey}
             workspaceId={workspaceId}
           />
@@ -867,8 +671,8 @@ function CapabilitiesContent() {
                 },
               });
               newCap.id = created.id;
-              void mutateServerRows();
-              void mutateSkills();
+              void invalidateCapabilities(workspaceId, 'list');
+              void invalidateCapabilities(workspaceId, 'skills');
             } catch (err) {
               toast({
                 tone: 'error',
@@ -915,8 +719,8 @@ function CapabilitiesContent() {
               };
             }
 
-            void mutateServerRows();
-            void mutateSkills();
+            void invalidateCapabilities(workspaceId, 'list');
+            void invalidateCapabilities(workspaceId, 'skills');
             setSelectedCategory(category);
             setSelectedSkillKey(created.id);
             toast({

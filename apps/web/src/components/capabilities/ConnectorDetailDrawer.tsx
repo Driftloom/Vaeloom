@@ -281,6 +281,14 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
           </div>
 
           {/* Subtabs Bar */}
+          {/*
+            No aria-controls on the tabs. Only the active panel is mounted, so a
+            reference from an inactive tab would point at an id that does not
+            exist -- and a dangling reference is worse than none, because
+            assistive tech follows it and lands nowhere. The active panel still
+            carries aria-labelledby back to its tab, which is the direction that
+            matters for announcing content.
+          */}
           <div
             role="tablist"
             aria-label="Connector detail sections"
@@ -294,7 +302,6 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
                 type="button"
                 role="tab"
                 aria-selected={activeTab === tab.id}
-                aria-controls={`connector-panel-${tab.id}`}
                 tabIndex={activeTab === tab.id ? 0 : -1}
                 onClick={() => setActiveTab(tab.id)}
                 className={`py-2.5 px-3 text-xs font-medium border-b-2 transition-all rounded-t focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
@@ -313,7 +320,12 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
           {/* Body Content */}
           <div className="flex-1 overflow-y-auto overscroll-y-contain p-5 space-y-5">
             {activeTab === 'overview' && (
-              <div className="space-y-5">
+              <div
+                role="tabpanel"
+                id="connector-panel-overview"
+                aria-labelledby="connector-tab-overview"
+                className="space-y-5"
+              >
                 {/* Description */}
                 <div className="space-y-1.5">
                   <span className="text-2xs font-semibold uppercase tracking-wider text-text-muted">
@@ -384,7 +396,12 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
             )}
 
             {activeTab === 'tools' && (
-              <div className="space-y-4">
+              <div
+                role="tabpanel"
+                id="connector-panel-tools"
+                aria-labelledby="connector-tab-tools"
+                className="space-y-4"
+              >
                 <div className="flex items-center justify-between">
                   <div>
                     <h3 className="text-xs font-semibold text-text">Registered Tool Signatures</h3>
@@ -570,7 +587,12 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
             )}
 
             {activeTab === 'security' && (
-              <div className="space-y-4">
+              <div
+                role="tabpanel"
+                id="connector-panel-security"
+                aria-labelledby="connector-tab-security"
+                className="space-y-4"
+              >
                 {/* Security Guarantees */}
                 <div className="rounded-xl border border-border bg-surface-elevated/40 p-4 space-y-3">
                   <h3 className="text-xs font-semibold text-text flex items-center gap-2">

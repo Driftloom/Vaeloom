@@ -66,12 +66,15 @@ class KnowledgeGraphService:
     @staticmethod
     def _fix_rows(rows):
         return [KnowledgeGraphService._fix_row(r) for r in rows]
-    async def _compute_embedding(self, text_content: str) -> list[float]:
+
+    async def _compute_embedding(self, text_content: str) -> list[float] | None:
         try:
             return await llm_service.generate_embedding(text_content)
-        except (LLMProviderError, ValueError, KeyError, IndexError):
-            pass
-        return [0.0] * 1536
+        except (LLMProviderError, ValueError, KeyError, IndexError) as exc:
+            # A fabricated zero vector made every write look successful while
+            # storing a vector no similarity search could honestly rank.
+            logger.warning("Knowledge graph embedding generation failed (%s)", exc)
+            return None
 
     async def _edge_rows_with_source_target(self, query_text, params, db):
         """Fetch edge rows and attach source/target dicts (PG/SQLite compatible)."""
@@ -106,7 +109,9 @@ class KnowledgeGraphService:
 
         content_for_embedding = f"{label} {description or ''}".strip()
         embedding = await self._compute_embedding(content_for_embedding)
-        embedding_str = "[" + ",".join(f"{v}" for v in embedding) + "]"
+        embedding_str = None
+        if embedding is not None:
+            embedding_str = "[" + ",".join(f"{v}" for v in embedding) + "]"
 
         result = await db.execute(
             text("""
@@ -270,9 +275,13 @@ class KnowledgeGraphService:
             description = update_data.get("description") or dto.description
             content_for_embedding = f"{label} {description or ''}".strip()
             embedding = await self._compute_embedding(content_for_embedding)
-            embedding_str = "[" + ",".join(f"{v}" for v in embedding) + "]"
-            set_parts.append("embedding = :embedding")
-            params["embedding"] = embedding_str
+            # Keep the previous vector when regeneration fails: it is a real
+            # vector of this node's earlier text, not a fabricated one, and the
+            # update itself has already succeeded.
+            if embedding is not None:
+                embedding_str = "[" + ",".join(f"{v}" for v in embedding) + "]"
+                set_parts.append("embedding = :embedding")
+                params["embedding"] = embedding_str
 
         set_clause = ", ".join(set_parts)
         # APP-KG-01: scope is part of the UPDATE predicate itself (single

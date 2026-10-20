@@ -7,18 +7,148 @@ import type { KnowledgeGraphNode, KnowledgeGraphEdge } from '@vaeloom/shared-typ
 import { Badge, Button, Drawer, EmptyState, ErrorState } from '@vaeloom/ui-kit';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 
-function nodeColor(type: string): string {
-  const m: Record<string, string> = {
-    concept: '#8b5cf6',
-    entity: '#06b6d4',
-    document: '#f59e0b',
-    topic: '#10b981',
-    person: '#ec4899',
-    organization: '#6366f1',
-    event: '#f97316',
-    project: '#3b82f6',
+export type GraphNodeType =
+  'entity' | 'concept' | 'document' | 'event' | 'topic' | 'project' | 'person' | 'organization';
+
+export type GraphNodeShapeName = 'circle' | 'rect' | 'diamond' | 'hexagon';
+
+export interface GraphNodeStyle {
+  /** Token reference (`rgb(var(--token))`) — resolves per theme. */
+  fill: string;
+  stroke: string;
+  dashed: boolean;
+  shape: GraphNodeShapeName;
+}
+
+/**
+ * Single source of truth for node encoding: fill, outline, and the
+ * shape/dash second channel. Consumed by the canvas, the list rows, the
+ * inspector, and the taxonomy legend on the page. Colour is never the sole
+ * carrier of meaning — colliding or near-colliding fills (in any theme,
+ * including high-contrast) are separated by shape and/or dash.
+ *
+ * `graph-palette.test.ts` resolves these tokens against the actual values
+ * in globals.css and asserts every type is pairwise distinct across
+ * (fill, dash, shape) per theme.
+ */
+export const GRAPH_NODE_TYPE_ORDER: GraphNodeType[] = [
+  'entity',
+  'concept',
+  'document',
+  'event',
+  'topic',
+  'project',
+  'person',
+  'organization',
+];
+
+export const GRAPH_NODE_STYLES: Record<GraphNodeType, GraphNodeStyle> = {
+  entity: {
+    fill: 'rgb(var(--accent))',
+    stroke: 'rgb(var(--accent))',
+    dashed: false,
+    shape: 'circle',
+  },
+  concept: {
+    fill: 'rgb(var(--ai-proposed))',
+    stroke: 'rgb(var(--border))',
+    dashed: true,
+    shape: 'circle',
+  },
+  document: {
+    fill: 'rgb(var(--info))',
+    stroke: 'rgb(var(--info))',
+    dashed: false,
+    shape: 'rect',
+  },
+  event: {
+    fill: 'rgb(var(--ai-processing))',
+    stroke: 'rgb(var(--ai-processing))',
+    dashed: false,
+    shape: 'diamond',
+  },
+  topic: {
+    fill: 'rgb(var(--success))',
+    stroke: 'rgb(var(--success))',
+    dashed: false,
+    shape: 'hexagon',
+  },
+  project: {
+    fill: 'rgb(var(--surface-400))',
+    stroke: 'rgb(var(--border-strong))',
+    dashed: false,
+    shape: 'rect',
+  },
+  person: {
+    fill: 'rgb(var(--surface-300))',
+    stroke: 'rgb(var(--border))',
+    dashed: false,
+    shape: 'circle',
+  },
+  organization: {
+    fill: 'rgb(var(--surface-200))',
+    stroke: 'rgb(var(--border))',
+    dashed: false,
+    shape: 'hexagon',
+  },
+};
+
+const FALLBACK_NODE_STYLE: GraphNodeStyle = {
+  fill: 'rgb(var(--surface-400))',
+  stroke: 'rgb(var(--border-strong))',
+  dashed: false,
+  shape: 'circle',
+};
+
+/** Unknown types render neutral — they never masquerade as a known type. */
+export function nodeStyle(type: string): GraphNodeStyle {
+  const styles: Record<string, GraphNodeStyle | undefined> = GRAPH_NODE_STYLES;
+  return styles[type] ?? FALLBACK_NODE_STYLE;
+}
+
+function hexagonPoints(size: number): string {
+  return [0, 60, 120, 180, 240, 300]
+    .map((deg) => {
+      const rad = ((deg - 90) * Math.PI) / 180;
+      return `${(size * Math.cos(rad)).toFixed(2)},${(size * Math.sin(rad)).toFixed(2)}`;
+    })
+    .join(' ');
+}
+
+/**
+ * Shape primitive shared by canvas nodes and legend swatches so the legend
+ * can never drift from what is rendered. `size` is the circumradius.
+ */
+export function GraphNodeShape({
+  shape,
+  size,
+  fill,
+  stroke,
+  dashed,
+  strokeWidth = 1.5,
+  className,
+}: GraphNodeStyle & { size: number; strokeWidth?: number; className?: string }) {
+  const shared = {
+    fill,
+    stroke,
+    strokeWidth,
+    strokeDasharray: dashed ? '4 3' : undefined,
+    className,
   };
-  return m[type] ?? '#818cf8';
+
+  switch (shape) {
+    case 'rect': {
+      const side = size * 1.8;
+      return <rect x={-side / 2} y={-side / 2} width={side} height={side} rx={4} {...shared} />;
+    }
+    case 'diamond':
+      return <polygon points={`0,${-size} ${size},0 0,${size} ${-size},0`} {...shared} />;
+    case 'hexagon':
+      return <polygon points={hexagonPoints(size)} {...shared} />;
+    case 'circle':
+    default:
+      return <circle r={size} {...shared} />;
+  }
 }
 
 export type GraphLayoutMode = 'radial' | 'type-cluster' | 'grid';
@@ -26,8 +156,14 @@ export type GraphLayoutMode = 'radial' | 'type-cluster' | 'grid';
 export function GraphViewer({ workspaceId }: { workspaceId: string }) {
   const [nodes, setNodes] = useState<KnowledgeGraphNode[]>([]);
   const [edges, setEdges] = useState<KnowledgeGraphEdge[]>([]);
+  const [nodeTotal, setNodeTotal] = useState(0);
+  const [edgeTotal, setEdgeTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedEdges, setSelectedEdges] = useState<KnowledgeGraphEdge[]>([]);
+  const [selectedEdgeTotal, setSelectedEdgeTotal] = useState(0);
+  const [selectedEdgesLoading, setSelectedEdgesLoading] = useState(false);
+  const [selectedEdgesError, setSelectedEdgesError] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [layoutMode, setLayoutMode] = useState<GraphLayoutMode>('radial');
@@ -52,11 +188,13 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
     setError(null);
     try {
       const [nodeRes, edgeRes] = await Promise.all([
-        knowledgeGraphApi.listNodes(),
-        knowledgeGraphApi.listAllEdges(),
+        knowledgeGraphApi.listNodes({ page: 1, page_size: 100 }),
+        knowledgeGraphApi.listAllEdges({ page: 1, page_size: 100 }),
       ]);
       setNodes(nodeRes.items);
+      setNodeTotal(nodeRes.total);
       setEdges(edgeRes.items);
+      setEdgeTotal(edgeRes.total);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load memory graph');
     } finally {
@@ -67,6 +205,42 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
   useEffect(() => {
     fetchGraph();
   }, [fetchGraph]);
+
+  // The canvas edge page is capped; the inspector must query the node's own
+  // endpoint or edges beyond the fetched page are silently invisible.
+  const selectedId = selected?.id ?? null;
+
+  useEffect(() => {
+    if (!selectedId) {
+      setSelectedEdges([]);
+      setSelectedEdgeTotal(0);
+      setSelectedEdgesLoading(false);
+      setSelectedEdgesError(null);
+      return;
+    }
+    let cancelled = false;
+    setSelectedEdges([]);
+    setSelectedEdgeTotal(0);
+    setSelectedEdgesLoading(true);
+    setSelectedEdgesError(null);
+    knowledgeGraphApi
+      .listNodeEdges(selectedId, { page: 1, page_size: 100 })
+      .then((res) => {
+        if (cancelled) return;
+        setSelectedEdges(res.items);
+        setSelectedEdgeTotal(res.total);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setSelectedEdgesError(err instanceof Error ? err.message : 'Failed to load relationships');
+      })
+      .finally(() => {
+        if (!cancelled) setSelectedEdgesLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId]);
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 768px)');
@@ -392,17 +566,22 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
     );
   }
 
+  let countLabel = `${nodeTotal} Nodes · ${edgeTotal} Edges`;
+  if (nodeTotal > nodes.length) {
+    countLabel = `Showing ${nodes.length} of ${nodeTotal} Nodes`;
+  } else if (edgeTotal > edges.length) {
+    countLabel = `${nodeTotal} Nodes · Showing ${edges.length} of ${edgeTotal} Edges`;
+  }
+
   return (
     <div className="flex flex-col h-full space-y-3">
       {/* Top Toolbar */}
-      <header className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
+      <header className="flex flex-wrap items-center justify-between gap-3 p-3 rounded-lg border border-border bg-surface">
         <div>
           <div className="flex items-center gap-2">
-            <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
-              Multi-Hop Knowledge Graph
-            </h2>
+            <h2 className="text-base font-semibold text-text">Multi-Hop Knowledge Graph</h2>
             <Badge variant="mono" size="sm">
-              {nodes.length} Nodes · {edges.length} Edges
+              {countLabel}
             </Badge>
             {matchedNodeIds && (
               <Badge variant="primary" size="sm">
@@ -410,7 +589,7 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
               </Badge>
             )}
           </div>
-          <p className="text-xs text-[var(--color-text-muted)] mt-0.5">
+          <p className="text-xs text-text-muted mt-0.5">
             Drag to pan • Scroll to zoom • Click node to inspect relationships
           </p>
         </div>
@@ -422,13 +601,13 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
               placeholder="Search & highlight nodes..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-sunken)] px-3 py-1.5 text-xs text-[var(--color-text-primary)] outline-none focus:ring-1 focus:ring-[var(--color-brand-primary,#818cf8)] w-48 font-sans"
+              className="rounded-lg border border-border bg-surface-100 px-3 py-1.5 text-xs text-text outline-none focus:ring-1 focus:ring-accent w-48 font-sans"
             />
             {search && (
               <button
                 type="button"
                 onClick={() => setSearch('')}
-                className="absolute right-2 top-1.5 text-xs text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]"
+                className="absolute right-2 top-1.5 text-xs text-text-muted hover:text-text"
               >
                 ✕
               </button>
@@ -439,7 +618,7 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
           <select
             value={typeFilter}
             onChange={(e) => setTypeFilter(e.target.value)}
-            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-sunken)] px-3 py-1.5 text-xs text-[var(--color-text-primary)]"
+            className="rounded-lg border border-border bg-surface-100 px-3 py-1.5 text-xs text-text"
           >
             <option value="all">All Types ({nodes.length})</option>
             {types.map((t) => (
@@ -454,23 +633,44 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
             value={layoutMode}
             onChange={(e) => setLayoutMode(e.target.value as GraphLayoutMode)}
             aria-label="Layout engine"
-            className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-sunken)] px-3 py-1.5 text-xs text-[var(--color-text-primary)]"
+            className="rounded-lg border border-border bg-surface-100 px-3 py-1.5 text-xs text-text"
           >
             <option value="radial">Radial Circle</option>
             <option value="type-cluster">Type Clusters</option>
             <option value="grid">Grid Matrix</option>
           </select>
 
-          {/* Export Actions */}
+          {/* Refresh + Export Actions */}
           <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => void fetchGraph()}
+              title="Refresh graph data"
+              className="rounded-lg border border-border bg-surface-100 px-2.5 py-1.5 text-xs font-medium text-text hover:bg-surface-hover transition-colors flex items-center gap-1.5"
+            >
+              <svg
+                className="w-3.5 h-3.5 text-text-muted"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                />
+              </svg>
+              Refresh
+            </button>
             <button
               type="button"
               onClick={handleExportJson}
               title="Export Knowledge Graph data as JSON"
-              className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-sunken)] px-2.5 py-1.5 text-xs font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors flex items-center gap-1.5"
+              className="rounded-lg border border-border bg-surface-100 px-2.5 py-1.5 text-xs font-medium text-text hover:bg-surface-hover transition-colors flex items-center gap-1.5"
             >
               <svg
-                className="w-3.5 h-3.5 text-[var(--color-text-muted)]"
+                className="w-3.5 h-3.5 text-text-muted"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -488,10 +688,10 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
               type="button"
               onClick={handleExportSvg}
               title="Export Knowledge Graph canvas as SVG"
-              className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-sunken)] px-2.5 py-1.5 text-xs font-medium text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] transition-colors flex items-center gap-1.5"
+              className="rounded-lg border border-border bg-surface-100 px-2.5 py-1.5 text-xs font-medium text-text hover:bg-surface-hover transition-colors flex items-center gap-1.5"
             >
               <svg
-                className="w-3.5 h-3.5 text-[var(--color-text-muted)]"
+                className="w-3.5 h-3.5 text-text-muted"
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
@@ -508,12 +708,12 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
           </div>
 
           {/* Zoom & Reset Buttons */}
-          <div className="flex items-center rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-sunken)] p-0.5">
+          <div className="flex items-center rounded-lg border border-border bg-surface-100 p-0.5">
             <button
               type="button"
               onClick={handleZoomIn}
               title="Zoom In"
-              className="px-2 py-1 text-xs font-bold text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded"
+              className="px-2 py-1 text-xs font-bold text-text hover:bg-surface-hover rounded"
             >
               +
             </button>
@@ -521,7 +721,7 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
               type="button"
               onClick={handleZoomOut}
               title="Zoom Out"
-              className="px-2 py-1 text-xs font-bold text-[var(--color-text-primary)] hover:bg-[var(--color-surface-hover)] rounded"
+              className="px-2 py-1 text-xs font-bold text-text hover:bg-surface-hover rounded"
             >
               −
             </button>
@@ -529,7 +729,7 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
               type="button"
               onClick={resetView}
               title="Reset View"
-              className="px-2.5 py-1 text-[11px] font-medium text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] rounded border-l border-[var(--color-border)]"
+              className="px-2.5 py-1 text-[11px] font-medium text-text-secondary hover:bg-surface-hover rounded border-l border-border"
             >
               Reset
             </button>
@@ -539,7 +739,7 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
           <button
             type="button"
             onClick={() => setIsListMode((v) => !v)}
-            className="rounded-lg border border-[var(--color-border)] px-3 py-1.5 text-xs text-[var(--color-text-secondary)] hover:bg-[var(--color-surface-hover)] md:hidden"
+            className="rounded-lg border border-border px-3 py-1.5 text-xs text-text-secondary hover:bg-surface-hover md:hidden"
           >
             {isListMode ? 'Show Graph' : 'Show List'}
           </button>
@@ -558,29 +758,27 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
                 onClick={() => setSelected(node)}
                 className={`p-3 rounded-lg text-left border transition ${
                   selected?.id === node.id
-                    ? 'border-[var(--color-brand-primary,#818cf8)] ring-1 ring-[var(--color-brand-primary,#818cf8)] bg-[var(--color-surface-hover)]'
-                    : 'border-[var(--color-border)] bg-[var(--color-surface)] hover:bg-[var(--color-surface-hover)]'
+                    ? 'border-accent ring-1 ring-accent bg-surface-hover'
+                    : 'border-border bg-surface hover:bg-surface-hover'
                 } ${!isMatch ? 'opacity-40' : ''}`}
               >
                 <div className="flex items-center gap-2">
                   <span
                     className="h-2.5 w-2.5 rounded-full shrink-0"
-                    style={{ background: nodeColor(node.type) }}
+                    style={{ background: nodeStyle(node.type).fill }}
                   />
                   <Badge variant="mono" size="sm">
                     {node.type}
                   </Badge>
                   {node.importance != null && (
-                    <span className="ml-auto text-xs text-[var(--color-text-muted)] font-mono">
+                    <span className="ml-auto text-xs text-text-muted font-mono">
                       Weight: {Math.round(node.importance * 100)}%
                     </span>
                   )}
                 </div>
-                <p className="font-medium text-sm text-[var(--color-text-primary)] mt-1.5">
-                  {node.label}
-                </p>
+                <p className="font-medium text-sm text-text mt-1.5">{node.label}</p>
                 {node.description && (
-                  <p className="text-xs text-[var(--color-text-secondary)] line-clamp-2 mt-0.5">
+                  <p className="text-xs text-text-secondary line-clamp-2 mt-0.5">
                     {node.description}
                   </p>
                 )}
@@ -591,7 +789,7 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
       ) : (
         <div
           ref={containerRef}
-          className="relative flex-1 min-h-[550px] overflow-hidden rounded-xl border border-[var(--color-border)] bg-[var(--color-surface-subtle)] touch-none overscroll-contain select-none"
+          className="relative flex-1 min-h-[550px] overflow-hidden rounded-xl border border-border bg-surface-100 touch-none overscroll-contain select-none"
           onMouseDown={onMouseDown}
           onMouseMove={onMouseMove}
           onMouseUp={onMouseUp}
@@ -616,7 +814,7 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
                 markerHeight="6"
                 orient="auto-start-reverse"
               >
-                <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--color-border-strong, #545464)" />
+                <path d="M 0 0 L 10 5 L 0 10 z" fill="rgb(var(--border))" />
               </marker>
               <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
                 <feGaussianBlur stdDeviation="4" result="blur" />
@@ -644,9 +842,7 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
                       x2={t.x}
                       y2={t.y}
                       stroke={
-                        isEdgeHighlighted
-                          ? 'var(--color-brand-primary, #818cf8)'
-                          : 'var(--color-border, #343440)'
+                        isEdgeHighlighted ? 'rgb(var(--border))' : 'rgb(var(--border-subtle))'
                       }
                       strokeWidth={isEdgeHighlighted ? 2.5 : Math.max(1, (edge.weight ?? 1) * 1.5)}
                       markerEnd="url(#arrow)"
@@ -655,7 +851,7 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
                       x={(s.x + t.x) / 2}
                       y={(s.y + t.y) / 2 - 6}
                       textAnchor="middle"
-                      className="fill-[var(--color-text-muted)] text-[9px] font-mono select-none"
+                      className="fill-text-muted text-[9px] font-mono select-none"
                     >
                       {edge.relationship}
                     </text>
@@ -666,18 +862,14 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
               {/* Nodes */}
               {visibleNodes.map((node) => {
                 const p = layout.get(node.id)!;
+                const style = nodeStyle(node.type);
                 const isSelected = selected?.id === node.id;
                 const isMatched = !matchedNodeIds || matchedNodeIds.has(node.id);
                 const connected = visibleEdges.some(
                   (e) => e.sourceId === node.id || e.targetId === node.id,
                 );
 
-                const radius = isSelected ? 26 : connected ? 20 : 16;
-                const strokeColor = isSelected
-                  ? '#ffffff'
-                  : isMatched && matchedNodeIds
-                    ? 'var(--color-brand-primary, #818cf8)'
-                    : 'transparent';
+                const radius = isSelected ? 22 : connected ? 18 : 15;
 
                 return (
                   <g
@@ -694,25 +886,37 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
                       if (e.key === 'Enter' || e.key === ' ') setSelected(node);
                     }}
                   >
-                    <circle
-                      r={radius}
-                      fill={nodeColor(node.type)}
-                      stroke={strokeColor}
-                      strokeWidth={isSelected ? 3 : isMatched && matchedNodeIds ? 2.5 : 0}
+                    {isSelected && (
+                      <GraphNodeShape
+                        shape={style.shape}
+                        size={radius + 5}
+                        fill="none"
+                        stroke="rgb(var(--accent))"
+                        dashed={style.dashed}
+                        strokeWidth={2}
+                      />
+                    )}
+                    <GraphNodeShape
+                      shape={style.shape}
+                      size={radius}
+                      fill={style.fill}
+                      stroke={style.stroke}
+                      dashed={style.dashed}
+                      strokeWidth={isMatched && matchedNodeIds ? 2 : 1.5}
                       className="transition-all duration-150"
                     />
                     <text
                       textAnchor="middle"
-                      dy={isSelected ? 38 : 34}
-                      className="fill-[var(--color-text-primary)] text-xs font-medium select-none pointer-events-none"
+                      dy={isSelected ? 40 : 34}
+                      className="fill-text text-xs font-medium select-none pointer-events-none"
                       style={{ fontSize: 11 }}
                     >
                       {node.label.length > 20 ? `${node.label.slice(0, 18)}…` : node.label}
                     </text>
                     <text
                       textAnchor="middle"
-                      dy={isSelected ? 50 : 46}
-                      className="fill-[var(--color-text-muted)] text-[9px] font-mono uppercase select-none pointer-events-none"
+                      dy={isSelected ? 52 : 46}
+                      className="fill-text-muted text-[9px] font-mono uppercase select-none pointer-events-none"
                     >
                       {node.type}
                     </text>
@@ -723,7 +927,7 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
           </svg>
 
           {/* Canvas Status Indicator (bottom-left) */}
-          <div className="absolute bottom-3 left-3 flex items-center gap-2 rounded-full border border-[var(--color-border)] bg-[var(--color-surface)]/90 backdrop-blur-sm px-3 py-1 text-xs text-[var(--color-text-secondary)] font-mono shadow-sm">
+          <div className="absolute bottom-3 left-3 flex items-center gap-2 rounded-full border border-border bg-surface/90 backdrop-blur-sm px-3 py-1 text-xs text-text-secondary font-mono shadow-sm">
             <span>{Math.round(transform.k * 100)}% zoom</span>
             <span>•</span>
             <span>
@@ -762,7 +966,7 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
               <Badge variant="mono" size="sm">
                 <span
                   className="w-2 h-2 rounded-full mr-1.5 inline-block"
-                  style={{ background: nodeColor(selected.type) }}
+                  style={{ background: nodeStyle(selected.type).fill }}
                 />
                 {selected.type.toUpperCase()}
               </Badge>
@@ -776,10 +980,10 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
             {/* Description */}
             {selected.description && (
               <div>
-                <h4 className="text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-1">
+                <h4 className="text-xs font-semibold text-text uppercase tracking-wider mb-1">
                   Entity Description
                 </h4>
-                <p className="text-sm text-[var(--color-text-secondary)] leading-relaxed bg-[var(--color-surface-subtle)] p-3 rounded-lg border border-[var(--color-border)]">
+                <p className="text-sm text-text-secondary leading-relaxed bg-surface-100 p-3 rounded-lg border border-border">
                   {selected.description}
                 </p>
               </div>
@@ -787,48 +991,56 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
 
             {/* Connected Relationships */}
             <div>
-              <h4 className="text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-2">
+              <h4 className="text-xs font-semibold text-text uppercase tracking-wider mb-2">
                 Connected Relationships
               </h4>
-              {filteredEdges.filter((e) => e.sourceId === selected.id || e.targetId === selected.id)
-                .length === 0 ? (
-                <p className="text-xs text-[var(--color-text-muted)] italic">
-                  No relationships connected in this graph view.
+              {selectedEdgesLoading ? (
+                <p className="text-xs text-text-muted italic">Loading relationships…</p>
+              ) : selectedEdgesError ? (
+                <p role="alert" className="text-xs text-error">
+                  Failed to load relationships: {selectedEdgesError}
+                </p>
+              ) : selectedEdges.length === 0 ? (
+                <p className="text-xs text-text-muted italic">
+                  No relationships connected to this node.
                 </p>
               ) : (
                 <div className="space-y-1.5">
-                  {filteredEdges
-                    .filter((e) => e.sourceId === selected.id || e.targetId === selected.id)
-                    .map((e) => {
-                      const isOutgoing = e.sourceId === selected.id;
-                      const otherId = isOutgoing ? e.targetId : e.sourceId;
-                      const otherNode = nodeMap.get(otherId);
+                  {selectedEdges.map((e) => {
+                    const isOutgoing = e.sourceId === selected.id;
+                    const otherId = isOutgoing ? e.targetId : e.sourceId;
+                    const otherNode = nodeMap.get(otherId);
 
-                      return (
-                        <div
-                          key={e.id}
-                          className="flex items-center justify-between p-2 rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-subtle)] text-xs"
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="font-mono text-[var(--color-brand-primary,#818cf8)] font-semibold shrink-0">
-                              {isOutgoing ? '→' : '←'} {e.relationship}
-                            </span>
-                            <span className="text-[var(--color-text-primary)] font-medium truncate">
-                              {otherNode?.label || otherId.slice(0, 8)}
-                            </span>
-                          </div>
-                          {otherNode && (
-                            <button
-                              type="button"
-                              onClick={() => setSelected(otherNode)}
-                              className="text-[11px] text-[var(--color-brand-primary,#818cf8)] hover:underline shrink-0 ml-2"
-                            >
-                              Inspect
-                            </button>
-                          )}
+                    return (
+                      <div
+                        key={e.id}
+                        className="flex items-center justify-between p-2 rounded-lg border border-border bg-surface-100 text-xs"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-mono text-accent font-semibold shrink-0">
+                            {isOutgoing ? '→' : '←'} {e.relationship}
+                          </span>
+                          <span className="text-text font-medium truncate">
+                            {otherNode?.label || otherId.slice(0, 8)}
+                          </span>
                         </div>
-                      );
-                    })}
+                        {otherNode && (
+                          <button
+                            type="button"
+                            onClick={() => setSelected(otherNode)}
+                            className="text-[11px] text-accent hover:underline shrink-0 ml-2"
+                          >
+                            Inspect
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                  {selectedEdgeTotal > selectedEdges.length && (
+                    <p className="text-[11px] text-text-muted">
+                      Showing {selectedEdges.length} of {selectedEdgeTotal} relationships.
+                    </p>
+                  )}
                 </div>
               )}
             </div>
@@ -836,17 +1048,17 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
             {/* Extended Metadata Properties */}
             {selected.properties && Object.keys(selected.properties).length > 0 && (
               <div>
-                <h4 className="text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider mb-2">
+                <h4 className="text-xs font-semibold text-text uppercase tracking-wider mb-2">
                   Metadata & Properties
                 </h4>
-                <div className="space-y-1 font-mono text-xs bg-[var(--color-surface-subtle)] p-3 rounded-lg border border-[var(--color-border)]">
+                <div className="space-y-1 font-mono text-xs bg-surface-100 p-3 rounded-lg border border-border">
                   {Object.entries(selected.properties).map(([k, v]) => (
                     <div
                       key={k}
-                      className="flex justify-between gap-2 border-b border-[var(--color-border)]/50 pb-1"
+                      className="flex justify-between gap-2 border-b border-border/50 pb-1"
                     >
-                      <span className="text-[var(--color-text-muted)] truncate">{k}</span>
-                      <span className="text-[var(--color-text-primary)] font-medium truncate">
+                      <span className="text-text-muted truncate">{k}</span>
+                      <span className="text-text font-medium truncate">
                         {typeof v === 'string' ? v : JSON.stringify(v)}
                       </span>
                     </div>

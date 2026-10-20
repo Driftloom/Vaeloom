@@ -128,6 +128,46 @@ def denial(
     )
 
 
+async def llm_provider_exception_handler(request: Request, exc: Exception) -> JSONResponse:
+    """503 for upstream LLM / embedding provider failures.
+
+    A missing key, a refused connection, an upstream 5xx, and an empty
+    embedding vector are one class of event from the caller's side: this
+    service cannot serve the request right now. That is 503 (retry later),
+    not 500 (we are broken). Returning 500 sent these to the client's
+    error budget as server defects and told callers the request was
+    unrecoverable, when retrying after a provider recovery is exactly
+    what succeeds.
+
+    Registered per-class against ``LLMProviderError`` in ``main.py`` rather
+    than caught at each LLM call site: the ~30 raise sites in
+    ``services/llm_service.py`` all mean the same thing, and a
+    try/except per site would rot the first time someone adds one. The
+    registration is also why this cannot swallow real bugs — only
+    ``LLMProviderError`` (and ``LLMTransientError``, which subclasses it)
+    ever reaches this function; everything else still falls through to
+    ``generic_exception_handler`` as a 500.
+
+    Mirrors the Temporal-unavailable 503 precedent, which is also a
+    dependency-is-down rather than a bug-is-here.
+    """
+    logger.warning(
+        "LLM provider unavailable  path=%s  method=%s  error=%s",
+        request.url.path,
+        request.method,
+        exc,
+    )
+    detail = "LLM provider unavailable"
+    return JSONResponse(
+        status_code=503,
+        content={
+            **problem_envelope(503, detail, str(exc)[:500], request),
+            "detail": detail,
+        },
+        media_type=PROBLEM_MEDIA_TYPE,
+    )
+
+
 async def generic_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     correlation_id = getattr(request.state, "correlation_id", None) or str(uuid.uuid4())
     logger.exception("Unhandled exception  correlation_id=%s  path=%s  method=%s", correlation_id, request.url.path, request.method)

@@ -197,21 +197,34 @@ CREATE_MEMORY = ToolDefinition(
 
 SYNC_VAULT = ToolDefinition(
     name="sync_vault",
-    description="Sync Obsidian/local Markdown vault files into the workspace document store and memory index",
+    description=(
+        "Record a manual vault sync request and report current vault state; "
+        "the desktop vaultsync client performs the git pull/rebase/commit/push "
+        "cycle (there is no server-side sync engine)"
+    ),
     input_schema={
         "type": "object",
         "properties": {
-            "force": {"type": "boolean", "default": False},
+            "force": {
+                "type": "boolean",
+                "default": False,
+                "description": "Deprecated no-op: sync execution belongs to the desktop vaultsync client.",
+            },
         },
         "required": [],
     },
     output_schema={
         "type": "object",
         "properties": {
-            "status": {"type": "string"},
-            "files_synced": {"type": "integer"},
-            "files_updated": {"type": "integer"},
-            "files_skipped": {"type": "integer"},
+            "success": {"type": "boolean"},
+            "executed": {"type": "boolean"},
+            "workspace_id": {"type": "string"},
+            "daemon_status": {"type": "string"},
+            "files_found": {"type": "integer"},
+            "last_pull_time": {"type": "string"},
+            "last_push_time": {"type": "string"},
+            "conflicts_count": {"type": "integer"},
+            "message": {"type": "string"},
         },
     },
     required_scope="memory.write",

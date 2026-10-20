@@ -4,7 +4,13 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Badge, Button, EmptyState, ErrorState, Tabs, TabPanel, Textarea } from '@vaeloom/ui-kit';
 import { capabilitiesApi } from '@/lib/api-client';
-import { type DetailSubTab, type ToolGateRow, type ToolRow, type ToolSuite } from './types';
+import {
+  type DetailSubTab,
+  type GateStatus,
+  type ToolGateRow,
+  type ToolRow,
+  type ToolSuite,
+} from './types';
 import { ToolRowItem } from './ToolRowItem';
 
 export interface ToolDetailDrawerProps {
@@ -12,7 +18,7 @@ export interface ToolDetailDrawerProps {
   selectedSuite: ToolSuite | null;
   activeRow: ToolRow | null;
   gateRows: ReadonlyMap<string, ToolGateRow>;
-  gateStatus: 'loading' | 'ready' | 'failed';
+  gateStatus: GateStatus;
   pendingTools: ReadonlySet<string>;
   detailSubTab: DetailSubTab;
   onDetailSubTabChange: (tab: DetailSubTab) => void;
@@ -144,7 +150,7 @@ export const ToolDetailDrawer: React.FC<ToolDetailDrawerProps> = ({
                 </p>
                 <p className="text-2xs font-mono text-text-muted mt-1">
                   {activeRow.definition
-                    ? 'definition from the tool catalog'
+                    ? 'definition served by the workspace tool catalog'
                     : 'not present in the tool catalog — the fields below come from the workspace capability row, which the server does not validate'}
                 </p>
               </div>

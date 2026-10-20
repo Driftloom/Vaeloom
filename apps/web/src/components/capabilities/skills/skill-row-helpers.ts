@@ -43,6 +43,18 @@ export function readTags(raw: unknown): string[] {
   return raw.filter((tag): tag is string => typeof tag === 'string' && tag.trim() !== '');
 }
 
+export function isNotFound(err: unknown): boolean {
+  return (err as { status?: number } | null)?.status === 404;
+}
+
+export function isConflict(err: unknown): boolean {
+  return (err as { status?: number } | null)?.status === 409;
+}
+
+export function errorMessage(err: unknown, fallback: string): string {
+  return err instanceof Error && err.message ? err.message : fallback;
+}
+
 export function isSeedSkill(item: CapabilityItem): boolean {
   return item.source === 'built-in' || item.source === 'learned';
 }

@@ -47,13 +47,15 @@ class TestComputeEmbedding:
         result = await svc._compute_embedding("hello")
         assert result == [0.5] * 1536
 
-    async def test_returns_zero_vector_on_failure(self, monkeypatch):
+    async def test_returns_none_on_failure(self, monkeypatch):
+        # No caller consumes this today, but a fabricated zero vector here is a
+        # landmine for whichever path gets wired to it next.
         from api.services.recommendation_service import RecommendationService
         llm_mock = AsyncMock(generate_embedding=AsyncMock(side_effect=Exception("API down")))
         monkeypatch.setattr("api.services.recommendation_service.llm_service", llm_mock)
         svc = RecommendationService()
         result = await svc._compute_embedding("anything")
-        assert result == [0.0] * 1536
+        assert result is None
 
 
 class TestBuildItem:

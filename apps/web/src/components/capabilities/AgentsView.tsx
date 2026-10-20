@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import useSWR from 'swr';
 import { ButtonGroup, EmptyState } from '@vaeloom/ui-kit';
 import { CapabilityItem } from '@/lib/capabilities-data';
@@ -10,6 +10,7 @@ import {
   type CapabilityItemRecord,
   type CatalogAgent,
 } from '@/lib/api-client';
+import { capabilityKeys, invalidateCapabilities } from '@/lib/queries/capability-keys';
 
 import { formatAgentTitle } from './agents/types';
 import { AgentCard } from './agents/AgentCard';
@@ -47,14 +48,15 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
     return map;
   }, [catalog]);
 
-  const {
-    data: agentCapabilityRows,
-    error: agentCapabilityRowsError,
-    mutate: mutateAgentCapabilityRows,
-  } = useSWR(
-    workspaceId ? ['agent-capability-rows', workspaceId] : null,
+  const { data: agentCapabilityRows, error: agentCapabilityRowsError } = useSWR(
+    workspaceId ? capabilityKeys.agentCatalog(workspaceId) : null,
     () => capabilitiesApi.list('agent', workspaceId),
     { revalidateOnFocus: false, shouldRetryOnError: false },
+  );
+
+  const reloadAgentCapabilityRows = useCallback(
+    () => invalidateCapabilities(workspaceId, 'agent-catalog'),
+    [workspaceId],
   );
 
   const agentCapabilityByName = useMemo(() => {
@@ -219,7 +221,7 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
         catalogLoading={catalogLoading}
         workspaceId={workspaceId}
         agentCapabilityRowsError={agentCapabilityRowsError}
-        mutateAgentCapabilityRows={mutateAgentCapabilityRows}
+        mutateAgentCapabilityRows={reloadAgentCapabilityRows}
       />
     </div>
   );

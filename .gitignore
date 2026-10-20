@@ -1,5 +1,6 @@
-# Vale lint styles (auto-installed by CI)
-.vale/styles/
+# Vale lint styles (write-good is auto-installed by CI; Vaeloom is committed)
+.vale/styles/*
+!.vale/styles/Vaeloom/
 
 # Generated artifacts
 /docs-portal.html

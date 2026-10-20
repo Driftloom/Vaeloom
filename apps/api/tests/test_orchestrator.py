@@ -248,6 +248,28 @@ class TestActPhase:
         result = await act_phase(plan, req)
         assert result["action"] == expected_action, f"{agent_type}: expected {expected_action}, got {result.get('action')}"
 
+    async def test_static_fallback_marks_skill_directive_not_applied(self, monkeypatch):
+        from api.config import settings
+
+        monkeypatch.setattr(settings, "agent_react_enabled", False)
+
+        import api.services.skill_injection as skill_injection
+        from api.orchestrator.loop import AgentRequest, act_phase
+
+        async def _unexpected_directive(*args, **kwargs):
+            raise AssertionError("static fallback must not build a skill directive")
+
+        monkeypatch.setattr(skill_injection, "build_skill_directive", _unexpected_directive)
+
+        agent = _make_agent("TestAgent")
+        req = AgentRequest(agent, "r1", "test message", "ws1")
+        plan = {"agent_type": "TestAgent", "message": "test message", "workspace_id": "ws1"}
+        result = await act_phase(plan, req)
+
+        assert result["action"] == "execute"
+        assert result["result"]["provenance"]["skill_directive"] == "not_applied"
+        assert "prompt_manifest" not in result
+
     async def test_error_returns_error_dict(self, monkeypatch):
         from api.config import settings
 
@@ -265,6 +287,7 @@ class TestActPhase:
         assert result["action"] == "error"
         assert result["confidence"] == 0.0
         assert "Execution error" in result["result"]["summary"]
+        assert result["result"]["provenance"]["skill_directive"] == "not_applied"
 
     async def test_resume_agent_execute_with_profile(self, monkeypatch):
         from api.config import settings

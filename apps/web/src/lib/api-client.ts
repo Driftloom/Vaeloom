@@ -292,6 +292,7 @@ export const memoryApi = {
     page?: number;
     page_size?: number;
     workspace_id?: string;
+    include_superseded?: boolean;
   }): Promise<MemoryListResponse> {
     return apiClient.get<MemoryListResponse>(
       '/memories',
@@ -345,6 +346,22 @@ export const memoryApi = {
 
 // ─── Vault Sync (Memory Vault Git Plumbing) ──────────────────────────────────
 
+/**
+ * One entry of the server-side device registry in `GET /vault-sync/status`.
+ * Machine names are client-reported: a browser can never know which device is
+ * "current", only which reported last.
+ */
+export interface VaultDevice {
+  machine: string;
+  clientVersion?: string | null;
+  lastHeartbeat?: string | null;
+  /** Coarse client status: `in_sync | conflict | syncing | error`. */
+  status?: string | null;
+  lastPullTime?: string | null;
+  lastPushTime?: string | null;
+  lastError?: string | null;
+}
+
 export interface VaultSyncStatus {
   workspaceId: string;
   /** 'unknown' when no client has ever connected — not a reassuring value. */
@@ -365,6 +382,10 @@ export interface VaultSyncStatus {
   lastPushTime?: string | null;
   /** Real error reported by the client, if any. */
   lastError?: string | null;
+  /** Name of the latest reporting client; alias kept for back-compat. */
+  machine?: string | null;
+  /** Device registry derived from client reports, sorted by heartbeat desc. */
+  devices?: VaultDevice[];
   conflictsCount: number;
   autoIngest: boolean;
   debounceSeconds: number;
@@ -400,13 +421,52 @@ export interface VaultIngestRequest {
   notes: VaultNoteItem[];
 }
 
+/**
+ * A conflict file reported by the vaultsync client.
+ *
+ * Both spellings exist on purpose: `api.request` camelCases response keys
+ * (`transformKeys`), so a real response arrives as `conflictFile` /
+ * `detectedAt` while code paths that echo the request payload still carry
+ * snake_case. Consumers must read `x.camelCase ?? x.snake_case`.
+ */
 export interface VaultConflict {
   id: string;
   file: string;
-  conflict_file: string;
-  detected_at: string;
+  conflict_file?: string;
+  conflictFile?: string;
+  detected_at?: string;
+  detectedAt?: string;
   local_head?: string;
+  localHead?: string;
   remote_head?: string;
+  remoteHead?: string;
+}
+
+/** One recorded conflict resolution from `GET /vault-sync/conflicts/history`. */
+export interface VaultConflictHistoryItem {
+  id: string;
+  connector_id?: string;
+  connectorId?: string;
+  conflict_id?: string;
+  conflictId?: string;
+  file: string;
+  conflict_file?: string;
+  conflictFile?: string;
+  local_head?: string | null;
+  localHead?: string | null;
+  remote_head?: string | null;
+  remoteHead?: string | null;
+  detected_at?: string | null;
+  detectedAt?: string | null;
+  resolved_at?: string;
+  resolvedAt?: string;
+  resolution: string;
+}
+
+export interface VaultConflictHistoryPage {
+  items: VaultConflictHistoryItem[];
+  /** All history rows for the workspace, before pagination. */
+  total: number;
 }
 
 export interface VaultSyncLog {
@@ -479,17 +539,31 @@ export const vaultSyncApi = {
   },
   ingest(body: VaultIngestRequest): Promise<{
     success: boolean;
-    ingested_documents: number;
-    created_or_updated_memories: number;
+    ingested_documents?: number;
+    ingestedDocuments?: number;
+    created_or_updated_memories?: number;
+    createdOrUpdatedMemories?: number;
   }> {
     return apiClient.post<{
       success: boolean;
-      ingested_documents: number;
-      created_or_updated_memories: number;
+      ingested_documents?: number;
+      ingestedDocuments?: number;
+      created_or_updated_memories?: number;
+      createdOrUpdatedMemories?: number;
     }>('/vault-sync/ingest', body);
   },
   getConflicts(workspaceId: string): Promise<VaultConflict[]> {
     return apiClient.get<VaultConflict[]>('/vault-sync/conflicts', { workspace_id: workspaceId });
+  },
+  getConflictHistory(
+    workspaceId: string,
+    params?: { limit?: number; offset?: number },
+  ): Promise<VaultConflictHistoryPage> {
+    return apiClient.get<VaultConflictHistoryPage>('/vault-sync/conflicts/history', {
+      workspace_id: workspaceId,
+      limit: params?.limit,
+      offset: params?.offset,
+    });
   },
   reportClientState(body: VaultClientReport): Promise<{
     success: boolean;
@@ -508,15 +582,19 @@ export const vaultSyncApi = {
     workspaceId: string,
   ): Promise<{
     success: boolean;
-    conflict_id: string;
-    strategy: string;
-    remaining_conflicts: number;
+    conflict_id?: string;
+    conflictId?: string;
+    resolution: string;
+    remaining_conflicts?: number;
+    remainingConflicts?: number;
   }> {
     return apiClient.post<{
       success: boolean;
-      conflict_id: string;
-      strategy: string;
-      remaining_conflicts: number;
+      conflict_id?: string;
+      conflictId?: string;
+      resolution: string;
+      remaining_conflicts?: number;
+      remainingConflicts?: number;
     }>(
       `/vault-sync/conflicts/${encodeURIComponent(conflictId)}/resolve?workspace_id=${encodeURIComponent(workspaceId)}`,
       { strategy },
@@ -5025,6 +5103,30 @@ export interface ValidateCapabilityDraftRequest {
   trustClass?: string;
 }
 
+/**
+ * One entry of `GET /capabilities/tools/definitions` — the backend `ALL_TOOLS`
+ * registry in `apps/api/src/api/tools/definitions.py`.
+ *
+ * `transformKeys` camelCases response keys, so `required_scope` arrives as
+ * `requiredScope` and `trust_class` as `trustClass`. JSON Schema payloads are on
+ * `OPAQUE_DATA_KEYS`: their VALUES pass through verbatim (schema property names
+ * keep their snake_case spellings round-tripping back into `ToolDefinition`),
+ * only the wrapping keys themselves are camelCased.
+ *
+ * `category` and `trustClass` are plain `string` rather than unions because the
+ * server defines the set (`definitions.py`); narrowing them client-side would
+ * push any future registry value into a compile-time lie.
+ */
+export interface ToolDefinitionRecord {
+  name: string;
+  description: string;
+  requiredScope: string;
+  category: string;
+  trustClass: string;
+  inputSchema: Record<string, unknown>;
+  outputSchema: Record<string, unknown>;
+}
+
 export const capabilitiesApi = {
   list(category?: string, workspaceId?: string): Promise<CapabilityItemRecord[]> {
     const params: Record<string, string | undefined> = {};
@@ -5060,20 +5162,14 @@ export const capabilitiesApi = {
     return apiClient.get<SkillCatalogEntry[]>('/capabilities/catalog', { category });
   },
   /**
-   * Authoritative tool definitions directly from the backend ALL_TOOLS registry.
+   * Authoritative tool definitions from the backend `ALL_TOOLS` registry.
+   *
+   * The Tools tab and the `[toolName]` subpage both render this; there is no
+   * client copy of the rows. Order is the registry's insertion order and is
+   * stable across requests, so it doubles as the "Catalog order" sort.
    */
-  listToolDefinitions(): Promise<
-    Array<{
-      name: string;
-      description: string;
-      required_scope: string;
-      category: string;
-      trust_class: string;
-      input_schema: Record<string, unknown>;
-      output_schema: Record<string, unknown>;
-    }>
-  > {
-    return apiClient.get('/capabilities/tools/definitions');
+  listToolDefinitions(): Promise<ToolDefinitionRecord[]> {
+    return apiClient.get<ToolDefinitionRecord[]>('/capabilities/tools/definitions');
   },
   /**
    * Installed skills merged with the catalog in one request.

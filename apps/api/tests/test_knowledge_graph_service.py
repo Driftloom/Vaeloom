@@ -61,13 +61,15 @@ class TestKnowledgeGraphService:
         result = await service._compute_embedding("hello")
         assert result == [0.5] * 1536
 
-    async def test_compute_embedding_failure(self, service, monkeypatch):
+    async def test_compute_embedding_failure_returns_none(self, service, monkeypatch):
+        # A fabricated zero vector made the failure indistinguishable from a
+        # real embedding; absence is the honest outcome.
         monkeypatch.setattr(
             "api.services.knowledge_graph_service.llm_service",
             AsyncMock(generate_embedding=AsyncMock(side_effect=ValueError("fail"))),
         )
         result = await service._compute_embedding("hello")
-        assert result == [0.0] * 1536
+        assert result is None
 
     async def test_create_node(self, service, monkeypatch):
         row = self._make_simple_row(
@@ -89,6 +91,28 @@ class TestKnowledgeGraphService:
         dto.tenant_id = None
         result = await service.create_node(dto, tenant_id="t1", db=db, workspace_id="ws1")
         assert result._mapping["label"] == "Test"
+
+    async def test_create_node_embedding_failure_persists_null_embedding(self, service, monkeypatch):
+        row = self._make_simple_row(
+            id=str(uuid.uuid4()), label="Test", type="concept", description="desc",
+            importance=0.8, properties='{}', tenant_id="t1",
+            created_at="2025-01-01", updated_at="2025-01-01",
+        )
+        db = self._make_db(fetchone_val=row)
+        monkeypatch.setattr(
+            "api.services.knowledge_graph_service.llm_service",
+            AsyncMock(generate_embedding=AsyncMock(side_effect=ValueError("fail"))),
+        )
+        dto = MagicMock()
+        dto.label = "Test"
+        dto.type.value = "concept"
+        dto.description = "desc"
+        dto.importance = 0.8
+        dto.properties = {}
+        dto.tenant_id = None
+        await service.create_node(dto, tenant_id="t1", db=db, workspace_id="ws1")
+        insert_params = db.execute.await_args_list[0].args[1]
+        assert insert_params["embedding"] is None
 
     async def test_get_node(self, service):
         row = self._make_simple_row(
@@ -159,6 +183,26 @@ class TestKnowledgeGraphService:
         dto.description = "new desc"
         result = await service.update_node(uuid.uuid4(), dto, db=db, workspace_id="ws1")
         assert result._mapping["label"] == "N"
+
+    async def test_update_node_reembed_failure_keeps_previous_embedding(self, service, monkeypatch):
+        row = self._make_simple_row(
+            id=str(uuid.uuid4()), label="N", type="concept", description="new desc",
+            importance=0.5, properties='{}', tenant_id="t1",
+            created_at="2025-01-01", updated_at="2025-01-01",
+        )
+        db = self._make_db(fetchone_val=row)
+        monkeypatch.setattr(
+            "api.services.knowledge_graph_service.llm_service",
+            AsyncMock(generate_embedding=AsyncMock(side_effect=ValueError("fail"))),
+        )
+        dto = MagicMock()
+        dto.model_dump.return_value = {"description": "new desc"}
+        dto.label = "N"
+        dto.description = "new desc"
+        await service.update_node(uuid.uuid4(), dto, db=db, workspace_id="ws1")
+        update_stmt, update_params = db.execute.await_args_list[0].args
+        assert "embedding = :embedding" not in str(update_stmt)
+        assert "embedding" not in update_params
 
     async def test_update_node_empty_data(self, service, monkeypatch):
         row = self._make_simple_row(

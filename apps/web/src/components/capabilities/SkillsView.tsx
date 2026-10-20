@@ -118,7 +118,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
   const [categoryFilter, setCategoryFilter] = useState<SkillCategoryFilter>('all');
   const [trustFilter, setTrustFilter] = useState<string>('all');
   const [isTriggerSimOpen, setIsTriggerSimOpen] = useState(false);
-  const [playgroundSkill, setPlaygroundSkill] = useState<SkillRow | null>(null);
+  const [playgroundKey, setPlaygroundKey] = useState<string | null>(null);
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
 
   const { careerCount, agentCount, engineeringCount } = useMemo(() => {
@@ -155,6 +155,11 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
       rows[0] ??
       null,
     [filteredRows, rows, selectedKey],
+  );
+
+  const playgroundSkill = useMemo(
+    () => (playgroundKey === null ? null : (rows.find((row) => row.key === playgroundKey) ?? null)),
+    [rows, playgroundKey],
   );
 
   const detailRef = useRef<HTMLDivElement>(null);
@@ -303,7 +308,6 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
           ) : (
             <ul
               aria-label="Skills"
-              tabIndex={0}
               onKeyDown={(e) => {
                 if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
                   const currentIndex = filteredRows.findIndex((r) => r.key === selectedRow?.key);
@@ -316,6 +320,9 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                   const nextRow = filteredRows[nextIndex];
                   if (nextRow) {
                     handleSelect(nextRow.key);
+                    if (!isNarrowViewport()) {
+                      requestAnimationFrame(() => selectedButtonRef.current?.focus());
+                    }
                   }
                 }
               }}
@@ -351,6 +358,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
         <SkillDetailPane
           selectedRow={selectedRow}
           isLoading={isLoading}
+          isPending={pendingKey !== null && pendingKey === selectedRow?.key}
           onCloseMobileDetail={closeMobileDetail}
           onOpenCreate={onOpenCreate}
           onToggleEnabled={onToggleEnabled}
@@ -358,7 +366,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
           onDeleteRequest={(row) => setConfirmDelete(row)}
           onCopyDoc={onCopyDoc}
           onSaveDoc={onSaveDoc}
-          onOpenPlayground={(row) => setPlaygroundSkill(row)}
+          onOpenPlayground={(row) => setPlaygroundKey(row.key)}
           detailRef={detailRef}
           workspaceId={workspaceId}
         />
@@ -384,7 +392,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
 
       <SkillPlaygroundDrawer
         isOpen={playgroundSkill !== null}
-        onClose={() => setPlaygroundSkill(null)}
+        onClose={() => setPlaygroundKey(null)}
         selectedSkill={playgroundSkill}
         workspaceId={workspaceId}
         onInstall={onInstall}

@@ -40,48 +40,37 @@ export default function MemoryScalePage() {
       <ScaleMemoryViewer workspaceId={workspaceId} />
 
       {/* Cognitive Architecture Details */}
-      <Card
-        padding="md"
-        className="p-6 bg-[var(--color-surface)] border border-[var(--color-border)] rounded-xl space-y-4"
-      >
+      <Card padding="md" className="p-6 bg-surface border border-border rounded-xl space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-xs font-semibold text-[var(--color-text-primary)] uppercase tracking-wider">
+          <h3 className="text-xs font-semibold text-text uppercase tracking-wider">
             Cognitive Abstraction Tiers
           </h3>
           <Badge variant="mono" size="sm">
-            Wavelength Levels 0 — 3
+            Sub-Daily → North Star
           </Badge>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-xs">
-          <div className="p-3 bg-[var(--color-surface-subtle)] rounded-lg border border-[var(--color-border)] space-y-1">
-            <div className="font-semibold text-[var(--color-text-primary)]">
-              Level 0: Raw Perceptions
-            </div>
-            <div className="text-[var(--color-text-muted)] leading-relaxed">
+          <div className="p-3 bg-surface-100 rounded-lg border border-border space-y-1">
+            <div className="font-semibold text-text">Level 0: Raw Perceptions</div>
+            <div className="text-text-muted leading-relaxed">
               Ephemeral tool calls, user chat inputs, and atomic workspace events.
             </div>
           </div>
-          <div className="p-3 bg-[var(--color-surface-subtle)] rounded-lg border border-[var(--color-border)] space-y-1">
-            <div className="font-semibold text-[var(--color-text-primary)]">
-              Level 1: Episodic Sessions
-            </div>
-            <div className="text-[var(--color-text-muted)] leading-relaxed">
+          <div className="p-3 bg-surface-100 rounded-lg border border-border space-y-1">
+            <div className="font-semibold text-text">Level 1: Episodic Sessions</div>
+            <div className="text-text-muted leading-relaxed">
               Summarized goal-directed conversations and cohesive work tasks.
             </div>
           </div>
-          <div className="p-3 bg-[var(--color-surface-subtle)] rounded-lg border border-[var(--color-border)] space-y-1">
-            <div className="font-semibold text-[var(--color-text-primary)]">
-              Level 2: Semantic Topics
-            </div>
-            <div className="text-[var(--color-text-muted)] leading-relaxed">
+          <div className="p-3 bg-surface-100 rounded-lg border border-border space-y-1">
+            <div className="font-semibold text-text">Level 2: Semantic Topics</div>
+            <div className="text-text-muted leading-relaxed">
               Persistent conceptual knowledge, skills, and validated domain facts.
             </div>
           </div>
-          <div className="p-3 bg-[var(--color-surface-subtle)] rounded-lg border border-[var(--color-border)] space-y-1">
-            <div className="font-semibold text-[var(--color-text-primary)]">
-              Level 3: Strategic Principles
-            </div>
-            <div className="text-[var(--color-text-muted)] leading-relaxed">
+          <div className="p-3 bg-surface-100 rounded-lg border border-border space-y-1">
+            <div className="font-semibold text-text">Level 3: Strategic Principles</div>
+            <div className="text-text-muted leading-relaxed">
               Overarching user preferences, ethics, and career trajectory goals.
             </div>
           </div>
