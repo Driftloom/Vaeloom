@@ -20,6 +20,7 @@ jobs:
         with:
           files: '["specs", "docs"]'
           filter_mode: nofilter
+          reporter: github-check
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
