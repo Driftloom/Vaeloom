@@ -4,11 +4,7 @@ import React, { useEffect } from 'react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 
-interface ConnectorsPageProps {
-  params?: Promise<{ workspaceId: string }>;
-}
-
-export default function ConnectorsPage(_props?: ConnectorsPageProps) {
+export default function ConnectorsPage() {
   const routeParams = useParams();
   const router = useRouter();
   const workspaceId = (routeParams?.['workspaceId'] as string) || 'default-workspace';

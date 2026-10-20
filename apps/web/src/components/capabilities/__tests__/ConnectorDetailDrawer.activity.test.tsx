@@ -128,4 +128,34 @@ describe('ConnectorDetailDrawer Activity tab', () => {
     await waitFor(() => expect(screen.getByText('5')).toBeTruthy());
     expect(screen.getByText(/Roll back to previous config version/i)).toBeTruthy();
   });
+
+  it('labels every panel with its tab', async () => {
+    usageMock.mockResolvedValue({ ...baseUsage, config_version: 2 });
+    renderDrawer();
+    const tabs = screen.getAllByRole('tab');
+    expect(tabs).toHaveLength(4);
+    // No tab may carry aria-controls: only the active panel is mounted, so a
+    // reference from an inactive tab would dangle.
+    for (const tab of tabs) {
+      expect(tab.getAttribute('aria-controls')).toBeNull();
+      expect(tab.id).toBeTruthy();
+    }
+    // The active panel points back at its tab, which is the direction that
+    // matters for announcing content.
+    const panel = document.getElementById('connector-panel-overview');
+    expect(panel?.getAttribute('role')).toBe('tabpanel');
+    expect(panel?.getAttribute('aria-labelledby')).toBe('connector-tab-overview');
+  });
+
+  it('navigates the tablist with arrow keys', async () => {
+    usageMock.mockResolvedValue({ ...baseUsage, config_version: 1 });
+    renderDrawer();
+    const tabs = screen.getAllByRole('tab');
+    const list = screen.getByRole('tablist');
+    tabs[0]?.focus();
+    fireEvent.keyDown(list, { key: 'ArrowRight' });
+    expect(tabs[1]?.getAttribute('aria-selected')).toBe('true');
+    fireEvent.keyDown(list, { key: 'ArrowLeft' });
+    expect(tabs[0]?.getAttribute('aria-selected')).toBe('true');
+  });
 });
