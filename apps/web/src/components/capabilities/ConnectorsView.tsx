@@ -98,6 +98,7 @@ export function ConnectorsView({
     handleSyncWorkspace,
     handleDynamicSync,
     handleTestConnection,
+    handleComposioRefresh,
     handleOpenHealthModal,
     handleInspectTools,
     confirmDisconnect,
@@ -204,6 +205,7 @@ export function ConnectorsView({
             onDynamicSync={(id) => void handleDynamicSync(id)}
             onTestConnection={(id) => void handleTestConnection(id)}
             onInspectTools={(id, name) => void handleInspectTools(id, name)}
+            onRefresh={(item) => void handleComposioRefresh(item)}
             onPendingDisconnect={setPendingDisconnect}
           />
         )}
@@ -244,11 +246,19 @@ export function ConnectorsView({
           }}
           onDisconnect={() => {
             const current = selectedItemDetails;
+            const rawApp = dynamicConnectors.find(
+              (c) =>
+                (c.name && c.name.toLowerCase() === rowName(current).toLowerCase()) ||
+                (c.config?.['app'] &&
+                  String(c.config['app']).toLowerCase() ===
+                    (rowComposioApp(current) || '').toLowerCase()),
+            )?.config?.['app'];
             setSelectedItemDetails(null);
             setPendingDisconnect({
               id: rowId(current),
               name: rowName(current),
               isWorkspaceIntegration: false,
+              composioApp: typeof rawApp === 'string' && rawApp !== '' ? rawApp : undefined,
             });
           }}
           connectBusy={busyAction === `composio-${rowComposioApp(selectedItemDetails) ?? ''}`}

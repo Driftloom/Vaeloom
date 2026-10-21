@@ -21,7 +21,12 @@ export interface ConnectorModalsProps {
   toolsLoading: boolean;
   onCloseToolsModal: () => void;
 
-  pendingDisconnect: { id: string; name: string; isWorkspaceIntegration: boolean } | null;
+  pendingDisconnect: {
+    id: string;
+    name: string;
+    isWorkspaceIntegration: boolean;
+    composioApp?: string;
+  } | null;
   onClosePendingDisconnect: () => void;
   onConfirmDisconnect: () => void;
 }

@@ -5469,6 +5469,43 @@ export interface ComposioAuthUrlResponse {
 }
 
 /**
+ * `POST /connectors/composio/refresh`, from `composio_service.refresh_connection`.
+ *
+ * Two branches ride the same 200: the connected branch (`connected: true`)
+ * carries only `checked_at`, while the reconnection branch (`connected: false`)
+ * adds `error_code`, `message` and `auth_url` for the consent screen the user
+ * must complete before credentials are refreshed again.
+ */
+export interface ComposioRefreshResultRecord {
+  status: string;
+  connected: boolean;
+  app: string;
+  checkedAt: string;
+  errorCode?: string;
+  message?: string;
+  authUrl?: string;
+}
+
+/**
+ * `POST /connectors/composio/disconnect`, from `composio_service.disconnect_connection`.
+ *
+ * `success` and `partial` both make the row go away on the backend; `partial`
+ * additionally reports per-account `revocation_errors` while `revoked` stays
+ * empty. `error` is a hard failure (for example a missing Composio API key)
+ * reported with `message` and no row change. `detail` explains the zero-target
+ * case on the wire and is `null` otherwise.
+ */
+export interface ComposioDisconnectResultRecord {
+  status: string;
+  app: string;
+  revoked: string[];
+  revocationErrors?: Array<{ id: string; error: string }>;
+  detail?: string | null;
+  errorCode?: string;
+  message?: string;
+}
+
+/**
  * `GET /connectors/{id}/health`, from `connector_ext_service.get_health`.
  *
  * The service returns exactly `connector_id`, `name`, `type`, `status`,
@@ -5646,6 +5683,18 @@ export const connectorsApi = {
       workspaceId: string,
     ): Promise<{ workspace_id: string; registered: string[]; count: number }> {
       return apiClient.post(`/connectors/composio/sync`, { workspace_id: workspaceId });
+    },
+    refresh(app: string, workspaceId: string): Promise<ComposioRefreshResultRecord> {
+      return apiClient.post<ComposioRefreshResultRecord>('/connectors/composio/refresh', {
+        app,
+        workspace_id: workspaceId,
+      });
+    },
+    disconnect(app: string, workspaceId: string): Promise<ComposioDisconnectResultRecord> {
+      return apiClient.post<ComposioDisconnectResultRecord>('/connectors/composio/disconnect', {
+        app,
+        workspace_id: workspaceId,
+      });
     },
   },
 };

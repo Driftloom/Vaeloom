@@ -15,10 +15,12 @@ export interface InstalledConnectorsTabProps {
   onDynamicSync: (id: string) => void;
   onTestConnection: (id: string) => void;
   onInspectTools: (id: string, name: string) => void;
+  onRefresh?: (item: ConfiguredItem) => void;
   onPendingDisconnect: (target: {
     id: string;
     name: string;
     isWorkspaceIntegration: boolean;
+    composioApp?: string;
   }) => void;
 }
 
@@ -31,6 +33,7 @@ export function InstalledConnectorsTab({
   onDynamicSync,
   onTestConnection,
   onInspectTools,
+  onRefresh,
   onPendingDisconnect,
 }: InstalledConnectorsTabProps) {
   return (
@@ -60,12 +63,17 @@ export function InstalledConnectorsTab({
         <ul role="list" className="grid grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3 gap-3.5">
           {configuredItems.map((item) => {
             const isSyncing = syncBusyId === item.id || busyAction === `sync-${item.id}`;
+            const rawApp = item.config?.['app'];
+            const composioApp = typeof rawApp === 'string' && rawApp !== '' ? rawApp : undefined;
             return (
               <InstalledConnectorCard
                 key={item.id}
                 item={item}
                 isSyncing={isSyncing}
                 isTesting={busyAction === `test-${item.id}`}
+                isComposio={Boolean(item.config?.['app'])}
+                isRefreshing={busyAction === `composio-refresh-${item.id}`}
+                onRefresh={onRefresh ? () => onRefresh(item) : undefined}
                 onSync={() => {
                   if (item.isWorkspaceIntegration && item.originalConnector) {
                     onSyncWorkspace(item.originalConnector);
@@ -82,6 +90,7 @@ export function InstalledConnectorsTab({
                     id: item.id,
                     name: item.name,
                     isWorkspaceIntegration: item.isWorkspaceIntegration,
+                    composioApp,
                   })
                 }
               />

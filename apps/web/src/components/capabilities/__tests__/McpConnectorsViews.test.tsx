@@ -70,6 +70,8 @@ const server = {
     categories: [] as string[],
   },
   composioStatus: { enabled: false, totalApps: 0, popularApps: [] } as Record<string, unknown>,
+  composioRefresh: null as Record<string, unknown> | null,
+  composioDisconnect: null as Record<string, unknown> | null,
   failures: {
     list: null as Error | null,
     builtin: null as Error | null,
@@ -80,6 +82,8 @@ const server = {
     test: null as Error | null,
     health: null as Error | null,
     composioApps: null as Error | null,
+    composioRefresh: null as Error | null,
+    composioDisconnect: null as Error | null,
     capabilities: null as Error | null,
   },
   syncCalls: 0,
@@ -182,6 +186,29 @@ jest.mock('@/lib/api-client', () => {
         }),
         authUrl: jest.fn(async () => ({ status: 'ok', url: 'https://composio.test/auth' })),
         sync: jest.fn(async () => ({ workspace_id: 'ws', registered: [], count: 0 })),
+        refresh: jest.fn(async (app: string) => {
+          maybeFail(server.failures.composioRefresh);
+          return (
+            server.composioRefresh ?? {
+              status: 'success',
+              connected: true,
+              app,
+              checkedAt: '2026-09-20T00:00:00Z',
+            }
+          );
+        }),
+        disconnect: jest.fn(async (app: string) => {
+          maybeFail(server.failures.composioDisconnect);
+          return (
+            server.composioDisconnect ?? {
+              status: 'success',
+              app,
+              revoked: ['account-1'],
+              revocationErrors: [],
+              detail: null,
+            }
+          );
+        }),
       },
     },
   };
@@ -252,6 +279,8 @@ beforeEach(() => {
   server.tools = [];
   server.composioApps = { total: 0, limit: 500, offset: 0, apps: [], categories: [] };
   server.composioStatus = { enabled: false, totalApps: 0, popularApps: [] };
+  server.composioRefresh = null;
+  server.composioDisconnect = null;
   server.syncCalls = 0;
   server.testCalls = [];
   server.healthCalls = [];
@@ -1160,5 +1189,195 @@ describe('ConnectorsView', () => {
     expect(server.deleted).toEqual([]);
     await click(within(dialog).getByRole('button', { name: 'Disconnect' }));
     await waitFor(() => expect(server.deleted).toEqual(['conn-mcp-1']));
+  });
+
+  it('keeps the plain Ping affordance on rows that are not composio-backed', async () => {
+    server.connectors = [mcpConnector({ id: 'conn-plain', name: 'SQLite Memory MCP' })];
+    await renderConnectors();
+
+    await click(screen.getByRole('tab', { name: /Installed/i }));
+
+    const card = screen
+      .getByRole('heading', { name: 'SQLite Memory MCP' })
+      .closest('li') as HTMLElement;
+    expect(within(card).getByRole('button', { name: 'Ping' })).toBeInTheDocument();
+    expect(within(card).queryByRole('button', { name: /Refresh/ })).toBeNull();
+  });
+
+  it('renders a Refresh affordance instead of Ping on composio-backed rows', async () => {
+    server.connectors = [
+      mcpConnector({ id: 'conn-gmail', name: 'gmail', config: { app: 'gmail' } }),
+    ];
+    await renderConnectors();
+
+    await click(screen.getByRole('tab', { name: /Installed/i }));
+
+    const card = screen.getByRole('heading', { name: 'gmail' }).closest('li') as HTMLElement;
+    expect(within(card).getByRole('button', { name: 'Refresh gmail' })).toBeInTheDocument();
+    expect(within(card).queryByRole('button', { name: 'Ping' })).toBeNull();
+  });
+
+  it('Refresh success reports a verified connection and opens no window', async () => {
+    server.connectors = [
+      mcpConnector({ id: 'conn-gmail', name: 'gmail', config: { app: 'gmail' } }),
+    ];
+    server.composioRefresh = {
+      status: 'success',
+      connected: true,
+      app: 'gmail',
+      checkedAt: '2026-09-21T00:00:00Z',
+    };
+    await renderConnectors();
+
+    await click(screen.getByRole('tab', { name: /Installed/i }));
+    function mockedList() {
+      return (jest.requireMock('@/lib/api-client') as { connectorsApi: { list: jest.Mock } })
+        .connectorsApi;
+    }
+    const callsBefore = mockedList().list.mock.calls.length;
+    await click(screen.getByRole('button', { name: 'Refresh gmail' }));
+
+    await waitFor(() =>
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({ tone: 'success', title: 'Composio connection verified' }),
+      ),
+    );
+    expect(window.open).not.toHaveBeenCalled();
+    expect(mockedList().list.mock.calls.length).toBe(callsBefore);
+  });
+
+  it('Refresh on an expired connection opens the auth_url the server returned', async () => {
+    server.connectors = [
+      mcpConnector({ id: 'conn-gmail', name: 'gmail', config: { app: 'gmail' } }),
+    ];
+    server.composioRefresh = {
+      status: 'error',
+      connected: false,
+      errorCode: 'COMPOSIO_AUTH_REQUIRED',
+      message: "Composio app 'gmail' needs reconnection. Complete OAuth to refresh access.",
+      app: 'gmail',
+      authUrl: 'https://composio.test/reconnect',
+      checkedAt: '2026-09-21T00:00:00Z',
+    };
+    await renderConnectors();
+
+    await click(screen.getByRole('tab', { name: /Installed/i }));
+    await click(screen.getByRole('button', { name: 'Refresh gmail' }));
+
+    await waitFor(() =>
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tone: 'info',
+          detail: expect.stringContaining("Composio app 'gmail' needs reconnection"),
+        }),
+      ),
+    );
+    expect(window.open).toHaveBeenCalledTimes(1);
+    expect(window.open).toHaveBeenCalledWith(
+      'https://composio.test/reconnect',
+      '_blank',
+      'noopener,noreferrer',
+    );
+  });
+
+  it('Refresh rejected by the server surfaces the error and keeps controls usable', async () => {
+    server.connectors = [
+      mcpConnector({ id: 'conn-gmail', name: 'gmail', config: { app: 'gmail' } }),
+    ];
+    server.failures.composioRefresh = httpError(403, 'Forbidden');
+    await renderConnectors();
+
+    await click(screen.getByRole('tab', { name: /Installed/i }));
+    await click(screen.getByRole('button', { name: 'Refresh gmail' }));
+
+    await waitFor(() =>
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({ tone: 'error', detail: 'Forbidden' }),
+      ),
+    );
+    expect(window.open).not.toHaveBeenCalled();
+    expect(
+      (screen.getByRole('button', { name: 'Refresh gmail' }) as HTMLButtonElement).disabled,
+    ).toBe(false);
+  });
+
+  it('disconnect on a composio row goes through the composio endpoint', async () => {
+    server.connectors = [
+      mcpConnector({ id: 'conn-gmail', name: 'gmail', config: { app: 'gmail' } }),
+    ];
+    server.composioDisconnect = {
+      status: 'success',
+      app: 'gmail',
+      revoked: ['account-1'],
+      revocationErrors: [],
+      detail: null,
+    };
+    await renderConnectors();
+
+    await click(screen.getByRole('tab', { name: /Installed/i }));
+    function mockedList() {
+      return (jest.requireMock('@/lib/api-client') as { connectorsApi: { list: jest.Mock } })
+        .connectorsApi;
+    }
+    function mockedConnectorsApi() {
+      return (jest.requireMock('@/lib/api-client') as typeof import('@/lib/api-client'))
+        .connectorsApi;
+    }
+    const callsBefore = mockedList().list.mock.calls.length;
+
+    await click(screen.getByRole('button', { name: 'Disconnect' }));
+    const dialog = screen.getByRole('dialog');
+    expect(within(dialog).getByText(/gmail will be unlinked/)).toBeInTheDocument();
+
+    await click(within(dialog).getByRole('button', { name: 'Keep it' }));
+    expect(mockedConnectorsApi().composio.disconnect).not.toHaveBeenCalled();
+    expect(mockedConnectorsApi().delete).not.toHaveBeenCalled();
+
+    await click(screen.getByRole('button', { name: 'Disconnect' }));
+    await click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Disconnect' }));
+
+    await waitFor(() =>
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({ tone: 'success', title: 'Disconnected' }),
+      ),
+    );
+    expect(mockedConnectorsApi().composio.disconnect).toHaveBeenCalledTimes(1);
+    expect(mockedConnectorsApi().composio.disconnect).toHaveBeenCalledWith('gmail', 'ws-1');
+    expect(mockedConnectorsApi().delete).not.toHaveBeenCalled();
+    expect(mockedList().list.mock.calls.length).toBeGreaterThan(callsBefore);
+  });
+
+  it('disconnect on a composio row reports a server-side failure without reloading', async () => {
+    server.connectors = [
+      mcpConnector({ id: 'conn-gmail', name: 'gmail', config: { app: 'gmail' } }),
+    ];
+    server.composioDisconnect = {
+      status: 'error',
+      errorCode: 'COMPOSIO_API_KEY_REQUIRED',
+      message: 'Composio API key is not configured.',
+      app: 'gmail',
+      revoked: [],
+    };
+    await renderConnectors();
+
+    await click(screen.getByRole('tab', { name: /Installed/i }));
+    function mockedList() {
+      return (jest.requireMock('@/lib/api-client') as { connectorsApi: { list: jest.Mock } })
+        .connectorsApi;
+    }
+    const callsBefore = mockedList().list.mock.calls.length;
+
+    await click(screen.getByRole('button', { name: 'Disconnect' }));
+    await click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Disconnect' }));
+
+    await waitFor(() =>
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tone: 'error',
+          detail: 'Composio API key is not configured.',
+        }),
+      ),
+    );
+    expect(mockedList().list.mock.calls.length).toBe(callsBefore);
   });
 });
