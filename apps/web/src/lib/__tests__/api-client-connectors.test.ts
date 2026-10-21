@@ -33,10 +33,12 @@ function refreshWire() {
   };
 }
 
-/** What a `partial` disconnect result puts on the wire: some revoked, some not. */
+/** A mixed revoke run: some revoked, some failed — `success` on the wire
+ * (`composio_service.disconnect_connection` labels `partial` only when nothing
+ * was revoked). */
 function disconnectWire() {
   return {
-    status: 'partial',
+    status: 'success',
     app: 'gmail',
     revoked: ['account-1'],
     revocation_errors: [{ id: 'account-2', error: 'revocation returned HTTP 502' }],
@@ -109,7 +111,7 @@ describe('connectorsApi.composio.disconnect contract', () => {
       'ws-1',
     );
 
-    expect(result.status).toBe('partial');
+    expect(result.status).toBe('success');
     expect(result.app).toBe('gmail');
     expect(result.revoked).toEqual(['account-1']);
     expect(result.revocationErrors).toEqual([

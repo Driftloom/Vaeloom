@@ -741,7 +741,10 @@ export function useConnectorsState({
               ? `${res.revoked.length} connected account(s) revoked${
                   failureCount > 0 ? `; ${failureCount} account(s) failed to revoke` : ''
                 }`
-              : (res.detail ?? `${target.name} was unlinked.`),
+              : (res.detail ??
+                (failureCount > 0
+                  ? `${failureCount} account(s) failed to revoke`
+                  : `${target.name} was unlinked.`)),
         });
         await invalidateCapabilities(workspaceId, 'connectors');
         void loadDynamicData();

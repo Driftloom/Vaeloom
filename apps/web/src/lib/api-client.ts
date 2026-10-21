@@ -5471,10 +5471,13 @@ export interface ComposioAuthUrlResponse {
 /**
  * `POST /connectors/composio/refresh`, from `composio_service.refresh_connection`.
  *
- * Two branches ride the same 200: the connected branch (`connected: true`)
- * carries only `checked_at`, while the reconnection branch (`connected: false`)
- * adds `error_code`, `message` and `auth_url` for the consent screen the user
- * must complete before credentials are refreshed again.
+ * Workspace-scoped and member-gated: a foreign workspace 404s (existence is not
+ * enumerated). The endpoint is rate limited to 10 requests per 60 seconds and
+ * no token is sent from the client. Two branches ride the same 200: the
+ * connected branch (`connected: true`) carries only `checked_at`, while the
+ * reconnection branch (`connected: false`) adds `error_code`, `message` and the
+ * inline `auth_url` for the consent screen the user must complete in a new
+ * window before credentials are refreshed again.
  */
 export interface ComposioRefreshResultRecord {
   status: string;
@@ -5489,11 +5492,16 @@ export interface ComposioRefreshResultRecord {
 /**
  * `POST /connectors/composio/disconnect`, from `composio_service.disconnect_connection`.
  *
- * `success` and `partial` both make the row go away on the backend; `partial`
- * additionally reports per-account `revocation_errors` while `revoked` stays
- * empty. `error` is a hard failure (for example a missing Composio API key)
- * reported with `message` and no row change. `detail` explains the zero-target
- * case on the wire and is `null` otherwise.
+ * Workspace-scoped and member-gated: a foreign workspace 404s (existence is not
+ * enumerated). The endpoint is rate limited to 10 requests per 60 seconds and
+ * no token is sent from the client. The call is idempotent: connecting nothing
+ * returns `success` with `revoked: []` and `detail` naming that on the wire.
+ * `revocation_errors` is always present in the 200 shape and is non-empty
+ * whenever any account failed to revoke — possible under both `success` (mixed
+ * run) and `partial`; `partial` is emitted only when nothing was revoked.
+ * `error` is a hard failure (for example a missing Composio API key)
+ * reported with `message` and no row change. `detail` is `null` whenever
+ * connection targets existed.
  */
 export interface ComposioDisconnectResultRecord {
   status: string;

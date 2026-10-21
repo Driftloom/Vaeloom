@@ -1380,4 +1380,39 @@ describe('ConnectorsView', () => {
     );
     expect(mockedList().list.mock.calls.length).toBe(callsBefore);
   });
+
+  it('disconnect on a composio row names the failures when nothing was revoked', async () => {
+    server.connectors = [
+      mcpConnector({ id: 'conn-gmail', name: 'gmail', config: { app: 'gmail' } }),
+    ];
+    server.composioDisconnect = {
+      status: 'partial',
+      app: 'gmail',
+      revoked: [],
+      revocationErrors: [{ id: 'account-2', error: 'revocation returned HTTP 502' }],
+      detail: null,
+    };
+    await renderConnectors();
+
+    await click(screen.getByRole('tab', { name: /Installed/i }));
+    function mockedList() {
+      return (jest.requireMock('@/lib/api-client') as { connectorsApi: { list: jest.Mock } })
+        .connectorsApi;
+    }
+    const callsBefore = mockedList().list.mock.calls.length;
+
+    await click(screen.getByRole('button', { name: 'Disconnect' }));
+    await click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Disconnect' }));
+
+    await waitFor(() =>
+      expect(mockToast).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tone: 'success',
+          title: 'Disconnected',
+          detail: '1 account(s) failed to revoke',
+        }),
+      ),
+    );
+    expect(mockedList().list.mock.calls.length).toBeGreaterThan(callsBefore);
+  });
 });
