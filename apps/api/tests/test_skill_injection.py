@@ -167,17 +167,24 @@ async def test_granted_scope_injects_markdown(db_session: AsyncSession):
 async def test_catalog_precedence_fills_missing_config_fields(db_session: AsyncSession):
     """Same precedence as routers.agents:351-356 — config wins, catalog fills."""
     ws = await _workspace(db_session)
-    await _skill(db_session, ws, "check-work", config={})
+    await _skill(db_session, ws, "career-coaching", config={})
 
     skills = await enabled_skills(db_session, ws)
 
     assert len(skills) == 1
     assert skills[0].required_scope == "memory.read"
-    assert skills[0].triggers == ("check work", "verify changes", "self-verify")
-    assert skills[0].tags == ("QA", "Verification")
-    assert skills[0].trust_class == "community"
+    assert skills[0].triggers == (
+        "career coaching",
+        "career advice",
+        "promotion readiness",
+        "career path",
+        "skill gap analysis",
+        "staff engineer path",
+    )
+    assert skills[0].tags == ("Career", "Coaching", "Strategy", "Mentorship")
+    assert skills[0].trust_class == "core_trusted"
     assert skills[0].source == "catalog"
-    assert "# Check Work Verification Protocol" in skills[0].markdown_doc
+    assert "# Strategic Career Coaching & Engineering Leveling Playbook" in skills[0].markdown_doc
 
 
 @pytest.mark.asyncio
@@ -186,7 +193,7 @@ async def test_catalog_entry_with_workspace_markdown_does_not_claim_core_trusted
 ):
     """A workspace-authored document gets no catalog trust label: no field supports it."""
     ws = await _workspace(db_session)
-    await _skill(db_session, ws, "system-design", config={"markdown_doc": _doc("Homegrown")})
+    await _skill(db_session, ws, "career-coaching", config={"markdown_doc": _doc("Homegrown")})
 
     skills = await enabled_skills(db_session, ws)
 

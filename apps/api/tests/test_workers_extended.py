@@ -13,6 +13,7 @@ def mock_redis(monkeypatch):
     redis_mock.zadd = AsyncMock()
     redis_mock.sadd = AsyncMock()
     redis_mock.blpop = AsyncMock()
+    redis_mock.brpoplpush = AsyncMock(return_value=None)
     redis_mock.close = AsyncMock()
     import redis.asyncio
     monkeypatch.setattr(redis.asyncio.Redis, "from_url", lambda *a, **kw: redis_mock)
@@ -159,12 +160,38 @@ class TestBullMQWorkerExtended:
         mock_request = MagicMock()
         monkeypatch.setattr("api.orchestrator.router.handle", mock_handle)
         monkeypatch.setattr("api.orchestrator.router.UserRequest", lambda **kw: mock_request)
+
+        async def _verify_envelope(envelope, job_id=None):
+            return True, "ok", {
+                "workspace_id": "ws-1",
+                "tenant_id": "tenant-1",
+                "user_id": "user-1",
+            }
+
+        async def _has_access(*args, **kwargs):
+            return True
+
+        monkeypatch.setattr(
+            "api.infrastructure.background_envelope.averify_background_envelope",
+            _verify_envelope,
+        )
+        monkeypatch.setattr(
+            "api.middleware.tenant.check_user_workspace_access", _has_access
+        )
+
         from api.workers.queue_worker import handle_event_publish
-        result = await handle_event_publish({
-            "type": "agent.execute",
-            "payload": {"message": "run test", "workspaceId": "ws-1"},
-            "tenantId": "tenant-1",
-        })
+        result = await handle_event_publish(
+            {
+                "type": "agent.execute",
+                "payload": {
+                    "message": "run test",
+                    "workspaceId": "ws-1",
+                    "envelope": {"signed": True},
+                },
+                "tenantId": "tenant-1",
+            },
+            db=object(),
+        )
         assert result["status"] == "processed"
         assert result["agent_result"] == "agent_done"
 

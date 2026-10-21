@@ -182,7 +182,7 @@ class TestCatalogSourceIsReported:
         body = await _validate(
             client,
             headers,
-            name="agent-building",
+            name="ats-resume-builder",
             category="skill",
             description="Editing a copy of a bundled skill",
             config={},
@@ -191,7 +191,7 @@ class TestCatalogSourceIsReported:
         assert body["status"] == "success"
         assert body["violations"] == []
         assert body["validated_source"] == "catalog"
-        assert body["catalog_slug"] == "agent-building"
+        assert body["catalog_slug"] == "ats-resume-builder"
         # 3 shared rules + 8 shared skill rules + the catalog self-check + the
         # trust-class rule (which runs for every skill draft, absent value or not).
         assert body["rules_checked"] == 13
@@ -201,7 +201,7 @@ class TestCatalogSourceIsReported:
     ):
         headers, _ = await _signup_workspace(client, "catalogoverride")
 
-        body = await _validate(client, headers, **_skill_draft("agent-building"))
+        body = await _validate(client, headers, **_skill_draft("ats-resume-builder"))
 
         assert body["status"] == "success"
         assert body["validated_source"] == "draft"

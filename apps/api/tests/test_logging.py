@@ -154,7 +154,9 @@ class TestSetupLogging:
         assert result is None
 
     def test_prod_environment_uses_json_formatter(self, monkeypatch):
-        monkeypatch.setattr("api.logging.settings.service_environment", "production")
+        monkeypatch.setattr(
+            "api.infrastructure.logging.settings.service_environment", "production"
+        )
         result = setup_logging()
         assert result is None
         root = logging.getLogger()

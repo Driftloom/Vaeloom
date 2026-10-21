@@ -131,6 +131,7 @@ def real_llm(monkeypatch):
     monkeypatch.setattr(LLMService, "generate_completion_with_tools",
                         LLMService._ORIGINAL_GENERATE_COMPLETION_WITH_TOOLS)
     monkeypatch.setattr(mod.settings, "llm_api_key", "test-key-32-chars-long-for-tests!!")
+    monkeypatch.setattr(mod.settings, "service_environment", "test")
     monkeypatch.setattr(mod.settings, "llm_provider", "openai")
     monkeypatch.setattr(mod.settings, "llm_model", "gpt-4o-mini")
     _FakeAsyncClient.calls = []
