@@ -216,10 +216,11 @@ describe('Tailwind class definitions', () => {
         .replace(/\/\/[^\n]*/g, '');
       if (text.includes('backdrop-blur-xs')) offenders.push(srcRel(f));
     }
-    // McpConfigModal still carries one occurrence and is scheduled for
-    // deletion outright by a later phase; its entry here must track exactly
-    // the live occurrences, so the guarded set grows and shrinks aloud.
-    expect(offenders).toEqual(['components/capabilities/mcp/McpConfigModal.tsx']);
+    // McpConfigModal carried the same dead spelling and received the same
+    // one-line scrim fix in the commit that added this guard; the file is
+    // scheduled for outright deletion by a later phase, and the strict result
+    // below keeps the subtree permanently free of the purged literal.
+    expect(offenders).toEqual([]);
   });
 });
 

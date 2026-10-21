@@ -177,7 +177,7 @@ export const McpConfigModal: React.FC<McpConfigModalProps> = ({
       role="dialog"
       aria-modal="true"
       aria-labelledby="mcp-config-modal-title"
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-xs"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60"
     >
       <div className="w-full max-w-xl rounded-2xl bg-surface border border-border shadow-xl flex flex-col max-h-[90vh] overflow-hidden">
         <div className="px-6 py-4 border-b border-border bg-surface-elevated/70 flex items-center justify-between">
