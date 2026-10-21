@@ -2697,15 +2697,32 @@ async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token
         # Task 8: the static ladder now mirrors the ReAct prompt seam. The
         # directive is appended to the dispatched message quarantined, exactly
         # like the RAG append — UNTRUSTED workspace text must never ride the
-        # trusted system block or unfenced message body. The static ladder has
-        # no resolved tool list, so allowed_scopes is empty: only scope-free
-        # skills apply (fail-closed).
+        # trusted system block or unfenced message body. Scopes derive from
+        # the agent card's declared tools resolved against ALL_TOOLS — the
+        # same fallback shape the ReAct seam's discovery uses; any resolution
+        # failure leaves the grant empty, and a skill whose required_scope is
+        # not granted never injects (fail-closed).
+        _static_scopes: list[str] = []
+        try:
+            from .card_registry import get_agent_card
+
+            _card = getattr(agent, "card", None) or get_agent_card(agent_name)
+            _declared = {t.name for t in getattr(agent, "tools", []) or []}
+            if _card and getattr(_card, "tools", None):
+                _declared |= set(_card.tools)
+            _static_scopes = [
+                td.required_scope
+                for td in ALL_TOOLS.values()
+                if td.name in _declared and td.required_scope
+            ]
+        except Exception:
+            _static_scopes = []
         _skill_text, _skill_injected = await _skill_directive_if_present(
             request.workspace_id,
             tenant_id=getattr(request, "tenant_id", None),
             user_id=getattr(request, "user_id", None),
             agent_name=agent_name,
-            allowed_scopes=[],
+            allowed_scopes=_static_scopes,
             user_message=message,
             pinned_skill=getattr(request, "pinned_skill", None),
             usage_run_id=str(getattr(request, "id", "")) or None,

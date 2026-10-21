@@ -715,7 +715,6 @@ class TestSkillStaticInjection:
         assert provenance["skill_directive"] == "applied"
         assert provenance["skill_directive_injected"] == ["alpha"]
 
-        directive_text = self._DIRECTIVE_TEXT
         expected = (
             original_message
             + "\n\n[Workspace skills:\n"
@@ -726,6 +725,39 @@ class TestSkillStaticInjection:
         assert captured["content"] == expected
         assert "skill:alpha" in captured["content"]
         assert captured["content"].startswith(original_message)
+
+    async def test_static_scopes_derive_from_agent_card_tools(self, monkeypatch):
+        """The static seam grants the scopes of the agent card's declared
+        tools, resolved against ALL_TOOLS — the same fallback shape the ReAct
+        seam uses. With an empty grant nothing passes evaluate_skill_gates,
+        so this is the fail-before/pass-after proof the derivation exists.
+        """
+        from types import SimpleNamespace
+
+        from api.config import settings
+
+        monkeypatch.setattr(settings, "agent_react_enabled", False)
+
+        from api.orchestrator.loop import AgentRequest, act_phase
+
+        self._fake_scoped_session(monkeypatch)
+        build_calls = self._canned_directive_monkeypatch(
+            monkeypatch, self._DIRECTIVE_TEXT, ["alpha"]
+        )
+
+        agent = _make_agent("MemoryAgent")
+        agent.card = SimpleNamespace(tools=["search_documents"])
+        captured = {}
+        await self._capture_card(agent, captured)
+
+        original_message = "test message"
+        req = AgentRequest(agent, "r1", original_message, "ws1")
+        plan = {"agent_type": "MemoryAgent", "message": original_message, "workspace_id": "ws1"}
+        result = await act_phase(plan, req)
+
+        assert result["result"]["provenance"]["skill_directive"] == "applied"
+        granted = build_calls[0]["allowed_scopes"]
+        assert "memory.read" in granted
 
     async def test_static_no_directive_message_byte_identical(self, monkeypatch):
         from api.config import settings
@@ -755,8 +787,6 @@ class TestSkillStaticInjection:
 
         monkeypatch.setattr(settings, "agent_react_enabled", False)
 
-        from contextlib import asynccontextmanager
-
         import api.database as database
         from api.orchestrator.loop import AgentRequest, act_phase
 
@@ -780,14 +810,12 @@ class TestSkillStaticInjection:
         assert opened == []
         assert result["result"]["provenance"]["skill_directive"] == "not_applied"
         assert captured["content"] == original_message
-        assert asynccontextmanager is not None  # imported shape guard
 
     async def test_static_build_failure_is_swallowed(self, monkeypatch, caplog):
         from api.config import settings
 
         monkeypatch.setattr(settings, "agent_react_enabled", False)
 
-        import api.orchestrator.loop as loop_mod
         import api.services.skill_injection as skill_injection
         from api.orchestrator.loop import AgentRequest, act_phase
 
