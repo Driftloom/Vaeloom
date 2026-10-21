@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -9,12 +10,15 @@ import {
   EmptyState,
   FormField,
   Input,
+  lockScroll,
   SearchField,
   Select,
   TabPanel,
   Tabs,
   Textarea,
   Tooltip,
+  unlockScroll,
+  useFocusTrap,
 } from '@vaeloom/ui-kit';
 import {
   capabilitiesApi,
@@ -1409,9 +1413,6 @@ function DraftSourceNote({ outcome }: { outcome: CapabilityDraftValidationRespon
 
 // ─── Shared form pieces ──────────────────────────────────────────────────────
 
-const FOCUSABLE =
-  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
 /**
  * The tag editor, rendered once.
  *
@@ -1879,9 +1880,14 @@ export function AddCapabilityModal({
   const [collisions, setCollisions] = useState<ReadonlySet<string>>(() => new Set<string>());
 
   const nameRef = useRef<HTMLInputElement>(null);
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const lastFocusedRef = useRef<HTMLElement | null>(null);
+  const dialogRef = useFocusTrap(isOpen, onClose);
   const submittingRef = useRef(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    lockScroll();
+    return () => unlockScroll();
+  }, [isOpen]);
 
   // Names already taken, read once per open. `getStoredCapabilities` parses JSON
   // and can write a migration envelope, which is not something to do on every
@@ -1914,47 +1920,7 @@ export function AddCapabilityModal({
     setSyncError(null);
     setDraftOutcome({ kind: 'idle' });
     submittingRef.current = false;
-    lastFocusedRef.current = document.activeElement as HTMLElement | null;
-    return () => lastFocusedRef.current?.focus?.();
   }, [isOpen, initialMode, defaultCategory]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const first = dialogRef.current?.querySelector<HTMLElement>(FOCUSABLE);
-    (first ?? dialogRef.current)?.focus();
-  }, [isOpen]);
-
-  /**
-   * Escape and the focus trap live on the dialog element, not on `window`.
-   *
-   * A window listener fired for keystrokes aimed anywhere on the page, which is
-   * how Ctrl+Enter used to submit the Presets view: a view with no form and no
-   * submit button, in a modal whose footer hid the submit control.
-   */
-  const onDialogKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLDivElement>) => {
-      if (event.key === 'Escape') {
-        event.stopPropagation();
-        onClose();
-        return;
-      }
-      if (event.key !== 'Tab' || !dialogRef.current) return;
-      const nodes = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
-      const firstNode = nodes[0];
-      const lastNode = nodes[nodes.length - 1];
-      if (!firstNode || !lastNode) {
-        event.preventDefault();
-        dialogRef.current.focus();
-      } else if (event.shiftKey && document.activeElement === firstNode) {
-        event.preventDefault();
-        lastNode.focus();
-      } else if (!event.shiftKey && document.activeElement === lastNode) {
-        event.preventDefault();
-        firstNode.focus();
-      }
-    },
-    [onClose],
-  );
 
   const addTag = useCallback((tag: string) => {
     const trimmed = tag.trim().replace(/^#/, '');
@@ -2608,13 +2574,9 @@ export function AddCapabilityModal({
   const studio = STUDIO[category];
   const pluginEscape = category === 'plugins' ? findSandboxEscape(pluginCode) : null;
 
-  return (
+  const content = (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
-      <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"
-        onClick={onClose}
-        aria-hidden="true"
-      />
+      <div className="fixed inset-0 bg-black/60" onClick={onClose} aria-hidden="true" />
       <div
         ref={dialogRef}
         role="dialog"
@@ -2622,7 +2584,6 @@ export function AddCapabilityModal({
         aria-labelledby="add-capability-modal-title"
         aria-describedby="add-capability-modal-desc"
         tabIndex={-1}
-        onKeyDown={onDialogKeyDown}
         className="relative w-full max-w-5xl h-[670px] max-h-[90dvh] bg-surface border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden text-text antialiased focus:outline-none"
       >
         <header className="px-5 py-3 border-b border-border bg-surface-elevated flex items-start justify-between gap-4 shrink-0">
@@ -3351,4 +3312,9 @@ export function AddCapabilityModal({
       </div>
     </div>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(content, document.body);
+  }
+  return content;
 }

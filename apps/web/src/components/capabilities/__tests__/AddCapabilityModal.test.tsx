@@ -589,6 +589,22 @@ describe('AddCapabilityModal DOM contract', () => {
     const textarea = within(dialog()).getByLabelText('Sandbox input payload (JSON)');
     expect(textarea.tagName).toBe('TEXTAREA');
   });
+
+  it('renders through the ui-kit overlay portal', () => {
+    const view = render(
+      <AddCapabilityModal
+        isOpen
+        onClose={jest.fn()}
+        onCreate={jest.fn()}
+        onImport={jest.fn()}
+        defaultCategory="skills"
+      />,
+    );
+    const shell = screen.getByRole('dialog');
+    expect(document.body.contains(shell)).toBe(true);
+    expect(view.container.contains(shell)).toBe(false);
+    view.unmount();
+  });
 });
 
 // ─── Fabricated panels are gone ──────────────────────────────────────────────

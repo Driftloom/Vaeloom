@@ -194,6 +194,33 @@ describe('Tailwind class definitions', () => {
     expect(button).not.toMatch(/['"\s]focus:ring-/);
     expect(css).not.toMatch(/\.btn-[a-z]+[^}]*[^-\w]focus:ring-(?!offset)/);
   });
+
+  it('declares a backdropBlur row so v4-spelling blur classes cannot purge', () => {
+    // v4 spells the smallest blur `backdrop-blur-xs`; this project is v3.4, so
+    // that spelling purged silently and rendered nothing -- the shadow.xs
+    // dead zone again, so the extraction mirrors the boxShadow test above.
+    expect(config).toMatch(/backdropBlur:\s*\{/);
+    expect(config).toMatch(/^ {8}'?xs'?:/m);
+  });
+
+  it('uses no dead backdrop-blur class in the capabilities subtree', () => {
+    // The v4 spelling purges on v3, and the overlay refactor agrees no
+    // backdrop-filter belongs on a scrim, so the literal is banned from the
+    // whole capabilities subtree. Comments are stripped like the animation
+    // scans so an explanatory file never reports itself.
+    const CAPABILITIES = join(SRC, 'components', 'capabilities');
+    const offenders: string[] = [];
+    for (const f of walk(CAPABILITIES)) {
+      const text = readFileSync(f, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/\/\/[^\n]*/g, '');
+      if (text.includes('backdrop-blur-xs')) offenders.push(srcRel(f));
+    }
+    // McpConfigModal still carries one occurrence and is scheduled for
+    // deletion outright by a later phase; its entry here must track exactly
+    // the live occurrences, so the guarded set grows and shrinks aloud.
+    expect(offenders).toEqual(['components/capabilities/mcp/McpConfigModal.tsx']);
+  });
 });
 
 describe('Animation utilities resolve', () => {
