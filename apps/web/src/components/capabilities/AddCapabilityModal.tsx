@@ -3265,25 +3265,24 @@ export function AddCapabilityModal({
                     <p className="text-xs font-medium text-text font-mono">
                       {`${syncResult.repository} @ ${syncResult.ref}`}
                     </p>
-                    {syncResult.skillsDiscovered === 0 ? (
-                      <p className="text-xs text-text-muted">
-                        {`No SKILL.md files were found in ${syncResult.repository}.`}
-                      </p>
-                    ) : (
+                    {syncResult.skillsDiscovered > 0 && (
                       <>
                         <p className="text-xs text-text">
                           {`${syncResult.skillsDiscovered} discovered · ${syncResult.skillsValid} valid · ${syncResult.skillsRejected} rejected`}
                         </p>
                         <ul className="space-y-2">
-                          {syncResult.skills.map((skill) => (
-                            <li key={skill.slug} className="text-xs">
+                          {syncResult.skills.map((skill, skillIndex) => (
+                            <li key={`${skill.slug}-${skillIndex}`} className="text-xs">
                               <span className="font-medium text-text">{skill.name}</span>{' '}
                               <Badge variant={skill.valid ? 'success' : 'error'} size="sm">
                                 {skill.valid ? 'valid' : 'rejected'}
                               </Badge>
                               {!skill.valid &&
-                                skill.violations.map((violation) => (
-                                  <p key={violation} className="text-text-muted pl-3">
+                                skill.violations.map((violation, violationIndex) => (
+                                  <p
+                                    key={`${violation}-${violationIndex}`}
+                                    className="text-text-muted pl-3"
+                                  >
                                     {violation}
                                   </p>
                                 ))}
@@ -3291,6 +3290,11 @@ export function AddCapabilityModal({
                           ))}
                         </ul>
                       </>
+                    )}
+                    {syncResult.skillsDiscovered === 0 && syncResult.errors.length === 0 && (
+                      <p className="text-xs text-text-muted">
+                        {`No SKILL.md files were found in ${syncResult.repository}.`}
+                      </p>
                     )}
                     {syncResult.skillsTruncated && (
                       <p className="text-xs text-warning">
@@ -3300,8 +3304,8 @@ export function AddCapabilityModal({
                     )}
                     {syncResult.errors.length > 0 && (
                       <ul role="alert" className="text-xs text-error space-y-1">
-                        {syncResult.errors.map((message) => (
-                          <li key={message}>{message}</li>
+                        {syncResult.errors.map((message, messageIndex) => (
+                          <li key={`${message}-${messageIndex}`}>{message}</li>
                         ))}
                       </ul>
                     )}

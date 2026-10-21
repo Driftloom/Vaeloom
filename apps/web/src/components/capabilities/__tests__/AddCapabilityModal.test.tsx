@@ -1222,21 +1222,56 @@ describe('AddCapabilityModal GitHub sync pane', () => {
     expect(within(dialog()).queryByText(/discovered · /)).toBeNull();
   });
 
-  it('renders the failure as an alert, keeps Cancel interactive and clears loading', async () => {
-    const harness = renderModal({ initialMode: 'import' });
-    fakeApi.syncGithub.mockRejectedValueOnce(
-      new Error('Request failed (403): Only the workspace owner can sync GitHub skills.'),
+  it('with zero discovered and errors, renders only the errors — no empty message, no counts', async () => {
+    renderModal({ initialMode: 'import' });
+    fakeApi.syncGithub.mockResolvedValueOnce(
+      githubSyncResult({
+        skillsDiscovered: 0,
+        skillsValid: 0,
+        skillsRejected: 0,
+        skills: [],
+        errors: ['GitHub API returned HTTP 404: Not Found for vaeloom/nope-missing.'],
+      }),
     );
 
     typeSyncRepo('vaeloom/skills-community');
     await clickSync();
 
+    expect(
+      await within(dialog()).findByText(
+        'GitHub API returned HTTP 404: Not Found for vaeloom/nope-missing.',
+      ),
+    ).toBeInTheDocument();
+    // The empty-form message is bound to a genuinely empty repository (no
+    // errors); a failed fetch must not read as "repo exists, empty".
+    expect(
+      within(dialog()).queryByText('No SKILL.md files were found in vaeloom/skills-community.'),
+    ).toBeNull();
+    expect(within(dialog()).queryByText(/discovered · /)).toBeNull();
+  });
+
+  it('clears a stale result on a fresh failure, keeps Cancel interactive and clears loading', async () => {
+    const harness = renderModal({ initialMode: 'import' });
+    fakeApi.syncGithub.mockResolvedValueOnce(githubSyncResult());
+    fakeApi.syncGithub.mockRejectedValueOnce(
+      new Error('Request failed (403): Only the workspace owner may perform this operation'),
+    );
+
+    typeSyncRepo('vaeloom/skills-community');
+    await clickSync();
+
+    // A result exists after the first attempt and is gone after the failed one:
+    // a fresh error must not stand next to a stale success.
+    expect(
+      await within(dialog()).findByText('vaeloom/skills-community @ master'),
+    ).toBeInTheDocument();
+    await clickSync();
+
     const alert = await within(dialog()).findByRole('alert');
     expect(alert).toHaveTextContent(
-      'Request failed (403): Only the workspace owner can sync GitHub skills.',
+      'Request failed (403): Only the workspace owner may perform this operation',
     );
     expect(alert).toHaveTextContent(/stayed open/);
-    // A stale result is not kept next to a fresh error.
     expect(within(dialog()).queryByText('vaeloom/skills-community @ master')).toBeNull();
 
     // Loading cleared: the idle label is back.
@@ -1258,7 +1293,9 @@ describe('AddCapabilityModal GitHub sync pane', () => {
         skillsValid: 3,
         skillsRejected: 1,
         skillsTruncated: true,
-        errors: ['Repository exposes 27 SKILL.md files; one sync validates the first 20.'],
+        errors: [
+          'Repository exposes 257 SKILL.md files; processing the first 200 (set-skipped=57).',
+        ],
       }),
     );
 
@@ -1272,7 +1309,7 @@ describe('AddCapabilityModal GitHub sync pane', () => {
     expect(within(dialog()).getByText('4 discovered · 3 valid · 1 rejected')).toBeInTheDocument();
     expect(
       within(dialog()).getByText(
-        'Repository exposes 27 SKILL.md files; one sync validates the first 20.',
+        'Repository exposes 257 SKILL.md files; processing the first 200 (set-skipped=57).',
       ),
     ).toBeInTheDocument();
   });

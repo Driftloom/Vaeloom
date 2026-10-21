@@ -5135,9 +5135,10 @@ export interface GitHubRemoteSkillSummaryRecord {
  * `GitHubSkillSyncResult` in `api/services/github_skills_sync.py` — the whole
  * answer of `POST /capabilities/sync-github`.
  *
- * `persisted` is typed `false` rather than `boolean` because the server types it
- * `Literal[False]`: this endpoint validates only and never writes, and the
- * compiler is what keeps a caller from reading a sync result as an install.
+ * `persisted` is typed `false` rather than `boolean` because the backend
+ * hard-codes the field to `False` (`github_skills_sync.py`): this endpoint
+ * validates only and never writes, and the compiler is what keeps a caller
+ * from reading a sync result as an install.
  * The same trick as `CapabilityDraftValidationResponse.executed` above.
  *
  * Every field is renamed from the wire by `transformKeys`: `skills_discovered`
@@ -5311,8 +5312,9 @@ export const capabilitiesApi = {
    * `validateDraft`, and `SyncGitHubSkillsRequest` sets `extra='forbid'`, so a
    * `workspace_id` in the body would be a 422, not a hint.
    *
-   * `ref` is optional; omitting it lets the server fall back to the repository's
-   * default branch, so the key is only sent when one was asked for.
+   * `ref` is optional; omitting it lets the server use its configured default
+   * (`"master"`, `SyncGitHubSkillsRequest.ref`), so the key is only sent when one
+   * was asked for.
    */
   syncGithub(repository: string, ref?: string): Promise<GitHubSkillSyncResultRecord> {
     return apiClient.post<GitHubSkillSyncResultRecord>('/capabilities/sync-github', {
