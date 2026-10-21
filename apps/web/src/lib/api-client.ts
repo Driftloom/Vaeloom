@@ -5104,6 +5104,60 @@ export interface ValidateCapabilityDraftRequest {
 }
 
 /**
+ * One validated SKILL.md in `RemoteSkillSummary` (`api/services/github_skills_sync.py`).
+ *
+ * `transformKeys` camelCases response keys, so `required_scope` arrives as
+ * `requiredScope` and `trust_class` as `trustClass`. `autonomy` and `trustClass`
+ * are plain strings on purpose: a rejected skill's job is to *report* the value
+ * that failed, so typing them as the client's enums would hide the answer.
+ *
+ * `markdownDoc` travels in the payload but is deliberately not rendered by this
+ * client; its display is out of scope for the sync result.
+ */
+export interface GitHubRemoteSkillSummaryRecord {
+  slug: string;
+  name: string;
+  description: string;
+  tags: string[];
+  requiredScope: string;
+  autonomy: string;
+  trustClass: string;
+  triggers: string[];
+  version: string;
+  author: string;
+  markdownDoc: string;
+  valid: boolean;
+  validationStatus: string;
+  violations: string[];
+}
+
+/**
+ * `GitHubSkillSyncResult` in `api/services/github_skills_sync.py` — the whole
+ * answer of `POST /capabilities/sync-github`.
+ *
+ * `persisted` is typed `false` rather than `boolean` because the server types it
+ * `Literal[False]`: this endpoint validates only and never writes, and the
+ * compiler is what keeps a caller from reading a sync result as an install.
+ * The same trick as `CapabilityDraftValidationResponse.executed` above.
+ *
+ * Every field is renamed from the wire by `transformKeys`: `skills_discovered`
+ * is `skillsDiscovered`, `skills_valid` is `skillsValid`, `skills_rejected` is
+ * `skillsRejected`, `skills_truncated` is `skillsTruncated`. `repository`, `ref`,
+ * `skills` and `errors` are single words and survive unrenamed.
+ */
+export interface GitHubSkillSyncResultRecord {
+  repository: string;
+  ref: string;
+  skillsDiscovered: number;
+  skillsValid: number;
+  skillsRejected: number;
+  skills: GitHubRemoteSkillSummaryRecord[];
+  errors: string[];
+  persisted: false;
+  skillsTruncated: boolean;
+}
+
+/**
  * One entry of `GET /capabilities/tools/definitions` — the backend `ALL_TOOLS`
  * registry in `apps/api/src/api/tools/definitions.py`.
  *
@@ -5243,6 +5297,27 @@ export const capabilitiesApi = {
       config: body.config ?? {},
       ...(body.autonomy !== undefined ? { autonomy: body.autonomy } : {}),
       ...(body.trustClass !== undefined ? { trust_class: body.trustClass } : {}),
+    });
+  },
+  /**
+   * Fetch and validate a GitHub repository's SKILL.md files server-side.
+   *
+   * Validation only: the returned `persisted` is typed literal `false`, and no
+   * argument here can install anything. The owner-only authorization, the
+   * 5-requests-per-60s rate limit and the `X-GitHub-Token` header all live in
+   * the backend — the client sends no token and carries no credential.
+   *
+   * No workspace argument: the endpoint reads the request-scoped workspace like
+   * `validateDraft`, and `SyncGitHubSkillsRequest` sets `extra='forbid'`, so a
+   * `workspace_id` in the body would be a 422, not a hint.
+   *
+   * `ref` is optional; omitting it lets the server fall back to the repository's
+   * default branch, so the key is only sent when one was asked for.
+   */
+  syncGithub(repository: string, ref?: string): Promise<GitHubSkillSyncResultRecord> {
+    return apiClient.post<GitHubSkillSyncResultRecord>('/capabilities/sync-github', {
+      repository,
+      ...(ref !== undefined ? { ref } : {}),
     });
   },
 };

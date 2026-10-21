@@ -27,6 +27,7 @@ import type {
   CapabilityConfig,
   CapabilityDraftStatus,
   CapabilityDraftValidationResponse,
+  GitHubSkillSyncResultRecord,
 } from '@/lib/api-client';
 import { getStoredCapabilities } from '@/lib/capabilities-data';
 import { SHELL_METACHARACTERS } from './connectors/types';
@@ -91,6 +92,9 @@ function asOptions<T extends string>(values: readonly T[]) {
 
 /** The name pattern `routers/capabilities.py` validates on create. */
 const NAME_PATTERN = /^[a-zA-Z0-9_\-. ]{1,255}$/;
+
+/** The repository pattern `SyncGitHubSkillsRequest` validates on the server. */
+const GITHUB_REPO_PATTERN = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
 
 /**
  * `validate_mcp_config`, clause by clause, so the form can say *why* a config will
@@ -1862,6 +1866,12 @@ export function AddCapabilityModal({
   const [fileReport, setFileReport] = useState<{ name: string; detail: string } | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
 
+  const [syncRepo, setSyncRepo] = useState('');
+  const [syncRef, setSyncRef] = useState('');
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncResult, setSyncResult] = useState<GitHubSkillSyncResultRecord | null>(null);
+
   const [presetSearch, setPresetSearch] = useState('');
   const [presetFilter, setPresetFilter] = useState('all');
   const [draftOutcome, setDraftOutcome] = useState<DraftOutcome>({ kind: 'idle' });
@@ -1901,6 +1911,7 @@ export function AddCapabilityModal({
     setCategory(defaultCategory);
     setIssues([]);
     setImportError(null);
+    setSyncError(null);
     setDraftOutcome({ kind: 'idle' });
     submittingRef.current = false;
     lastFocusedRef.current = document.activeElement as HTMLElement | null;
@@ -2250,6 +2261,32 @@ export function AddCapabilityModal({
     },
     [importUrl, importCategory, onImport, onClose],
   );
+
+  /**
+   * Fetch and validate a GitHub repository's SKILL.md files, validation only.
+   *
+   * The call mirrors `onImportSubmit`'s swallowing shape (nothing awaits this
+   * handler, so a re-throw would be an unhandled rejection) but keeps its own
+   * state slice: a result never closes the dialog, and a failure renders as an
+   * alert without touching the URL-import outcome. `ref` is sent only when one
+   * was typed, and an empty repository makes no request at all.
+   */
+  async function onSyncGithubSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const repository = syncRepo.trim();
+    if (!repository) return;
+    const ref = syncRef.trim();
+    setSyncLoading(true);
+    setSyncError(null);
+    setSyncResult(null);
+    try {
+      setSyncResult(await capabilitiesApi.syncGithub(repository, ref || undefined));
+    } catch (error) {
+      setSyncError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setSyncLoading(false);
+    }
+  }
 
   const canValidate = Boolean(workspaceId);
 
@@ -3178,6 +3215,105 @@ export function AddCapabilityModal({
                   </Button>
                   <Button type="submit" variant="primary" size="sm" loading={importLoading}>
                     {importLoading ? 'Registering…' : 'Import & activate'}
+                  </Button>
+                </div>
+              </form>
+            </div>
+
+            <div className="pt-3 border-t border-border">
+              <h3 className="text-xs font-semibold text-text mb-1">
+                Validate skills from a GitHub repository
+              </h3>
+              <p className="text-xs text-text-muted mb-2.5">
+                Fetches and validates the repository&apos;s SKILL.md files server-side and reports
+                the result. Nothing is installed into the workspace, and only the workspace owner
+                can call this.
+              </p>
+
+              <form onSubmit={onSyncGithubSubmit} noValidate className="space-y-3">
+                <Input
+                  label="GitHub repository (owner/repo)"
+                  required
+                  value={syncRepo}
+                  onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                    setSyncRepo(event.target.value)
+                  }
+                  placeholder="vaeloom/skills-community"
+                  helperText={
+                    syncRepo.trim() && !GITHUB_REPO_PATTERN.test(syncRepo.trim())
+                      ? 'Use owner/repo, for example vaeloom/skills-community.'
+                      : undefined
+                  }
+                />
+                <Input
+                  label="Branch / ref"
+                  value={syncRef}
+                  onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                    setSyncRef(event.target.value)
+                  }
+                  placeholder="master"
+                />
+
+                {syncError && (
+                  <p role="alert" className="text-xs text-error">
+                    {syncError} The modal stayed open and the form stayed editable.
+                  </p>
+                )}
+
+                {syncResult && (
+                  <div className="rounded-md border border-border bg-surface-elevated p-3 space-y-2">
+                    <p className="text-xs font-medium text-text font-mono">
+                      {`${syncResult.repository} @ ${syncResult.ref}`}
+                    </p>
+                    {syncResult.skillsDiscovered === 0 ? (
+                      <p className="text-xs text-text-muted">
+                        {`No SKILL.md files were found in ${syncResult.repository}.`}
+                      </p>
+                    ) : (
+                      <>
+                        <p className="text-xs text-text">
+                          {`${syncResult.skillsDiscovered} discovered · ${syncResult.skillsValid} valid · ${syncResult.skillsRejected} rejected`}
+                        </p>
+                        <ul className="space-y-2">
+                          {syncResult.skills.map((skill) => (
+                            <li key={skill.slug} className="text-xs">
+                              <span className="font-medium text-text">{skill.name}</span>{' '}
+                              <Badge variant={skill.valid ? 'success' : 'error'} size="sm">
+                                {skill.valid ? 'valid' : 'rejected'}
+                              </Badge>
+                              {!skill.valid &&
+                                skill.violations.map((violation) => (
+                                  <p key={violation} className="text-text-muted pl-3">
+                                    {violation}
+                                  </p>
+                                ))}
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                    {syncResult.skillsTruncated && (
+                      <p className="text-xs text-warning">
+                        The repository exposes more SKILL.md files than one sync processes; only the
+                        first batch was validated.
+                      </p>
+                    )}
+                    {syncResult.errors.length > 0 && (
+                      <ul role="alert" className="text-xs text-error space-y-1">
+                        {syncResult.errors.map((message) => (
+                          <li key={message}>{message}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <Button type="button" variant="secondary" size="sm" onClick={onClose}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" variant="secondary" size="sm" loading={syncLoading}>
+                    {syncLoading ? 'Validating…' : 'Validate skills from GitHub'}
                   </Button>
                 </div>
               </form>
