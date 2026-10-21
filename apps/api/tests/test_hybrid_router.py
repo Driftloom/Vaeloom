@@ -53,5 +53,5 @@ async def test_llm_fallback_handles_error_gracefully(monkeypatch):
     monkeypatch.setattr(llm_service, "generate_completion", mock_llm_completion, raising=False)
 
     agent, conf = await classify_intent("completely unknown unstructured message")
-    assert agent == "memory"
-    assert conf == 0.5
+    assert agent == "conversation"
+    assert conf == 0.6

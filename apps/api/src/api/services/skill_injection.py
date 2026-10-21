@@ -147,6 +147,10 @@ DIRECTIVE_HEADER = (
 _LABEL_SAFE_RE = re.compile(r"[^A-Za-z0-9._:/-]+")
 _LABEL_MAX = 64
 
+# Pins are skill slugs: lowercase, no path traversal, bounded. Kept here so the
+# probe endpoint and the injection gate validate against the same rule.
+_PIN_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
+
 # ── usage telemetry ───────────────────────────────────────────────────────
 # Kill switch. Read from ``settings`` when that attribute exists so there is one
 # place to look, and from the environment otherwise: config.py is not owned by

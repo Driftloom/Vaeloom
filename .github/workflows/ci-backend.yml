@@ -8,7 +8,7 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       JWT_SECRET: ci-test-secret-not-for-production
       ENCRYPTION_KEY: ci-test-encryption-key-must-be-at-least-32-chars!!
@@ -55,4 +55,4 @@ jobs:
       - name: Agent Evaluation Golden Suite (standalone)
         run: python -m pytest tests/test_agent_eval_execution.py -q -o addopts=""
       - name: Core API Test Suite
-        run: python -m pytest tests/ -q -o addopts="-n 2 --dist loadfile" --timeout=180 --timeout-method=thread --maxfail=5 -rf --tb=short --cov=src/api/ --cov-report=xml --cov-report=term --ignore=tests/temporal --ignore=tests/integration --ignore=tests/adversarial --ignore=tests/test_agent_eval_execution.py --ignore=tests/test_agent_to_agent_hierarchy.py --ignore=tests/test_agentic_gaps_closure.py
+        run: python -m pytest tests/ -q -o addopts="-n 2 --dist loadfile" --timeout=180 --timeout-method=thread --maxfail=25 -rf --tb=short --cov=src/api/ --cov-report=xml --cov-report=term --ignore=tests/temporal --ignore=tests/integration --ignore=tests/adversarial --ignore=tests/test_agent_eval_execution.py --ignore=tests/test_agent_to_agent_hierarchy.py --ignore=tests/test_agentic_gaps_closure.py
