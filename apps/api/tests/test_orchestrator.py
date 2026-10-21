@@ -624,3 +624,241 @@ class TestStatePersistence:
             if readonly.exists():
                 os.chmod(str(readonly), stat.S_IWRITE)
                 readonly.unlink()
+
+
+class TestSkillStaticInjection:
+    """Task 8: the workspace skill directive reaches the model on the STATIC
+    dispatch path too — quarantined UNTRUSTED text appended to the message
+    exactly like the RAG append, provenance stamped honestly.
+
+    Every test pins ``settings.agent_react_enabled = False`` per repo rule:
+    this class is about the static ladder.
+    """
+
+    _DIRECTIVE_TEXT = (
+        '<untrusted-data source="skill:alpha">…</untrusted-data> DONE'
+    )
+
+    @staticmethod
+    def _fake_scoped_session(monkeypatch):
+        """Replace the helper's short-lived ``api.database.scoped_session``.
+
+        The skill seam opens its own session via a function-local import read
+        at call time; patching the ``api.database`` attribute intercepts it and
+        keeps the test off the global factory (stray ./test_dev.db).
+        """
+        from contextlib import asynccontextmanager
+
+        import api.database as database
+
+        @asynccontextmanager
+        async def _session(**kwargs):
+            yield None
+
+        monkeypatch.setattr(database, "scoped_session", _session)
+
+    @staticmethod
+    def _canned_directive_monkeypatch(monkeypatch, text, injected):
+        import api.services.skill_injection as skill_injection
+        from api.services.skill_injection import SkillDirective
+
+        calls = []
+
+        async def _canned_build(db, workspace_id, **kwargs):
+            calls.append({"db": db, "workspace_id": workspace_id, **kwargs})
+            return SkillDirective(
+                text=text,
+                injected=tuple(injected),
+                skipped=(),
+            )
+
+        monkeypatch.setattr(skill_injection, "build_skill_directive", _canned_build)
+        return calls
+
+    @staticmethod
+    async def _capture_card(agent, captured, key="content"):
+        """Attach a message-capturing card to the fake agent's execute."""
+
+        async def _capture(*args, **kwargs):
+            captured[key] = kwargs.get(key)
+            captured["args"] = args
+            captured["kwargs"] = dict(kwargs)
+            return {
+                "agent_name": "memory",
+                "action": "execute",
+                "confidence": 1.0,
+                "result": {"summary": "done", "details": None, "proposals": [], "questions": []},
+            }
+
+        agent.execute = _capture
+
+    async def test_static_applied_appends_quarantined_directive(self, monkeypatch):
+        from api.config import settings
+
+        monkeypatch.setattr(settings, "agent_react_enabled", False)
+
+        from api.orchestrator.loop import AgentRequest, act_phase
+
+        self._fake_scoped_session(monkeypatch)
+        self._canned_directive_monkeypatch(monkeypatch, self._DIRECTIVE_TEXT, ["alpha"])
+
+        agent = _make_agent("MemoryAgent")
+        captured = {}
+        await self._capture_card(agent, captured)
+
+        original_message = "test message"
+        req = AgentRequest(agent, "r1", original_message, "ws1")
+        plan = {"agent_type": "MemoryAgent", "message": original_message, "workspace_id": "ws1"}
+        result = await act_phase(plan, req)
+
+        provenance = result["result"]["provenance"]
+        assert provenance["skill_directive"] == "applied"
+        assert provenance["skill_directive_injected"] == ["alpha"]
+
+        directive_text = self._DIRECTIVE_TEXT
+        expected = (
+            original_message
+            + "\n\n[Workspace skills:\n"
+            + '<untrusted-data source="workspace_skills">\n'
+            + '&lt;untrusted-data source="skill:alpha">…&lt;/untrusted-data&gt; DONE\n'
+            + "</untrusted-data>]"
+        )
+        assert captured["content"] == expected
+        assert "skill:alpha" in captured["content"]
+        assert captured["content"].startswith(original_message)
+
+    async def test_static_no_directive_message_byte_identical(self, monkeypatch):
+        from api.config import settings
+
+        monkeypatch.setattr(settings, "agent_react_enabled", False)
+
+        from api.orchestrator.loop import AgentRequest, act_phase
+
+        self._fake_scoped_session(monkeypatch)
+        self._canned_directive_monkeypatch(monkeypatch, "", [])
+
+        agent = _make_agent("MemoryAgent")
+        captured = {}
+        await self._capture_card(agent, captured)
+
+        original_message = "test message"
+        req = AgentRequest(agent, "r1", original_message, "ws1")
+        plan = {"agent_type": "MemoryAgent", "message": original_message, "workspace_id": "ws1"}
+        result = await act_phase(plan, req)
+
+        assert result["result"]["provenance"]["skill_directive"] == "not_applied"
+        assert "skill_directive_injected" not in result["result"]["provenance"]
+        assert captured["content"] == original_message
+
+    async def test_static_no_workspace_never_opens_scope(self, monkeypatch):
+        from api.config import settings
+
+        monkeypatch.setattr(settings, "agent_react_enabled", False)
+
+        from contextlib import asynccontextmanager
+
+        import api.database as database
+        from api.orchestrator.loop import AgentRequest, act_phase
+
+        opened = []
+
+        def _boom(*args, **kwargs):
+            opened.append(1)
+            raise AssertionError("empty workspace must not open scoped_session")
+
+        monkeypatch.setattr(database, "scoped_session", _boom)
+
+        agent = _make_agent("MemoryAgent")
+        captured = {}
+        await self._capture_card(agent, captured)
+
+        original_message = "test message"
+        req = AgentRequest(agent, "r1", original_message, "")
+        plan = {"agent_type": "MemoryAgent", "message": original_message, "workspace_id": ""}
+        result = await act_phase(plan, req)
+
+        assert opened == []
+        assert result["result"]["provenance"]["skill_directive"] == "not_applied"
+        assert captured["content"] == original_message
+        assert asynccontextmanager is not None  # imported shape guard
+
+    async def test_static_build_failure_is_swallowed(self, monkeypatch, caplog):
+        from api.config import settings
+
+        monkeypatch.setattr(settings, "agent_react_enabled", False)
+
+        import api.orchestrator.loop as loop_mod
+        import api.services.skill_injection as skill_injection
+        from api.orchestrator.loop import AgentRequest, act_phase
+
+        async def _boom(db, workspace_id, **kwargs):
+            raise RuntimeError("skills db down")
+
+        monkeypatch.setattr(skill_injection, "build_skill_directive", _boom)
+        self._fake_scoped_session(monkeypatch)
+
+        agent = _make_agent("MemoryAgent")
+        captured = {}
+        await self._capture_card(agent, captured)
+
+        original_message = "test message"
+        req = AgentRequest(agent, "r1", original_message, "ws1")
+        plan = {"agent_type": "MemoryAgent", "message": original_message, "workspace_id": "ws1"}
+
+        with caplog.at_level(logging.WARNING, logger="api.orchestrator.loop"):
+            result = await act_phase(plan, req)
+
+        assert result["action"] == "execute"
+        assert result["result"]["provenance"]["skill_directive"] == "not_applied"
+        assert captured["content"] == original_message
+        assert any(
+            "Skill injection skipped (prompt unchanged)" in msg for msg in caplog.messages
+        )
+
+    async def test_react_success_returns_result_untouched_no_double_injection(self, monkeypatch):
+        """ReAct default-on guard: when the ReAct loop produces a result, the
+        static seam must not run — provenance carries exactly what the ReAct
+        result carried, and the message handed to ReAct is pre-injection."""
+        from api.config import settings
+
+        monkeypatch.setattr(settings, "agent_react_enabled", True)
+
+        import api.orchestrator.loop as loop_mod
+        from api.orchestrator.loop import AgentRequest, act_phase
+
+        self._fake_scoped_session(monkeypatch)
+        build_calls = self._canned_directive_monkeypatch(
+            monkeypatch, self._DIRECTIVE_TEXT, ["alpha"]
+        )
+
+        captured_react = {}
+
+        async def _fake_react(agent, message, workspace_id, agent_name, **kwargs):
+            captured_react.update(
+                {"message": message, "workspace_id": workspace_id, "kwargs": kwargs}
+            )
+            return {
+                "agent_name": agent_name,
+                "action": "execute",
+                "confidence": 0.9,
+                "result": {
+                    "summary": "react done",
+                    "details": None,
+                    "proposals": [],
+                    "questions": [],
+                    "provenance": {"tool_calls": 2},
+                },
+            }
+
+        monkeypatch.setattr(loop_mod, "_try_react_loop", _fake_react)
+
+        agent = _make_agent("TestAgent")
+        req = AgentRequest(agent, "r1", "react message", "ws1")
+        plan = {"agent_type": "TestAgent", "message": "react message", "workspace_id": "ws1"}
+        result = await act_phase(plan, req)
+
+        assert result["action"] == "execute"
+        assert result["result"]["provenance"] == {"tool_calls": 2}
+        assert captured_react["message"] == "react message"
+        assert "Workspace skills" not in captured_react["message"]
+        assert build_calls == []

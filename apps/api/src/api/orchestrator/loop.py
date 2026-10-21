@@ -443,6 +443,7 @@ class AgentRequest:
         execution_plan: Any | None = None,
         model: str | None = None,
         temperature: float | None = 0.7,
+        pinned_skill: str | None = None,
     ):
         self.agent = agent
         self.id = request_id
@@ -459,6 +460,11 @@ class AgentRequest:
         self.execution_plan = execution_plan
         self.model = model
         self.temperature = temperature
+        # C2: `/skill:<slug>` pin parsed off the raw user message at the API
+        # seam (routers/chat.py, routers/agents.py); `message` already carries
+        # only the residual. Consumed by the ReAct path's skill seam; None when
+        # the user did not pin a skill.
+        self.pinned_skill = pinned_skill
 
     def _derive_agent_name(self) -> str:
         name = type(self.agent).__name__
@@ -998,7 +1004,7 @@ async def _assemble_rag_context(
                     freshness=0.5,
                     provenance=f"ws:{workspace_id}:{m.get('id','')}",
                     permission_scope="workspace",
-                    priority="P2_RETRIEVAL",
+                    priority="P3_DYNAMIC_MEMORY",
                 ))
             _kept, _excluded = _filter(_items, workspace_id=str(workspace_id or ""))
             _ranked = _rank_items(_kept, limit=16)
@@ -1269,6 +1275,7 @@ async def _try_react_loop(
     request_id: str | None = None,
     state: Any | None = None,
     tenant_id: str | None = None,
+    pinned_skill: str | None = None,
 ) -> dict[str, Any] | None:
     """Attempt dynamic LLM-driven tool calling with AgentCard prompt and schema contracts.
 
@@ -1509,48 +1516,35 @@ async def _try_react_loop(
         # test_loop_system_content_is_byte_identical_when_no_skill_is_injectable
         # and test_skill_prompt_layer's golden-compile test).
         #
-        # Guarded twice, deliberately:
-        #   - no `db` means no lookup AT ALL (test asserts the call count is 0);
+        # Guarded deliberately:
+        #   - no `workspace_id` means no lookup at all (test asserts no
+        #     scoped_session is opened in that case);
         #   - any failure is swallowed, because a skills lookup must never take
         #     down an agent run or degrade the prompt it would have augmented.
-        # The import is function-local on purpose: it is read at call time, so a
-        # test patching the module attribute actually intercepts it.
-        _skill_text = ""
-        if db is not None and workspace_id:
-            try:
-                from ..services.skill_injection import build_skill_directive
-
-                _skill_directive = await build_skill_directive(
-                    db,
-                    workspace_id,
-                    agent_name=agent_name,
-                    allowed_scopes=agent_allowed_scopes,
-                    user_message=message,
-                    usage_run_id=request_id,
-                )
-                _skill_text = _skill_directive.text
-                # Audit every decision, not just the injected ones: a skill that
-                # silently fails to apply is indistinguishable from one that was
-                # never configured, which is exactly the bug this makes visible.
-                _injected = ",".join(_skill_directive.injected) or "-"
-                logger.info(
-                    "SKILL_INJECTION agent=%s workspace=%s injected=[%s]",
-                    agent_name,
-                    workspace_id,
-                    _injected,
-                )
-                for _skip in _skill_directive.skipped:
-                    logger.info(
-                        "SKILL_INJECTION agent=%s skipped=%s=%s required_scope=%s",
-                        agent_name,
-                        _skip.name,
-                        _skip.reason,
-                        _skip.detail or "-",
-                    )
-            except Exception as _si_exc:
-                logger.warning(
-                    "Skill injection skipped (prompt unchanged): %s", _si_exc
-                )
+        #
+        # F-0: the lookup runs on a short-lived `scoped_session` bound to the
+        # request identity, NOT on the caller's `db`. Both real route shapes
+        # pass a session that cannot answer this read — the buffered chat route
+        # passes `db=None` outright, and the stream route's session has already
+        # committed, so on PostgreSQL the RLS GUCs are gone and the query
+        # returns zero rows while raising nothing. That made skills silently
+        # never apply on real routes. `scoped_session` is the repository's
+        # established pattern for exactly this read (see database.py; tools
+        # executor uses `require=False` on request paths the same way), and the
+        # database still fails closed on a missing scope.
+        # The lookup runs through `_skill_directive_if_present`, the single
+        # seam shared with the static dispatch fallback below — see there for
+        # scope/skip/swallow details.
+        _skill_text, _skill_injected = await _skill_directive_if_present(
+            workspace_id,
+            tenant_id=_tenant,
+            user_id=user_id,
+            agent_name=agent_name,
+            allowed_scopes=agent_allowed_scopes,
+            user_message=message,
+            pinned_skill=pinned_skill,
+            usage_run_id=request_id,
+        )
 
         # (messages are built after the prompt manifest so resume-replay can
         # reuse the exact same system/user content — see below.)
@@ -2477,13 +2471,99 @@ async def act_phase(plan: dict[str, Any], request: AgentRequest, on_token: Any =
         return await _act_phase_inner(plan, request, on_token, state)
 
 
-def _mark_static_skill_directive(result: Any) -> Any:
+async def _skill_directive_if_present(
+    workspace_id: Any,
+    *,
+    tenant_id: Any = None,
+    user_id: Any = None,
+    agent_name: str = "",
+    allowed_scopes: list[str] | None = None,
+    user_message: str = "",
+    pinned_skill: Any = None,
+    usage_run_id: str | None = None,
+) -> tuple[str, list[str]]:
+    """Resolve the workspace skill directive for a dispatch path.
+
+    Single seam shared by the ReAct prompt assembly and the static dispatch
+    fallback: opens a short-lived ``scoped_session`` bound to the request
+    identity (F-0 — the caller's ``db`` cannot answer this read; the buffered
+    chat route passes ``db=None`` outright and the stream route's session has
+    already committed, so on PostgreSQL the RLS GUCs are gone and the query
+    returns zero rows while raising nothing), then calls
+    ``build_skill_directive``.
+
+    Returns ``(directive_text, injected_names)``. An empty ``workspace_id``
+    resolves nothing at all — no ``scoped_session`` is opened. Any failure is
+    swallowed, because a skills lookup must never take down an agent run; the
+    caller treats ``("", [])`` as "no directive" and the prompt stays
+    byte-identical.
+
+    The imports are function-local on purpose: they are read at call time, so
+    a test patching the module attribute actually intercepts.
+    """
+    if not workspace_id:
+        return "", []
+    try:
+        from ..database import scoped_session
+        from ..services.skill_injection import build_skill_directive
+
+        async with scoped_session(
+            workspace_id=str(workspace_id),
+            tenant_id=str(tenant_id) if tenant_id else None,
+            user_id=str(user_id) if user_id else None,
+            require=False,
+        ) as _skill_db:
+            _skill_directive = await build_skill_directive(
+                _skill_db,
+                workspace_id,
+                agent_name=agent_name,
+                allowed_scopes=allowed_scopes if allowed_scopes is not None else [],
+                user_message=user_message,
+                pinned_skill=pinned_skill,
+                usage_run_id=usage_run_id,
+            )
+        # Audit every decision, not just the injected ones: a skill that
+        # silently fails to apply is indistinguishable from one that was
+        # never configured, which is exactly the bug this makes visible.
+        _injected = ",".join(_skill_directive.injected) or "-"
+        logger.info(
+            "SKILL_INJECTION agent=%s workspace=%s injected=[%s]",
+            agent_name,
+            workspace_id,
+            _injected,
+        )
+        for _skip in _skill_directive.skipped:
+            logger.info(
+                "SKILL_INJECTION agent=%s skipped=%s=%s required_scope=%s",
+                agent_name,
+                _skip.name,
+                _skip.reason,
+                _skip.detail or "-",
+            )
+        return _skill_directive.text, list(_skill_directive.injected or [])
+    except Exception as _si_exc:
+        logger.warning("Skill injection skipped (prompt unchanged): %s", _si_exc)
+        return "", []
+
+
+def _mark_static_skill_directive(result: Any, injected: list[str] | None = None) -> Any:
+    """Stamp skill-directive provenance onto a static dispatch result.
+
+    ``injected`` lists the skills whose directive text was genuinely appended
+    to the dispatched message; non-empty → "applied" plus the names. On the
+    failure branches no directive reached the model, so the stamp stays
+    "not_applied" (setdefault keeps any value already present).
+    """
     if isinstance(result, dict):
         payload = result.get("result")
         if isinstance(payload, dict):
             provenance = payload.setdefault("provenance", {})
             if isinstance(provenance, dict):
-                provenance.setdefault("skill_directive", "not_applied")
+                if injected:
+                    provenance["skill_directive"] = "applied"
+                    provenance["skill_directive_injected"] = list(injected)
+                else:
+                    provenance.setdefault("skill_directive", "not_applied")
     return result
 
 
@@ -2586,6 +2666,7 @@ async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token
                 request_id=str(getattr(request, "id", "")) or None,
                 state=state,
                 tenant_id=getattr(request, "tenant_id", None),
+                pinned_skill=getattr(request, "pinned_skill", None),
             )
             if react_result is not None:
                 logger.info(f"ACT: ReAct loop succeeded for {agent_name}")
@@ -2613,6 +2694,36 @@ async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token
 
     try:
         agent_context = plan.get("agent_context")
+        # Task 8: the static ladder now mirrors the ReAct prompt seam. The
+        # directive is appended to the dispatched message quarantined, exactly
+        # like the RAG append — UNTRUSTED workspace text must never ride the
+        # trusted system block or unfenced message body. The static ladder has
+        # no resolved tool list, so allowed_scopes is empty: only scope-free
+        # skills apply (fail-closed).
+        _skill_text, _skill_injected = await _skill_directive_if_present(
+            request.workspace_id,
+            tenant_id=getattr(request, "tenant_id", None),
+            user_id=getattr(request, "user_id", None),
+            agent_name=agent_name,
+            allowed_scopes=[],
+            user_message=message,
+            pinned_skill=getattr(request, "pinned_skill", None),
+            usage_run_id=str(getattr(request, "id", "")) or None,
+        )
+        if _skill_text:
+            try:
+                from ..services.prompt_compiler import quarantine
+
+                _skill_quarantined, _ = quarantine(_skill_text, source="workspace_skills")
+            except Exception:
+                # FIFO: manual fence preserves the boundary if the compiler
+                # itself is broken — raw workspace text still never ships bare.
+                _skill_quarantined = (
+                    '<untrusted-data source="workspace_skills">\n'
+                    f"{_skill_text}\n"
+                    "</untrusted-data>"
+                )
+            message = f"{message}\n\n[Workspace skills:\n{_skill_quarantined}]"
         result = await asyncio.wait_for(
             cb.call(_dispatch_agent(agent_type, agent, message, request, context=agent_context)),
             timeout=timeout,
@@ -2623,7 +2734,7 @@ async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token
             logger.info(f"AUDIT static_success agent={agent_name} type={agent_type} action={result.get('action')} workspace={request.workspace_id}")
         except Exception:
             pass
-        return _mark_static_skill_directive(result)
+        return _mark_static_skill_directive(result, injected=_skill_injected)
     except CircuitBreakerOpenError:
         _audit_static(False, "circuit_open")
         logger.warning(f"Circuit breaker OPEN for {agent_name}, using fallback")
@@ -2631,6 +2742,8 @@ async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token
     except TimeoutError:
         _audit_static(False, f"timeout_{timeout}s")
         logger.error(f"Agent {agent_name} timed out after {timeout}s")
+        # Dispatch DID happen with the enriched message, so the append is not
+        # retroactively erased — the timeout branch carries the injection too.
         return _mark_static_skill_directive({
             "agent_name": agent_name,
             "action": "error",
@@ -2641,7 +2754,7 @@ async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token
                 "proposals": [],
                 "questions": [],
             },
-        })
+        }, injected=_skill_injected)
     except AgentRateLimitError:
         _audit_static(False, "rate_limited")
         return _mark_static_skill_directive({
@@ -3054,6 +3167,21 @@ def _dispatch_agent(agent_type: str, agent: BaseAgent, message: str, request: Ag
             source_id=f"input_{request.id}",
             workspace_id=request.workspace_id,
         )
+
+    # ── Dynamic Agent Dispatch Contract ──────────────────────────────
+    # Any agent implementing the enterprise handle() or process() contract
+    # dispatches dynamically rather than falling through to fallback.
+    if hasattr(agent, "handle") and callable(agent.handle):
+        return agent.handle(
+            message=message,
+            workspace_id=str(request.workspace_id) if request.workspace_id else None,
+            user_id=str(getattr(request, "user_id", None)) if getattr(request, "user_id", None) else None,
+            tenant_id=str(getattr(request, "tenant_id", None)) if getattr(request, "tenant_id", None) else None,
+            context=context,
+        )
+
+    if hasattr(agent, "process") and callable(agent.process):
+        return agent.process(request, context=context)
 
     logger.warning(
         "dispatch_unknown_agent",
