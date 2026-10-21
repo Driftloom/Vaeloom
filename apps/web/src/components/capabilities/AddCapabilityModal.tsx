@@ -2485,7 +2485,7 @@ export function AddCapabilityModal({
                   type="button"
                   aria-label={`Remove parameter ${param.name || index + 1}`}
                   onClick={() => setToolParams((prev) => prev.filter((_, i) => i !== index))}
-                  className="text-text-muted hover:text-danger rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+                  className="text-text-muted hover:text-error rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
                 >
                   ×
                 </button>

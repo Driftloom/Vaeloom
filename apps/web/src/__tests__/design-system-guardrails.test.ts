@@ -222,6 +222,26 @@ describe('Tailwind class definitions', () => {
     // below keeps the subtree permanently free of the purged literal.
     expect(offenders).toEqual([]);
   });
+
+  it('uses no danger-family classes in the capabilities subtree', () => {
+    // `danger` and `error` in tailwind.config.ts alias the SAME `--error`
+    // tokens, so this is a naming guard, not a color-difference guard: one
+    // family spelling must survive across the capabilities subtree, and the
+    // canonical one is `error` (the token family name). Comments are stripped
+    // like the backdrop scan above so an explanatory file never reports
+    // itself.
+    const CAPABILITIES = join(SRC, 'components', 'capabilities');
+    const DANGER_UTILITY = /(?:text|bg|border|ring|fill|stroke)-danger(?:\/\d+)?\b/g;
+    const offenders: string[] = [];
+    for (const f of walk(CAPABILITIES)) {
+      const text = readFileSync(f, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/\/\/[^\n]*/g, '');
+      const hits = text.match(DANGER_UTILITY) ?? [];
+      if (hits.length) offenders.push(`${srcRel(f)}: ${hits.join(', ')}`);
+    }
+    expect(offenders).toEqual([]);
+  });
 });
 
 describe('Animation utilities resolve', () => {

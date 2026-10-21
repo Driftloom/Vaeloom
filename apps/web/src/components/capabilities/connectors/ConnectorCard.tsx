@@ -231,7 +231,7 @@ export function InstalledConnectorCard({
         <Button
           variant="ghost"
           size="sm"
-          className="text-danger hover:text-danger/80"
+          className="text-error hover:text-error/80"
           onClick={onDisconnect}
         >
           Disconnect

@@ -283,7 +283,7 @@ export function CustomProtocolsTab({
                       aria-label={`Remove ${conn.name}`}
                       variant="ghost"
                       size="sm"
-                      className="text-danger hover:text-danger/80"
+                      className="text-error hover:text-error/80"
                       onClick={() =>
                         onPendingDisconnect({
                           id: conn.id,
