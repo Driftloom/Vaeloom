@@ -1,3 +1,10 @@
+# Archived — Legacy TS Connectors
+
+**Archived:** 2026-08-27 per ADR-036/037 (orphaned, never wired into the main
+API); full package trees moved here 2026-10-22 per ADR-048. See `DEPRECATED.md`
+in this dir before touching anything below. The content that follows is
+historical reference for the original package design.
+
 # Vaeloom Connectors
 
 Unified connector architecture for integrating with external data sources and AI
@@ -6,10 +13,10 @@ services.
 ## Architecture
 
 ```
-connectors/
+connectors/ (historical layout, now under archive/)
 ├── rest/          # REST API connector with auth, pagination, rate limiting
 ├── graphql/       # GraphQL connector with introspection and query builder
-└── mcp/           # Model Context Protocol connector (JSON-RPC 2.0)
+└── mcp/           # Model Context Protocol connector — moved to archive/connectors-mcp-ts/mcp/
 ```
 
 Each connector follows the same lifecycle:
@@ -61,6 +68,6 @@ try {
 Each connector has unit tests in `src/__tests__/` using Jest and mock adapters.
 
 ```bash
-cd connectors/<type>
+cd connectors/<type>  # historical; tree now lives in archive/
 pnpm test
 ```
