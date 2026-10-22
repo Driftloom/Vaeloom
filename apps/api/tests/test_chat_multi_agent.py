@@ -1,4 +1,3 @@
-import json
 import pytest
 from httpx import AsyncClient
 
@@ -22,7 +21,12 @@ class TestChatMultiAgent:
         assert "models" in data
         assert isinstance(data["models"], list)
         assert len(data["models"]) >= 5
-        assert data["defaultModel"] == "gpt-4o-mini"
+        # The endpoint names the served default explicitly, and exactly one
+        # model in the matrix is flagged as the default. The two must agree.
+        assert data["active_default"] == "gemma4:31b"
+        defaults = [m for m in data["models"] if m["isDefault"]]
+        assert len(defaults) == 1
+        assert defaults[0]["id"] == data["active_default"]
 
         first_model = data["models"][0]
         assert "id" in first_model
@@ -31,7 +35,8 @@ class TestChatMultiAgent:
         assert "maxTokens" in first_model
         assert "costPer1kInput" in first_model
         assert "costPer1kOutput" in first_model
-        assert "healthStatus" in first_model
+        assert "status" in first_model
+
 
     async def test_multi_agent_chat_stream(self, client: AsyncClient):
         headers = await self._auth_header(client)

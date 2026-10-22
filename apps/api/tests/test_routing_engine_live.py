@@ -10,7 +10,7 @@ async def test_live_routing_suite():
     test_cases = [
         ("hlo", "conversation", "executive.companion.scaffold"),
         ("i feel so overwhelmed and burnt out with my job hunt", "conversation", "executive.companion.scaffold"),
-        ("find staff python jobs and tailor my resume", "job_search", "career.job.search"),
+        ("find staff python jobs and tailor my resume", "resume", "career.resume.tailor"),
         ("scan documents for pii and leaked keys", "security", "workspace.security.audit"),
         ("schedule mock interview for tomorrow", "calendar", "workspace.calendar.plan"),
     ]

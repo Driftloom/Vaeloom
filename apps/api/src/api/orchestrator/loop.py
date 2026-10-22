@@ -2477,6 +2477,17 @@ async def act_phase(plan: dict[str, Any], request: AgentRequest, on_token: Any =
         return await _act_phase_inner(plan, request, on_token, state)
 
 
+def _coerce_agent_context(raw: Any) -> Any:
+    if isinstance(raw, dict):
+        try:
+            from .base import AgentContext
+
+            return AgentContext(**raw)
+        except Exception:
+            return raw
+    return raw
+
+
 def _mark_static_skill_directive(result: Any) -> Any:
     if isinstance(result, dict):
         payload = result.get("result")
@@ -2490,6 +2501,7 @@ def _mark_static_skill_directive(result: Any) -> Any:
 async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token: Any = None, state: Any | None = None) -> dict[str, Any]:
     agent = request.agent
     message = plan.get("message", request.message)
+    agent_context = _coerce_agent_context(plan.get("agent_context"))
     # Enrich message with RAG context if available (plan_phase injected it)
     # Context engineering cap: keep RAG prompt at most 2000 chars to prevent explosion
     context_prompt = plan.get("context_prompt", "")
@@ -2572,7 +2584,6 @@ async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token
     # Static dispatch below is the deterministic primary path; ReAct is best-effort.
     if settings.agent_react_enabled:
         try:
-            agent_context = plan.get("agent_context")
             react_result = await _try_react_loop(
                 agent,
                 message,
@@ -2612,7 +2623,6 @@ async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token
             pass
 
     try:
-        agent_context = plan.get("agent_context")
         result = await asyncio.wait_for(
             cb.call(_dispatch_agent(agent_type, agent, message, request, context=agent_context)),
             timeout=timeout,

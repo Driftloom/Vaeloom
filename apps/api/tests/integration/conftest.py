@@ -4,7 +4,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 import sqlalchemy.types as sa_types
-from sqlalchemy.dialects.sqlite import TEXT, JSON
+from sqlalchemy.dialects.sqlite import JSON
 
 
 class MockVector(sa_types.TypeDecorator):
@@ -15,6 +15,7 @@ class MockVector(sa_types.TypeDecorator):
 
 
 import pgvector.sqlalchemy
+
 pgvector.sqlalchemy.Vector = MockVector
 
 class MockArray(sa_types.JSON):
@@ -22,6 +23,7 @@ class MockArray(sa_types.JSON):
         super().__init__(*args, **kwargs)
 
 import uuid
+
 
 class MockUUID(sa_types.TypeDecorator):
     impl = sa_types.String
@@ -39,11 +41,11 @@ class MockUUID(sa_types.TypeDecorator):
         return uuid.UUID(value) if value else None
 
 import sqlalchemy.dialects.postgresql
+
 sqlalchemy.dialects.postgresql.JSONB = JSON
 sqlalchemy.dialects.postgresql.ARRAY = MockArray
 sqlalchemy.dialects.postgresql.UUID = MockUUID
 
-import re
 import json
 import sqlite3
 
@@ -51,35 +53,56 @@ sqlite3.register_adapter(uuid.UUID, lambda u: str(u))
 sqlite3.register_adapter(dict, lambda d: __import__("json").dumps(d))
 sqlite3.register_adapter(list, lambda l: __import__("json").dumps(l))
 
+from datetime import UTC
+
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
-from httpx import AsyncClient, ASGITransport
-from prometheus_client import CONTENT_TYPE_LATEST, generate_latest, REGISTRY
+from httpx import ASGITransport, AsyncClient
+from prometheus_client import CONTENT_TYPE_LATEST, REGISTRY, generate_latest
 from sqlalchemy import event, text
-from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-import api.models
 from api.database import Base, get_db
-from api.services.memory_type_packs import CAREER_TYPES
 from api.middleware.auth import AuthMiddleware
 from api.middleware.exception_handler import (
-    unified_exception_handler,
     generic_exception_handler,
+    unified_exception_handler,
 )
+from api.services.memory_type_packs import CAREER_TYPES
 
 
 def _build_test_app(db_session):
-    import api.infrastructure.metrics
     from api.routers import (
-        health, auth, workspaces, memory, agents, events, search,
-        integrations, billing, documents, resumes, applications,
-        plugins, chat, notifications, connectors, scheduler,
-        analytics, audit, iam, knowledge_graph, recommendations, profile, opportunities, council,
+        agents,
+        analytics,
+        applications,
+        audit,
+        auth,
+        billing,
+        chat,
+        connectors,
+        council,
+        documents,
+        events,
+        health,
+        iam,
+        integrations,
+        knowledge_graph,
+        memory,
+        notifications,
+        opportunities,
+        plugins,
+        profile,
+        recommendations,
+        resumes,
+        scheduler,
+        search,
+        workspaces,
     )
 
     test_app = FastAPI()
@@ -283,27 +306,33 @@ async def fix_sqlite_timezone(monkeypatch):
     original_refresh = auth_mod.auth_service.refresh_token
 
     async def fixed_refresh(self, refresh_token, *args, db=None, **kwargs):
-        from datetime import datetime, timezone
+        from datetime import datetime
         try:
             return await original_refresh(refresh_token, *args, db=db, **kwargs)
         except TypeError as e:
             if "can't compare offset-naive and offset-aware" in str(e):
                 from sqlalchemy import select
+
                 from api.models.schema import AuthSession, User
                 from api.schemas.auth import AuthResponse, PublicUser
+                from api.services.auth_service import _token_digest
 
+                # auth_sessions stores the SHA-256 digest of the credential,
+                # never the credential itself.
                 result = await db.execute(
-                    select(AuthSession).where(AuthSession.refresh_token == refresh_token)
+                    select(AuthSession).where(
+                        AuthSession.refresh_token == _token_digest(refresh_token)
+                    )
                 )
                 session = result.scalar_one_or_none()
                 if not session:
                     from fastapi import HTTPException
                     raise HTTPException(status_code=401, detail="Invalid refresh token")
 
-                now = datetime.now(timezone.utc)
+                now = datetime.now(UTC)
                 expires = session.expires_at
                 if expires.tzinfo is None:
-                    expires = expires.replace(tzinfo=timezone.utc)
+                    expires = expires.replace(tzinfo=UTC)
 
                 if session.status != "ACTIVE" or expires < now:
                     from fastapi import HTTPException

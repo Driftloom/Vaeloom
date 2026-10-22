@@ -310,9 +310,9 @@ async def db_session(db_path):
         )
 
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    session = session_factory()
     try:
-        async with session_factory() as session:
-            yield session
+        yield session
     finally:
         # Drain pending audit and orchestrator background tasks before disposing engine
         try:
@@ -349,6 +349,12 @@ async def db_session(db_path):
                 for t in all_pending:
                     t.cancel()
                 await asyncio.gather(*all_pending, return_exceptions=True)
+        except Exception:
+            pass
+
+        # Teardown: close the fixture session before disposing the engine.
+        try:
+            await session.close()
         except Exception:
             pass
 

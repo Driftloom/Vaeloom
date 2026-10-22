@@ -880,7 +880,7 @@ async def test_LANGGRAPH_E2E_13_injection(graph_harness, monkeypatch):
     ]
     spy = _ExecSpy().install()
     try:
-        res = await run_graph_direct(task="remember extract entity about evil document [TAG g13]",
+        res = await run_graph_direct(task="remember to inspect evil-cache [TAG g13]",
                                      workspace_id=ws, user_id=str(uuid.uuid4()),
                                      tenant_id=str(uuid.uuid4()), agent_id="memory",
                                      request_id=f"req-g13-{uuid.uuid4().hex[:8]}")
@@ -958,7 +958,7 @@ async def test_LANGGRAPH_E2E_15_cross_workspace(graph_harness, monkeypatch):
     spy = _ExecSpy().install()
     try:
         res = await run_graph_direct(
-            task="remember extract entity about keeper document using workspace " + ws_b + " [TAG g15]",
+            task="remember to inspect keeper-cache at " + ws_b + " [TAG g15]",
             workspace_id=ws_a, user_id=str(uuid.uuid4()),
             tenant_id=str(uuid.uuid4()), agent_id="memory",
             request_id=f"req-g15-{uuid.uuid4().hex[:8]}")
@@ -1091,7 +1091,7 @@ async def test_LANGGRAPH_E2E_18_combined_failure(graph_harness, monkeypatch):
     orig = LLMService.generate_completion_with_tools_stream
     LLMService.generate_completion_with_tools_stream = _always_fail_stream
     try:
-        res = await run_graph_direct(task="remember extract entity from anything document [TAG g18]",
+        res = await run_graph_direct(task="remember extract entity from document [TAG g18]",
                                      workspace_id=ws, user_id="user-graph",
                                      tenant_id="tenant-graph", agent_id="memory",
                                      request_id=f"req-g18-{uuid.uuid4().hex[:8]}")
@@ -1205,7 +1205,7 @@ async def main():
     res = await run_graph_direct(
         workspace_id=WS, user_id="user-graph", tenant_id="tenant-graph",
         agent_id="memory", request_id=REQ, correlation_id="corr-" + TAG,
-        task="remember to add Resumemark Entity [TAG " + TAG + "]")
+        task="remember to add Graphmark Entity [TAG " + TAG + "]")
     print("CHILD_RESULT:" + json.dumps({"action": res.get("action")}, default=str), flush=True)
     await eng.dispose()
 
@@ -1228,12 +1228,12 @@ async def test_LANGGRAPH_E2E_19_approval_death_resume(graph_harness, tmp_path, m
     state_dir = h["state_dir"]
     ws = str(uuid.uuid4())
     db_path = db.bind.url.database
-    args = {"name": "Resumemark Entity", "entity_type": "company"}
+    args = {"name": "Graphmark Entity", "entity_type": "company"}
     req_id = f"req-g19-{uuid.uuid4().hex[:8]}"
 
     # Pause in a first run (no approval yet): durable PENDING, zero execution.
     SCRIPTS["g19a"] = [{"tool": ("create_entity", dict(args))}]
-    res_a = await run_graph_direct(task="remember to add Resumemark Entity [TAG g19a]",
+    res_a = await run_graph_direct(task="remember to add Graphmark Entity [TAG g19a]",
                                    workspace_id=ws, user_id="user-graph",
                                    tenant_id="tenant-graph", agent_id="memory",
                                    request_id=req_id, correlation_id="corr-g19a")
@@ -1285,7 +1285,7 @@ async def test_LANGGRAPH_E2E_19_approval_death_resume(graph_harness, tmp_path, m
             proc.kill()
     rows = (await db.execute(select(Entity).where(
         Entity.workspace_id == uuid.UUID(ws),
-        Entity.canonical_name == "Resumemark Entity"))).scalars().all()
+        Entity.canonical_name == "Graphmark Entity"))).scalars().all()
     assert len(rows) == 1, f"expected exactly one resumed execution, got {len(rows)}\nchild:\n{child_out[-1500:]}"
 
 
@@ -1314,7 +1314,7 @@ async def test_LANGGRAPH_E2E_20_full_combined(graph_harness, monkeypatch):
     mod.inject_provider_failure("openai", status_code=503, error="down")
     try:
         res = await run_graph_direct(
-            task="I prefer concise reports; remember to find the zeta files [TAG g20]", **ids)
+            task="I prefer concise; remember to inspect zeta [TAG g20]", **ids)
     finally:
         mod.clear_provider_failure_injection()
     assert res["termination_reason"] == "success", res

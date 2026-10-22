@@ -633,8 +633,9 @@ class TestLiveHarnessWiring:
         from api.orchestrator.loop import AgentRequest, plan_phase
         from api.orchestrator.state import LoopState
         agent = MockAgent()
-        req = AgentRequest(agent, "ctx-1", "find my resume drafts", "ws", "memory")
-        plan = await plan_phase(req, LoopState("ctx-1", workspace_id="ws"))
+        workspace_id = "00000000-0000-4000-8000-000000000001"
+        req = AgentRequest(agent, "ctx-1", "find my resume drafts", workspace_id, "memory")
+        plan = await plan_phase(req, LoopState("ctx-1", workspace_id=workspace_id))
         manifest = (plan.get("rag_context", {}) or {}).get("context_manifest", {})
         assert manifest.get("engine") == "context_engine/v1"
         assert "strategy" in manifest and "fingerprint" in manifest

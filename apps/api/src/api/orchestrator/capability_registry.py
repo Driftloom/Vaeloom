@@ -823,6 +823,12 @@ class CapabilityRegistry:
                     if re.search(r"\b" + re.escape(clean_q) + r"\b", ex_lower):
                         score += 0.8
 
+            # 3. Anchor on the capability id: the object the user names
+            # ("email", "resume", "calendar") is the strongest intent signal.
+            id_words = set(re.findall(r"\b\w+\b", cap.capability_id.replace(".", " ")))
+            if query_words.intersection(id_words):
+                score += 0.3
+
             scored.append((score, cap))
 
         scored.sort(key=lambda x: x[0], reverse=True)

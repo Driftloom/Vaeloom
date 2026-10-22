@@ -13,6 +13,7 @@ from api.models.schema import (
     Workspace,
     WorkspaceUser,
 )
+from api.services.auth_service import _token_digest
 
 
 @pytest.mark.asyncio
@@ -221,10 +222,12 @@ async def test_refresh_token_rotation_and_theft_detection(client, db_session):
     refresh_2 = tokens_2["refresh_token"]
     assert refresh_2 != refresh_1
 
-    # Check in DB that refresh_1 has status 'ROTATED'
+    # Check in DB that refresh_1 has status 'ROTATED'.
+    # auth_sessions stores the SHA-256 digest of the credential, never the
+    # credential itself, so the lookup has to digest first.
     sess_1 = (
         await db_session.execute(
-            select(AuthSession).where(AuthSession.refresh_token == refresh_1)
+            select(AuthSession).where(AuthSession.refresh_token == _token_digest(refresh_1))
         )
     ).scalar_one()
     assert sess_1.status == "ROTATED"
@@ -243,7 +246,7 @@ async def test_refresh_token_rotation_and_theft_detection(client, db_session):
     # 3. All tokens in the family must now be REVOKED
     sess_2 = (
         await db_session.execute(
-            select(AuthSession).where(AuthSession.refresh_token == refresh_2)
+            select(AuthSession).where(AuthSession.refresh_token == _token_digest(refresh_2))
         )
     ).scalar_one()
     assert sess_2.status == "REVOKED"
@@ -463,6 +466,7 @@ async def test_onboarding_state_machine(client, db_session):
 @pytest.mark.asyncio
 async def test_organization_tenant_fail_closed(client):
     import jwt
+
     from api.config import settings
 
     # Token with invalid UUID sub and no tenant_id
