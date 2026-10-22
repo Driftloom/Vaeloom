@@ -123,7 +123,7 @@ describe('SEED_CAPABILITIES telemetry honesty', () => {
 
   it('only names tools that exist in the backend registry', async () => {
     const { SEED_CAPABILITIES } = await load();
-    // Subset of the 69 names registered in apps/api/src/api/tools/definitions.py.
+    // Subset of the 68 names registered in apps/api/src/api/tools/definitions.py.
     const known = new Set([
       'append_google_doc',
       'audit_ats_formatting',
@@ -213,7 +213,7 @@ describe('SEED composition shape', () => {
     expect(mcpRows.map((row) => row.id)).toEqual([]);
   });
 
-  it('pins the hand-written categories exactly: 10 agents, 39 skills, 4 plugins, 0 mcp', async () => {
+  it('pins the hand-written categories exactly: 10 agents, 28 skills, 4 plugins, 0 mcp', async () => {
     const { SEED_CAPABILITIES } = await load();
 
     const counts: Record<string, number> = {};
@@ -221,7 +221,7 @@ describe('SEED composition shape', () => {
       counts[item.category] = (counts[item.category] ?? 0) + 1;
     }
     expect(counts['agents']).toBe(10);
-    expect(counts['skills']).toBe(39);
+    expect(counts['skills']).toBe(28);
     expect(counts['plugins']).toBe(4);
     expect(counts['mcp'] ?? 0).toBe(0);
   });
@@ -230,15 +230,15 @@ describe('SEED composition shape', () => {
     const { SEED_CAPABILITIES } = await load();
     const { TOOL_FALLBACK } = await import('@/lib/tool-fallback.generated');
 
-    // 53 = 10 agents + 39 skills + 4 plugins + 0 mcp. Tool rows are generated
+    // 42 = 10 agents + 28 skills + 4 plugins + 0 mcp. Tool rows are generated
     // (asserted == TOOL_FALLBACK.length by the direct count below), so the seed
-    // is 53 hand-written rows plus the manifest, and any other row class is
+    // is 42 hand-written rows plus the manifest, and any other row class is
     // invented.
-    expect(SEED_CAPABILITIES.filter((item) => item.category !== 'tools')).toHaveLength(53);
+    expect(SEED_CAPABILITIES.filter((item) => item.category !== 'tools')).toHaveLength(42);
     expect(SEED_CAPABILITIES.filter((item) => item.category === 'tools')).toHaveLength(
       TOOL_FALLBACK.length,
     );
-    expect(SEED_CAPABILITIES).toHaveLength(53 + TOOL_FALLBACK.length);
+    expect(SEED_CAPABILITIES).toHaveLength(42 + TOOL_FALLBACK.length);
   });
 });
 

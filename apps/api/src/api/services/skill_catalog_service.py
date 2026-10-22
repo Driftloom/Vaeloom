@@ -214,8 +214,8 @@ SKILL_CATALOG: tuple[SkillCatalogEntry, ...] = (
                   # Restored from the full reference. Without these two, a user
                   # asking to "build ats resume" or for a "single column resume"
                   # activated nothing: the condensed directive is what the
-                  # matcher ever sees. Checked by
-                  # vaeloom-skills/scripts/check_catalog_fidelity.py.
+                  # matcher ever sees. Catalog fidelity is pinned in-repo by
+                  # apps/api/tests/test_skill_catalog.py.
                   "build ats resume", "single column resume"],
         self_check="numbered-operating-rules",
         markdown_doc="""# ATS Resume Builder & Single-Column Architecture Playbook
@@ -1329,7 +1329,8 @@ def validate_skill_document(
                 rule="SKILL-SCOPE-VOCABULARY",
                 message=(
                     f"required_scope '{required_scope}' is not in the tool scope "
-                    f"vocabulary ({len(vocab)} scopes registered)"
+                    f"vocabulary: {', '.join(sorted(vocab))} (canonical live list: "
+                    "GET /api/v1/capabilities/tools/definitions)"
                 ),
                 line=None,
                 severity="hard",

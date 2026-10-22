@@ -582,12 +582,12 @@ describe('CapabilitiesPage', () => {
 
     // Installed, but disabled: it must still be counted and still be listed.
     expect(screen.getByRole('button', { name: /^Installed \(1\)/i })).toBeInTheDocument();
-    // Derived, not a literal. The browsable set is every seed skill except the
-    // one the server now owns (`acceptance-criteria-review` merges into the
-    // installed row), plus `catalog-only-skill` which is not in the seed at all.
+    // Derived, not a literal. The browsable set is every seed skill — the seed
+    // no longer carries the name this server row uses, so nothing merges —
+    // plus `catalog-only-skill`, the one catalog row with no installed pair.
     const seedSkills = SEED_CAPABILITIES.filter(isSkill).length;
     expect(screen.getByRole('button', { name: /^Browse \(/i })).toHaveTextContent(
-      `Browse (${seedSkills - 1 + 1})`,
+      `Browse (${seedSkills + 1})`,
     );
     expect(skillRowButton('acceptance-criteria-review')).toBeInTheDocument();
     expect(screen.getAllByText('Disabled').length).toBeGreaterThanOrEqual(1);
@@ -736,7 +736,7 @@ describe('CapabilitiesPage', () => {
   it('rejects editing instructions when the skill has no server row', async () => {
     await renderSkills();
     await openBrowse();
-    await userClickRow('accessibility-testing');
+    await userClickRow('career-coaching');
 
     await userEditDoc('# Local only edit', { expectSaved: false });
 
@@ -745,7 +745,7 @@ describe('CapabilitiesPage', () => {
     expect(mockToast).toHaveBeenCalledWith(
       expect.objectContaining({
         tone: 'error',
-        title: expect.stringContaining('Could not save instructions for accessibility-testing'),
+        title: expect.stringContaining('Could not save instructions for career-coaching'),
         detail: expect.stringContaining('no workspace capability row'),
       }),
     );
@@ -1082,7 +1082,7 @@ describe('CapabilitiesPage', () => {
     await act(async () => {
       fireEvent.click(browseCta);
     });
-    expect(screen.getAllByText('acceptance-criteria-review').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('career-coaching').length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText('No skills installed')).not.toBeInTheDocument();
   });
 
@@ -1101,7 +1101,7 @@ describe('CapabilitiesPage', () => {
       fireEvent.click(screen.getByRole('button', { name: /^Reset search$/i }));
     });
     expect(screen.queryByText('No skills match this search')).not.toBeInTheDocument();
-    expect(screen.getAllByText('acceptance-criteria-review').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('career-coaching').length).toBeGreaterThanOrEqual(1);
   });
 
   it('reports an empty catalog as its own condition with a create call to action', async () => {
