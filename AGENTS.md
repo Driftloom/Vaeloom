@@ -60,6 +60,7 @@ Run all commands from the **repository root** unless specified otherwise.
 | Regenerate OpenAPI               | `pnpm gen:openapi`                                                                                                                                                                                                                                            |
 | Regenerate memory type union     | `python scripts/gen_memory_type_union.py` (`--check` to verify in CI)                                                                                                                                                                                         |
 | Regenerate UI design tokens      | `python scripts/gen_tokens.py` (`--check` to verify in CI)                                                                                                                                                                                                    |
+| Regenerate tool fallback         | `uv run --project apps/api python scripts/gen_tool_fallback.py` (`--check` verifies the committed manifest)                                                                                                                                                   |
 | Verify PG migrations (local)     | `pnpm verify:pg` (or `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/run_pg_verification.ps1`)                                                                                                                                                   |
 | Prove the memory rollback        | `pnpm verify:pg` proves apply/isolate/rollback against a disposable pg16. Steps 3-6 plant a row whose type only a temporary pack allows and require the downgrade to REFUSE, naming the constraint and the value. A downgrade that cannot fail is not a test. |
 
@@ -366,10 +367,11 @@ packages/
   queue/                Queue primitives (@vaeloom/queue)
   service-auth/         Service-level auth helpers (@vaeloom/service-auth)
   vaeloom-sync/         CRDT/Vault synchronization primitives (@vaeloom/vault-sync)
-integrations/
-  calendar, email, github, google-drive, notion, slack
-connectors/
-  graphql, mcp, rest
+archive/
+  integrations-legacy-ts/  legacy TS packages: calendar, email, github, google-drive, notion, slack (ADR-048)
+  connectors-legacy-ts/    legacy TS packages: graphql, rest (ADR-048)
+  connectors-mcp-ts/       legacy TS MCP connector under mcp/ (ADR-036/048)
+  skills/                  legacy skill transpiler root (claude/codex/qwen mirrors, compiler/, transpiler.py)
 sdk/
   typescript/           Public TypeScript client SDK (@vaeloom/sdk)
 plugins/
@@ -384,7 +386,7 @@ plugins/
 | Phase contracts (governing spec) | `specs/phase-contracts/` — start `00-master-index.md`                        |
 | Execution status                 | `specs/phase-contracts/EXECUTION-STATUS.md`                                  |
 | Phase evidence, gates, handoffs  | `evidence/phases/<track>/<track>-pXX/`                                       |
-| Architecture decisions           | `docs/adr/ADR-001…ADR-045`                                                   |
+| Architecture decisions           | `docs/adr/ADR-001…ADR-048`                                                   |
 | Coding guidelines                | `docs/coding-guidelines/GUIDELINES.md` & `EXAMPLES.md`                       |
 | Language standards               | `docs/engineering/Coding-Standards.md`                                       |
 | OpenAPI (generated, committed)   | `specs/api/openapi.yaml`, `docs/backend/openapi.yaml`                        |
