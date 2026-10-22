@@ -5241,22 +5241,6 @@ export const capabilitiesApi = {
     });
   },
   /**
-   * Flip a capability on or off.
-   *
-   * `workspace_id` is omitted deliberately. `UpdateCapabilityRequest` accepts the
-   * field so the client can stop having it silently dropped, but the backend only
-   * uses it to prove the client agrees with the verified workspace — authorization
-   * comes from the request-scoped workspace id (`Depends(get_workspace_id)`), never
-   * from a body field. Sending it invites a caller to believe it is load-bearing.
-   */
-  toggleCapability(
-    capabilityId: string,
-    enabled: boolean,
-    _workspaceId?: string,
-  ): Promise<CapabilityItemRecord> {
-    return apiClient.patch<CapabilityItemRecord>(`/capabilities/${capabilityId}`, { enabled });
-  },
-  /**
    * Dispatch a registered capability for real and report what happened.
    *
    * Not interchangeable with `test()`, which never executes anything.
@@ -5583,9 +5567,6 @@ export const connectorsApi = {
    */
   sync(connectorId: string): Promise<SyncStatusResponse> {
     return apiClient.post<SyncStatusResponse>(`/connectors/${connectorId}/sync`);
-  },
-  getSyncStatus(connectorId: string): Promise<SyncStatusResponse> {
-    return apiClient.get<SyncStatusResponse>(`/connectors/${connectorId}/sync/status`);
   },
   test(
     connectorId: string,

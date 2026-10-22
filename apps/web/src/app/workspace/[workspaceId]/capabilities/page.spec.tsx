@@ -211,13 +211,6 @@ jest.mock('@/lib/api-client', () => {
         }
         fakeDb.skills = fakeDb.skills.filter((entry) => entry.id !== id);
       }),
-      toggleCapability: jest.fn().mockImplementation(async (id: string, enabled: boolean) => {
-        fakeDb.updates.push({ id, body: { enabled } });
-        const row = fakeDb.skills.find((entry) => entry.id === id);
-        if (!row) throw httpError(404, 'Capability not found');
-        row.enabled = enabled;
-        return { ...row };
-      }),
       test: jest.fn().mockResolvedValue({
         status: 'success',
         capability: 'test-cap',

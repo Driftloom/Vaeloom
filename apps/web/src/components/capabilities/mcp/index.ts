@@ -2,7 +2,6 @@ export * from './types';
 export * from './mcpManifest';
 export * from './McpServerCard';
 export * from './McpTemplateGallery';
-export * from './McpConfigModal';
 export * from './McpToolInspectPanel';
 export * from './McpManifestTab';
 export * from './McpActivityLog';

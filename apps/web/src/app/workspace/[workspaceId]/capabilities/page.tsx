@@ -353,11 +353,8 @@ function CapabilitiesContent() {
     };
     nonSkillRows.forEach((item) => {
       if (item.category === 'connectors') return;
-      // `mcp` is counted from the connector hook above and then from
-      // `nonSkillRows`, which also carries the four seeded MCP rows that
-      // `McpView` never receives. Counting both reported +4 over a badge whose
-      // whole job is to describe what the tab will actually list.
-      if (item.category === 'mcp') return;
+      // mcp is counted from the connector hook above; the seed no longer carries
+      // MCP rows.
       counts[item.category] += 1;
     });
     return counts;

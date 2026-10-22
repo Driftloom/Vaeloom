@@ -10,8 +10,6 @@ import { PageHeader } from '@/components/shared/Page';
 import useSWR, { mutate } from 'swr';
 import {
   marketplaceApi,
-  connectorsApi,
-  type ConnectorItem,
   type MarketplaceListingItem,
   type WorkspacePluginInstallItem,
 } from '@/lib/api-client';
@@ -19,24 +17,6 @@ import { useToast } from '@/components/shared/Toast';
 import { EnterpriseGated, useEnterpriseEnabled } from '@/components/shared/EnterpriseGated';
 
 const CATEGORIES = ['All', 'AI', 'Analytics', 'Data', 'Integration', 'Productivity', 'Security'];
-
-/**
- * The listing id recorded in a connector's config when this page attaches the
- * built-in ATS MCP server. Install state is read back from that server-side
- * field; the previous build inferred it from whether any connector's *name*
- * happened to contain "ats", "job-search" or "crawler", which reported unrelated
- * workspace connectors as installed marketplace plugins.
- */
-const LISTING_ID_CONFIG_KEY = 'marketplace_listing_id';
-
-function installedListingIds(connectors: ConnectorItem[] | undefined): Set<string> {
-  const ids = new Set<string>();
-  for (const connector of connectors ?? []) {
-    const listingId = connector.config?.[LISTING_ID_CONFIG_KEY];
-    if (typeof listingId === 'string' && listingId) ids.add(listingId);
-  }
-  return ids;
-}
 
 export default function MarketplacePage() {
   const enterpriseEnabled = useEnterpriseEnabled();
@@ -101,14 +81,9 @@ function MarketplaceContent() {
     { revalidateOnFocus: false },
   );
 
-  // Live workspace connectors fetch (for detecting attached MCP and Composio bridges)
-  const connectorsKey = workspaceId ? `connectors-${workspaceId}` : null;
-  const { data: connectorsData, mutate: mutateConnectors } = useSWR(
-    connectorsKey,
-    () => (workspaceId ? connectorsApi.list(workspaceId) : Promise.resolve([])),
-    { revalidateOnFocus: false },
-  );
-
+  // Install state comes only from real marketplace install records; the
+  // connector-config and prefix-id paths this used to piggyback on belonged to
+  // listings the backend no longer mints.
   const installedListingsMap = useMemo(() => {
     const map = new Map<string, WorkspacePluginInstallItem>();
     if (Array.isArray(installedData)) {
@@ -118,25 +93,8 @@ function MarketplaceContent() {
         }
       }
     }
-    // Connector-backed listings carry their install state in the connector's own
-    // config, so nothing here is inferred from a display name.
-    for (const listingId of installedListingIds(
-      Array.isArray(connectorsData) ? connectorsData : undefined,
-    )) {
-      if (!map.has(listingId)) {
-        map.set(listingId, {
-          id: listingId,
-          workspaceId,
-          listingId,
-          installedBy: '',
-          isActive: true,
-          config: {},
-          installedAt: '',
-        });
-      }
-    }
     return map;
-  }, [installedData, connectorsData, workspaceId]);
+  }, [installedData]);
 
   const listings = listingsData?.items ?? [];
 
@@ -152,66 +110,6 @@ function MarketplaceContent() {
 
     setActionLoadingId(listing.id);
     try {
-      if (listing.id.startsWith('composio-')) {
-        const appId = listing.id.replace('composio-', '');
-        const res = await connectorsApi.composio.authUrl(appId, workspaceId);
-        const url = res.auth_url || res.url;
-        if (url) {
-          window.open(url, '_blank', 'noopener,noreferrer');
-          toast({
-            tone: 'info',
-            title: 'Composio OAuth Started',
-            detail: `Complete authorization for ${listing.name} in the opened window.`,
-          });
-        } else {
-          toast({
-            tone: 'error',
-            title: 'Setup Required',
-            detail: res.message || 'Composio integration is not active or missing API key.',
-          });
-        }
-        return;
-      }
-
-      if (listing.id === 'native-ats-mcp') {
-        const builtinRes = await connectorsApi.mcp.builtin();
-        // Only the named server, or nothing. Falling back to
-        // `builtin_servers?.[0]` attached an arbitrary unrelated server and then
-        // reported it as the ATS MCP the user asked for.
-        const server = builtinRes.builtin_servers?.find((s) => s.id === 'job-search-mcp');
-        if (!server) {
-          throw new Error(
-            'This deployment does not offer the Job Search ATS MCP server, so it cannot be attached.',
-          );
-        }
-
-        const created = await connectorsApi.create({
-          name: server.name,
-          type: 'mcp',
-          workspace_id: workspaceId,
-          config: { ...server.config, [LISTING_ID_CONFIG_KEY]: listing.id },
-        });
-
-        await connectorsApi.mcp.sync(created.id, workspaceId);
-
-        toast({
-          tone: 'success',
-          title: 'MCP Attached',
-          detail: `Attached ${server.name} and synchronized agent tools.`,
-        });
-        await mutateConnectors();
-        return;
-      }
-
-      if (listing.id.startsWith('native-')) {
-        toast({
-          tone: 'info',
-          title: 'Native Extension Active',
-          detail: `${listing.name} is a zero-trust core service pre-installed in this workspace.`,
-        });
-        return;
-      }
-
       await marketplaceApi.install(listing.id, { workspace_id: workspaceId });
       toast({
         tone: 'success',
@@ -236,31 +134,6 @@ function MarketplaceContent() {
 
     setActionLoadingId(listing.id);
     try {
-      if (listing.id === 'native-ats-mcp') {
-        const conn = (connectorsData || []).find(
-          (c) => c.config?.[LISTING_ID_CONFIG_KEY] === listing.id,
-        );
-        if (conn) {
-          await connectorsApi.delete(conn.id);
-          await mutateConnectors();
-          toast({
-            tone: 'info',
-            title: 'MCP Detached',
-            detail: `Successfully detached ${listing.name}.`,
-          });
-        }
-        return;
-      }
-
-      if (listing.id.startsWith('composio-') || listing.id.startsWith('native-')) {
-        toast({
-          tone: 'info',
-          title: 'Configuration Reset',
-          detail: `${listing.name} settings have been reset for this workspace.`,
-        });
-        return;
-      }
-
       await marketplaceApi.uninstall(listing.id, workspaceId);
       toast({
         tone: 'info',
@@ -456,8 +329,6 @@ function MarketplaceContent() {
           {displayedListings.map((listing) => {
             const isInstalled = installedListingsMap.has(listing.id);
             const isBusy = actionLoadingId === listing.id;
-            const isComposio = listing.id.startsWith('composio-');
-            const isNative = listing.id.startsWith('native-');
 
             return (
               <Card
@@ -475,24 +346,8 @@ function MarketplaceContent() {
                     </div>
                     <div className="flex flex-col items-end gap-1">
                       <StatusBadge
-                        variant={
-                          isInstalled
-                            ? 'success'
-                            : isNative
-                              ? 'info'
-                              : isComposio
-                                ? 'warning'
-                                : 'neutral'
-                        }
-                        label={
-                          isInstalled
-                            ? 'Installed'
-                            : isNative
-                              ? 'Native'
-                              : isComposio
-                                ? 'Composio'
-                                : 'Free'
-                        }
+                        variant={isInstalled ? 'success' : 'neutral'}
+                        label={isInstalled ? 'Installed' : 'Free'}
                       />
                     </div>
                   </div>
@@ -536,13 +391,7 @@ function MarketplaceContent() {
                       }
                     }}
                   >
-                    {isInstalled
-                      ? 'Uninstall'
-                      : isComposio
-                        ? 'Connect'
-                        : listing.id === 'native-ats-mcp'
-                          ? 'Attach MCP'
-                          : 'Install'}
+                    {isInstalled ? 'Uninstall' : 'Install'}
                   </Button>
                 </div>
               </Card>
@@ -577,32 +426,6 @@ function MarketplaceContent() {
 
             <p className="text-sm text-text leading-relaxed">{selectedListing.description}</p>
 
-            {/* Composio Notice */}
-            {selectedListing.id.startsWith('composio-') && (
-              <div className="p-3 rounded-lg border border-warning/30 bg-warning-muted text-xs space-y-1">
-                <div className="flex items-center gap-1.5 font-semibold text-warning">
-                  <span>Composio SaaS Integration</span>
-                </div>
-                <p className="text-text-muted leading-relaxed">
-                  Requires active Composio workspace connection. Configured API credentials remain
-                  encrypted at rest with workspace isolation.
-                </p>
-              </div>
-            )}
-
-            {/* Native Notice */}
-            {selectedListing.id.startsWith('native-') && (
-              <div className="p-3 rounded-lg border border-info/30 bg-info-muted text-xs space-y-1">
-                <div className="flex items-center gap-1.5 font-semibold text-info">
-                  <span>Vaeloom Native Extension</span>
-                </div>
-                <p className="text-text-muted leading-relaxed">
-                  Direct zero-trust backend integration. Runs inside the workspace execution
-                  boundary with strict RBAC governance.
-                </p>
-              </div>
-            )}
-
             {/* Permission Scopes */}
             <div>
               <h4 className="text-xs font-semibold text-text uppercase tracking-wider mb-2">
@@ -625,50 +448,45 @@ function MarketplaceContent() {
             </div>
 
             {/* Rating Section */}
-            {!selectedListing.id.startsWith('composio-') &&
-              !selectedListing.id.startsWith('native-') && (
-                <div className="space-y-3 pt-3 border-t border-border">
-                  <h4 className="text-xs font-semibold text-text uppercase tracking-wider">
-                    Rate This Plugin
-                  </h4>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-text-muted">Your Rating:</span>
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        type="button"
-                        aria-label={`Rate ${star} out of 5 stars`}
-                        onClick={() => setRatingInput(star)}
-                        className={`text-lg transition-colors ${
-                          star <= ratingInput ? 'text-warning' : 'text-text-dim hover:text-warning'
-                        }`}
-                      >
-                        ★
-                      </button>
-                    ))}
-                    <span className="text-xs font-mono text-text-muted ml-2">
-                      {ratingInput} / 5
-                    </span>
-                  </div>
-                  <Input
-                    placeholder="Write an optional review…"
-                    value={reviewInput}
-                    onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                      setReviewInput(e.target.value)
-                    }
-                  />
-                  <div className="flex justify-end">
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      loading={isSubmittingRating}
-                      onClick={() => handleSubmitRating(selectedListing.id)}
-                    >
-                      Submit Review
-                    </Button>
-                  </div>
-                </div>
-              )}
+            <div className="space-y-3 pt-3 border-t border-border">
+              <h4 className="text-xs font-semibold text-text uppercase tracking-wider">
+                Rate This Plugin
+              </h4>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-text-muted">Your Rating:</span>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    aria-label={`Rate ${star} out of 5 stars`}
+                    onClick={() => setRatingInput(star)}
+                    className={`text-lg transition-colors ${
+                      star <= ratingInput ? 'text-warning' : 'text-text-dim hover:text-warning'
+                    }`}
+                  >
+                    ★
+                  </button>
+                ))}
+                <span className="text-xs font-mono text-text-muted ml-2">{ratingInput} / 5</span>
+              </div>
+              <Input
+                placeholder="Write an optional review…"
+                value={reviewInput}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setReviewInput(e.target.value)
+                }
+              />
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  loading={isSubmittingRating}
+                  onClick={() => handleSubmitRating(selectedListing.id)}
+                >
+                  Submit Review
+                </Button>
+              </div>
+            </div>
 
             <div className="flex justify-end gap-2 pt-3 border-t border-border">
               <Button variant="secondary" size="sm" onClick={() => setSelectedListing(null)}>
@@ -686,13 +504,7 @@ function MarketplaceContent() {
                   }
                 }}
               >
-                {installedListingsMap.has(selectedListing.id)
-                  ? 'Uninstall'
-                  : selectedListing.id.startsWith('composio-')
-                    ? 'Connect OAuth'
-                    : selectedListing.id === 'native-ats-mcp'
-                      ? 'Attach MCP Server'
-                      : 'Install Plugin'}
+                {installedListingsMap.has(selectedListing.id) ? 'Uninstall' : 'Install Plugin'}
               </Button>
             </div>
           </div>
