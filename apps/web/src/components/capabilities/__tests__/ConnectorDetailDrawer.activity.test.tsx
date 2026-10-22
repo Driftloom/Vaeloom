@@ -159,3 +159,100 @@ describe('ConnectorDetailDrawer Activity tab', () => {
     expect(tabs[0]?.getAttribute('aria-selected')).toBe('true');
   });
 });
+
+/**
+ * Task 14 (D2/D4). The drawer's two census dots (:361 idle/scope list,
+ * :599 active/zero-trust heading) and the destructive rollback gate.
+ *
+ * The rollback assertions pin the exact interpolated message split of the
+ * original `window.confirm` string: the question became a dialog title, the
+ * credentials sentence became its description; Escape/Cancel must never reach
+ * `connectorsApi.rollback`.
+ */
+
+/** StatusDot dot node only. For :599 the md size is part of the selector
+ * because the drawer header already renders a sm active StatusDot in the
+ * Connected badge — without the size token the pre-conversion header dot
+ * would satisfy the assertion and mask the :599 site. */
+const dotNode = (color: string, size = '') => {
+  const prefix =
+    size === 'md'
+      ? 'relative inline-flex rounded-full h-2 w-2'
+      : 'relative inline-flex rounded-full';
+  return `[class^="${prefix}"][class*="${color}"]`;
+};
+
+describe('ConnectorDetailDrawer status dots', () => {
+  it('renders the scope-list idle dot via StatusDot (overview tab)', () => {
+    usageMock.mockResolvedValue({ ...baseUsage, config_version: 1 });
+    const { container } = renderDrawer();
+    expect(container.querySelector(dotNode('bg-primary'))).toBeTruthy();
+  });
+
+  it('renders the zero-trust active dot via StatusDot (security tab)', async () => {
+    usageMock.mockResolvedValue({ ...baseUsage, config_version: 1 });
+    renderDrawer();
+    fireEvent.click(screen.getByRole('tab', { name: 'Zero-Trust & Health' }));
+    expect(document.querySelector(dotNode('bg-success', 'md'))).toBeTruthy();
+  });
+});
+
+describe('ConnectorDetailDrawer rollback confirmation dialog', () => {
+  beforeEach(() => {
+    usageMock.mockReset();
+    (connectorsApi.rollback as jest.Mock).mockClear();
+  });
+
+  async function openWithRollbackAvailable() {
+    usageMock.mockResolvedValue({
+      ...baseUsage,
+      config_version: 5,
+      events_by_action: {},
+      total_events: 0,
+      name: 'github',
+    });
+    await openActivity();
+    await waitFor(() => expect(screen.getByText('5')).toBeTruthy());
+  }
+
+  it('shows the ConfirmationDialog with the exact interpolated title and description', async () => {
+    await openWithRollbackAvailable();
+    fireEvent.click(screen.getByText(/Roll back to previous config version/i));
+    expect(
+      screen.getByRole('heading', { name: 'Restore github to config version 4?' }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText('The stored config and credentials are replaced by that snapshot.'),
+    ).toBeTruthy();
+  });
+
+  it('does not call rollback when the dialog is cancelled (Cancel or Escape)', async () => {
+    await openWithRollbackAvailable();
+    fireEvent.click(screen.getByText(/Roll back to previous config version/i));
+
+    // Escape cancels the dialog without touching the restore path.
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(
+      screen.queryByRole('heading', { name: 'Restore github to config version 4?' }),
+    ).toBeNull();
+    expect(connectorsApi.rollback).not.toHaveBeenCalled();
+
+    // The Cancel button answers the same way.
+    fireEvent.click(screen.getByText(/Roll back to previous config version/i));
+    expect(
+      screen.getByRole('heading', { name: 'Restore github to config version 4?' }),
+    ).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }));
+    expect(
+      screen.queryByRole('heading', { name: 'Restore github to config version 4?' }),
+    ).toBeNull();
+    expect(connectorsApi.rollback).not.toHaveBeenCalled();
+  });
+
+  it('proceeds on confirm and rolls back to config_version - 1', async () => {
+    await openWithRollbackAvailable();
+    fireEvent.click(screen.getByText(/Roll back to previous config version/i));
+    fireEvent.click(screen.getByRole('button', { name: 'Restore' }));
+    await waitFor(() => expect(connectorsApi.rollback).toHaveBeenCalledWith('conn-1', 4));
+  });
+});

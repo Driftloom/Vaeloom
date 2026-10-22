@@ -8,6 +8,7 @@ import {
   EmptyState,
   ErrorState,
   Skeleton,
+  StatusDot,
   Tabs,
   TabPanel,
   Textarea,
@@ -630,10 +631,7 @@ export const AgentDetailPane: React.FC<AgentDetailPaneProps> = ({
 
           <footer className="px-5 py-2.5 border-t border-border bg-surface flex flex-wrap items-center justify-between gap-2 text-xs font-sans text-text-muted shrink-0">
             <span className="inline-flex items-center gap-2">
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${selectedAgent.enabled ? 'bg-success' : 'bg-text-muted'}`}
-                aria-hidden="true"
-              />
+              <StatusDot status={selectedAgent.enabled ? 'active' : 'disabled'} size="sm" />
               {selectedAgent.enabled ? 'Enabled in this workspace' : 'Disabled in this workspace'}
             </span>
             <span className="inline-flex items-center gap-3 font-mono text-2xs">

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Badge, Button, IconButton, Tooltip } from '@vaeloom/ui-kit';
+import { Badge, Button, IconButton, StatusDot, Tooltip } from '@vaeloom/ui-kit';
 import type { SkillRow } from '../SkillsView';
 import { formatRelativeTime } from '@/lib/capabilities-data';
 
@@ -9,16 +9,12 @@ interface SkillTelemetryCardProps {
   row: SkillRow;
   onOpenPlayground: (row: SkillRow) => void;
   onCopyDoc: (key: string) => void;
-  onEditDoc?: () => void;
-  isEditing?: boolean;
 }
 
 export const SkillTelemetryCard: React.FC<SkillTelemetryCardProps> = ({
   row,
   onOpenPlayground,
   onCopyDoc,
-  onEditDoc,
-  isEditing,
 }) => {
   const { item } = row;
 
@@ -43,7 +39,7 @@ export const SkillTelemetryCard: React.FC<SkillTelemetryCardProps> = ({
         : 'default';
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-4 sm:p-5 shadow-xs space-y-4">
+    <div className="rounded-container border border-border bg-surface p-4 sm:p-5 shadow-elevation-card space-y-4">
       {/* Header & Badges */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div className="min-w-0">
@@ -94,7 +90,7 @@ export const SkillTelemetryCard: React.FC<SkillTelemetryCardProps> = ({
             className="text-xs flex items-center gap-1.5"
             aria-label={`Open Playground for ${item.name}`}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
+            <StatusDot status="active" pulse size="sm" />
             <span>Test Playground</span>
           </Button>
 
@@ -135,7 +131,7 @@ export const SkillTelemetryCard: React.FC<SkillTelemetryCardProps> = ({
       </div>
 
       {/* Grid of Key Telemetry Indicators */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 rounded-lg bg-surface-hover/30 border border-border-subtle text-2xs">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 rounded-card bg-surface-elevated border border-border-subtle text-2xs">
         <div>
           <span className="text-text-muted block">Required Scope</span>
           <span
@@ -172,7 +168,7 @@ export const SkillTelemetryCard: React.FC<SkillTelemetryCardProps> = ({
           item.triggers.map((trigger) => (
             <span
               key={trigger}
-              className="px-2 py-0.5 rounded-md bg-primary/10 text-primary border border-primary/20 font-mono"
+              className="px-2 py-0.5 rounded-control bg-primary/10 text-primary border border-primary/20 font-mono"
             >
               &ldquo;{trigger}&rdquo;
             </span>

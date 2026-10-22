@@ -2,7 +2,15 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { Badge, Button, Spinner, StatusDot, Tooltip, useFocusTrap } from '@vaeloom/ui-kit';
+import {
+  Badge,
+  Button,
+  ConfirmationDialog,
+  Spinner,
+  StatusDot,
+  Tooltip,
+  useFocusTrap,
+} from '@vaeloom/ui-kit';
 import {
   connectorsApi,
   type ConnectorHealthResponse,
@@ -63,6 +71,7 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
   const [loadingUsage, setLoadingUsage] = useState(false);
   const [usageError, setUsageError] = useState<string | null>(null);
   const [rollingBack, setRollingBack] = useState(false);
+  const [confirmRollback, setConfirmRollback] = useState(false);
 
   const TABS = [
     { id: 'overview', label: 'Overview & Permissions' },
@@ -84,8 +93,10 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
   };
 
   // Escape plus Tab containment. This declared aria-modal="true" while trapping
-  // nothing, so Tab walked out into the page behind the drawer.
-  const drawerRef = useFocusTrap(isOpen, onClose);
+  // nothing, so Tab walked out into the page behind the drawer. While the
+  // rollback confirmation dialog is open the drawer's own trap stands down so
+  // one Escape press dismisses the dialog, not the drawer beneath it.
+  const drawerRef = useFocusTrap(isOpen && !confirmRollback, onClose);
 
   // Load tools when tools tab is activated or row changes
   const loadTools = useCallback(async () => {
@@ -138,18 +149,20 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
     }
   }, [isOpen, activeTab, connectorId, loadUsage]);
 
-  const handleRollback = async () => {
+  // The button opens the confirmation dialog; the restore itself happens in
+  // performRollback only after the dialog's confirm is pressed.
+  const handleRollback = () => {
     if (!connectorId || !usage) return;
     // `rollback_config` resolves `version` against config_history and 404s when
     // the snapshot is absent, so the target is the version immediately before
     // the current one. If no such snapshot exists the 404 surfaces below rather
     // than silently restoring the wrong config.
-    const targetVersion = usage.config_version - 1;
-    const confirmed = window.confirm(
-      `Restore ${usage.name} to config version ${targetVersion}? ` +
-        'The stored config and credentials are replaced by that snapshot.',
-    );
-    if (!confirmed) return;
+    setConfirmRollback(true);
+  };
+
+  const performRollback = async (targetVersion: number) => {
+    if (!connectorId || !usage) return;
+    setConfirmRollback(false);
     setRollingBack(true);
     try {
       await connectorsApi.rollback(connectorId, targetVersion);
@@ -358,7 +371,7 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
                             key={scope}
                             className="flex items-center gap-2 text-2xs font-mono text-text-secondary"
                           >
-                            <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+                            <StatusDot status="idle" size="sm" />
                             <span className="truncate">{scope}</span>
                           </li>
                         ))}
@@ -574,7 +587,7 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
                     {usage.config_version > 1 && (
                       <button
                         type="button"
-                        onClick={() => void handleRollback()}
+                        onClick={handleRollback}
                         disabled={rollingBack}
                         className="text-xs text-error underline underline-offset-2 disabled:opacity-60"
                       >
@@ -596,7 +609,7 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
                 {/* Security Guarantees */}
                 <div className="rounded-xl border border-border bg-surface-elevated/40 p-4 space-y-3">
                   <h3 className="text-xs font-semibold text-text flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-success" />
+                    <StatusDot status="active" size="md" />
                     Zero-Trust Security Posture
                   </h3>
                   <div className="grid grid-cols-1 gap-2.5 text-2xs">
@@ -722,6 +735,23 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
               )}
             </div>
           </div>
+
+          {/* Destructive rollback confirmation. The original window.confirm
+              message is split verbatim: the question became the title, the
+              credentials sentence became the description, and the interpolated
+              `usage.name` / `usage.config_version - 1` values are kept. */}
+          {usage && (
+            <ConfirmationDialog
+              isOpen={confirmRollback}
+              title={`Restore ${usage.name} to config version ${usage.config_version - 1}?`}
+              description="The stored config and credentials are replaced by that snapshot."
+              confirmLabel="Restore"
+              variant="destructive"
+              loading={rollingBack}
+              onConfirm={() => void performRollback(usage.config_version - 1)}
+              onClose={() => setConfirmRollback(false)}
+            />
+          )}
         </div>
       </div>
     </div>

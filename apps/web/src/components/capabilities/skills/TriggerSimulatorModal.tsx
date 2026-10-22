@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { Badge, Button, FormField, Modal, Textarea } from '@vaeloom/ui-kit';
+import { Badge, Button, FormField, Modal, StatusDot, Textarea } from '@vaeloom/ui-kit';
 import type { SkillRow } from '../SkillsView';
 import { matchTriggerHits } from './trigger-matcher';
 
@@ -130,7 +130,7 @@ export const TriggerSimulatorModal: React.FC<TriggerSimulatorModalProps> = ({
                 >
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-pill bg-success" />
+                      <StatusDot status="active" size="sm" />
                       <span className="font-semibold text-xs text-text">{row.item.name}</span>
                       <Badge variant="success" size="sm">
                         {isAmbient ? 'Ambient' : 'Trigger Hit'}
@@ -175,7 +175,7 @@ export const TriggerSimulatorModal: React.FC<TriggerSimulatorModalProps> = ({
                     className="py-2 flex items-center justify-between text-2xs text-text-muted px-2"
                   >
                     <div className="flex items-center gap-2">
-                      <span className="w-1.5 h-1.5 rounded-pill bg-warning" />
+                      <StatusDot status="warning" size="sm" />
                       <span>{row.item.name}</span>
                       <Badge variant="warning" size="sm">
                         Disabled
