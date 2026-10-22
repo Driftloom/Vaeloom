@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Badge, EmptyState, Switch, Tooltip } from '@vaeloom/ui-kit';
+import { Badge, EmptyState, Select, Switch, Tooltip } from '@vaeloom/ui-kit';
 import { SuiteIcon } from './SuiteIcon';
 import {
   GATE_ENFORCEMENT,
@@ -72,15 +72,16 @@ export const ToolSuiteAccordion: React.FC<ToolSuiteAccordionProps> = ({
           <label htmlFor="tools-sort-select" className="text-2xs font-sans text-text-muted">
             Sort
           </label>
-          <select
+          <Select
             id="tools-sort-select"
             value={sortBy}
-            onChange={(e) => onSortChange(e.target.value as ToolSort)}
-            className="bg-surface-elevated text-text border border-border rounded px-2 py-1 text-xs font-sans focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 cursor-pointer"
-          >
-            <option value="most-used">Catalog order</option>
-            <option value="alphabetical">A-Z</option>
-          </select>
+            onChange={(value: string) => onSortChange(value as ToolSort)}
+            options={[
+              { value: 'most-used', label: 'Catalog order' },
+              { value: 'alphabetical', label: 'A-Z' },
+            ]}
+            className="px-2 py-1 text-xs cursor-pointer"
+          />
         </div>
       </div>
 

@@ -1453,20 +1453,22 @@ function TagEditor({
             </button>
           </span>
         ))}
-        <input
-          type="text"
-          aria-label="Add a tag"
-          value={input}
-          onChange={(event: React.ChangeEvent<HTMLInputElement>) => onInput(event.target.value)}
-          onKeyDown={(event: React.KeyboardEvent<HTMLInputElement>) => {
-            if (event.key === 'Enter' || event.key === ',') {
-              event.preventDefault();
-              onAdd(input);
-            }
-          }}
-          placeholder="+ Type tag and press Enter"
-          className="bg-transparent text-xs text-text placeholder:text-text-muted focus:outline-none flex-1 min-w-[120px] px-1"
-        />
+        <div className="flex-1 min-w-[120px]">
+          <Input
+            type="text"
+            aria-label="Add a tag"
+            value={input}
+            onChange={(event: React.ChangeEvent<HTMLInputElement>) => onInput(event.target.value)}
+            onKeyDown={(event: React.KeyboardEvent<HTMLInputElement>) => {
+              if (event.key === 'Enter' || event.key === ',') {
+                event.preventDefault();
+                onAdd(input);
+              }
+            }}
+            placeholder="+ Type tag and press Enter"
+            className="bg-[transparent] border-[0px] px-[0px] py-[0px] text-[12px] text-text placeholder:text-text-muted focus:ring-[0px] shadow-[none]"
+          />
+        </div>
       </div>
       <div className="flex flex-wrap items-center gap-1">
         {suggestions.map((tag) => (
@@ -1879,7 +1881,6 @@ export function AddCapabilityModal({
   const [issues, setIssues] = useState<FieldIssue[]>([]);
   const [collisions, setCollisions] = useState<ReadonlySet<string>>(() => new Set<string>());
 
-  const nameRef = useRef<HTMLInputElement>(null);
   const dialogRef = useFocusTrap(isOpen, onClose);
   const submittingRef = useRef(false);
 
@@ -2008,7 +2009,7 @@ export function AddCapabilityModal({
     const found = validateDraft(draft, readiness);
     if (found.length > 0) {
       setIssues(found);
-      nameRef.current?.focus();
+      (document.getElementById('capability-name-input') as HTMLInputElement | null)?.focus();
       return;
     }
     submittingRef.current = true;
@@ -2360,11 +2361,11 @@ export function AddCapabilityModal({
 
       <div className="space-y-1.5">
         <label className="flex items-start gap-2 text-xs text-text-secondary cursor-pointer">
-          <input
+          <Input
             type="checkbox"
             checked={allowWindowsBatch}
             onChange={(event) => setAllowWindowsBatch(event.target.checked)}
-            className="mt-0.5"
+            className="w-[1rem] h-[1rem] mt-[2px] shrink-0 px-[0px] py-[0px] rounded-[4px] border-[0px] bg-[transparent] shadow-[none] focus:ring-[0px] accent-primary"
           />
           <span>
             Allow Windows batch wrapper (<code className="font-mono">.cmd</code>/
@@ -2379,11 +2380,11 @@ export function AddCapabilityModal({
         </label>
         {transport === 'http' && (
           <label className="flex items-start gap-2 text-xs text-text-secondary cursor-pointer">
-            <input
+            <Input
               type="checkbox"
               checked={allowInsecure}
               onChange={(event) => setAllowInsecure(event.target.checked)}
-              className="mt-0.5"
+              className="w-[1rem] h-[1rem] mt-[2px] shrink-0 px-[0px] py-[0px] rounded-[4px] border-[0px] bg-[transparent] shadow-[none] focus:ring-[0px] accent-primary"
             />
             <span>
               Allow plain http:// endpoint (development only)
@@ -2473,10 +2474,11 @@ export function AddCapabilityModal({
                 },
               )}
               <label className="flex items-center gap-1 text-2xs text-text-muted shrink-0">
-                <input
+                <Input
                   type="checkbox"
                   checked={param.required}
                   onChange={(event) => patchParam(index, { required: event.target.checked })}
+                  className="w-[1rem] h-[1rem] shrink-0 px-[0px] py-[0px] rounded-[4px] border-[0px] bg-[transparent] shadow-[none] focus:ring-[0px] accent-primary"
                 />
                 Req
               </label>
@@ -2826,11 +2828,15 @@ export function AddCapabilityModal({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
                   {/* Identity, shared by every category */}
                   <div className="space-y-3.5">
-                    <FormField label="Name / identifier" required error={nameIssue ?? undefined}>
-                      {({ id, errorId }: { id: string; errorId?: string }) => (
-                        <input
-                          ref={nameRef}
-                          id={id}
+                    <FormField
+                      label="Name / identifier"
+                      htmlFor="capability-name-input"
+                      required
+                      error={nameIssue ?? undefined}
+                    >
+                      {({ errorId }: { id: string; errorId?: string }) => (
+                        <Input
+                          id="capability-name-input"
                           type="text"
                           value={name}
                           aria-invalid={nameIssue ? true : undefined}
@@ -2840,7 +2846,7 @@ export function AddCapabilityModal({
                             setIssues([]);
                           }}
                           placeholder="e.g. code-synthesizer or ats-scoring"
-                          className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary font-mono text-xs focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+                          className="font-mono text-[12px]"
                         />
                       )}
                     </FormField>
@@ -2903,7 +2909,7 @@ export function AddCapabilityModal({
                                       : 'bg-surface border-border text-text-muted hover:text-text'
                                   }`}
                                 >
-                                  <input
+                                  <Input
                                     type="checkbox"
                                     checked={checked}
                                     onChange={() =>
@@ -2913,6 +2919,7 @@ export function AddCapabilityModal({
                                           : [...prev, tool.id],
                                       )
                                     }
+                                    className="w-[1rem] h-[1rem] shrink-0 px-[0px] py-[0px] rounded-[4px] border-[0px] bg-[transparent] shadow-[none] focus:ring-[0px] accent-primary"
                                   />
                                   <span className="font-mono text-xs truncate">{tool.name}</span>
                                 </label>
@@ -3109,7 +3116,7 @@ export function AddCapabilityModal({
               >
                 <p className="text-xs font-semibold text-text">Drop your capability file here</p>
                 <p className="text-2xs text-text-muted mt-0.5">or browse (.md, .json, .yaml)</p>
-                <input
+                <Input
                   type="file"
                   accept=".md,.markdown,.json,.yaml,.yml"
                   className="sr-only"

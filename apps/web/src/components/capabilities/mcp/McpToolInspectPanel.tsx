@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Badge, Button, Spinner } from '@vaeloom/ui-kit';
+import { Badge, Button, Spinner, Textarea } from '@vaeloom/ui-kit';
 import { type BuiltinMcpServer, type ConnectorItem, type McpToolInfo } from '@/lib/api-client';
 import { McpServerCard } from './McpServerCard';
 import {
@@ -346,13 +346,13 @@ export const McpToolInspectPanel: React.FC<McpToolInspectPanelProps> = ({
                         >
                           Arguments (JSON)
                         </label>
-                        <textarea
+                        <Textarea
                           id="mcp-tool-args"
                           value={testArgsJson}
                           onChange={(event) => setTestArgsJson(event.target.value)}
                           rows={3}
                           spellCheck={false}
-                          className="w-full p-2 rounded bg-surface-elevated border border-border font-mono text-xs text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 placeholder:text-text-muted"
+                          className="min-h-[0px] px-[8px] py-[8px] rounded-[4px] bg-surface-elevated font-mono text-xs text-text"
                           placeholder='{ "query": "test" }'
                         />
                       </div>
