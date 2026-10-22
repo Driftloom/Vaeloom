@@ -2,8 +2,6 @@ packages:
   - 'apps/*'
   - 'packages/*'
   - 'sdk/*'
-  - 'integrations/*'
-  - 'connectors/*'
   - 'plugins/*'
   - 'infra/*'
   - 'scripts/*'
