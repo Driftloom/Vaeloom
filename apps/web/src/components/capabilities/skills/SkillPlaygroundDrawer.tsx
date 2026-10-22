@@ -7,6 +7,7 @@ import {
   FormField,
   MessageIcon,
   MIN_TOUCH_TARGET,
+  StatusDot,
   Textarea,
   XIcon,
   ZapIcon,
@@ -199,7 +200,7 @@ export const SkillPlaygroundDrawer: React.FC<SkillPlaygroundDrawerProps> = ({
         <div className="p-4 border-b border-border bg-surface shrink-0 flex items-center justify-between">
           <div className="min-w-0 pr-3">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-pill bg-primary animate-pulse" />
+              <StatusDot status="idle" size="md" pulse />
               <h2 className="text-sm font-semibold text-text truncate">
                 Skill Diagnostic Playground
               </h2>
