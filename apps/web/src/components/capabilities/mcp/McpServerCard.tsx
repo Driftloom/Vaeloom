@@ -1,7 +1,17 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Badge, Button, ConfirmationDialog, IconButton, StatusDot, Tooltip } from '@vaeloom/ui-kit';
+import {
+  Badge,
+  Button,
+  ConfirmationDialog,
+  IconButton,
+  PlayIcon,
+  PauseIcon,
+  StatusDot,
+  Tooltip,
+  TrashIcon,
+} from '@vaeloom/ui-kit';
 import { type ConnectorItem } from '@/lib/api-client';
 import { formatRelativeTime } from '@/lib/capabilities-data';
 import { isStdioConfig, SERVER_STATUS_META } from './types';
@@ -188,31 +198,7 @@ export const McpServerCard: React.FC<McpServerCardProps> = ({
               onClick={() => void handleTogglePause()}
               className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 text-text-muted hover:text-text transition-opacity"
             >
-              {isPaused ? (
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"
-                  />
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              ) : (
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              )}
+              {isPaused ? <PlayIcon size={14} /> : <PauseIcon size={14} />}
             </IconButton>
           )}
 
@@ -223,14 +209,7 @@ export const McpServerCard: React.FC<McpServerCardProps> = ({
             onClick={() => setDeleteDialogOpen(true)}
             className="opacity-0 group-hover:opacity-100 focus-visible:opacity-100 hover:text-error transition-opacity"
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-              />
-            </svg>
+            <TrashIcon size={14} />
           </IconButton>
         </div>
       </div>
