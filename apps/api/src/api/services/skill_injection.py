@@ -562,6 +562,110 @@ def _order_key(skill: EnabledSkill) -> tuple[int, int, str]:
     )
 
 
+def evaluate_skill_gates(
+    rows: Sequence[WorkspaceCapability],
+    granted_scopes: Sequence[str] | None,
+    haystack: str,
+    *,
+    pinned: str | None = None,
+    budget: int = SKILL_DIRECTIVE_TOKEN_BUDGET,
+) -> tuple[list[EnabledSkill], list[SkillSkip]]:
+    """Evaluate every skill gate for a workspace and report the outcome.
+
+    Pure and database-free: the rows are passed in, so the dry-run probe in
+    ``routers.capabilities`` and the production injection in
+    :func:`build_skill_directive` run the SAME gate logic. A probe therefore
+    cannot disagree with what a real turn would do -- there is one code path,
+    not a reimplementation.
+
+    Gates, in order, each justified by a real field on the row:
+    ``enabled`` → ``domain_policy`` → ``required_scope`` → ``scope_granted`` →
+    ``markdown_doc`` → ``pin`` → ``trigger`` → ``budget``.
+
+    Returns ``(injected, skipped)``. ``injected`` are the skills that would be
+    rendered into the prompt, already budget-ordered; ``skipped`` records why
+    every other skill did not make it. Nothing is dropped silently.
+
+    ``pinned`` names the skill the caller pinned for this turn. A pin
+    bypasses the *trigger* gate for that one skill only (the caller asked for
+    it explicitly); every other gate still applies. A pin that matches no
+    skill in this workspace is reported as ``pinned_unknown`` but never blocks
+    a row -- it is not a reason to change what the other skills do.
+    """
+    granted = {s.strip() for s in (granted_scopes or []) if s and s.strip()}
+    pin = (pinned or "").strip().lower() or None
+    hay = _normalize(haystack)
+
+    resolved = [(row, _resolve(row)) for row in rows]
+
+    skipped: list[SkillSkip] = []
+    if pin is not None and not any(skill.name.lower() == pin for _row, skill in resolved):
+        skipped.append(
+            SkillSkip(pin, "pinned_unknown", f"pin '{pin}' matches no skill in this workspace")
+        )
+
+    eligible: list[EnabledSkill] = []
+    for row, skill in resolved:
+        if not row.enabled:
+            skipped.append(SkillSkip(skill.name, "disabled", "enabled is false"))
+            continue
+        if skill.name.lower() in PROHIBITED_EXTERNAL_DOMAINS:
+            skipped.append(
+                SkillSkip(skill.name, "domain_policy_exclusion", "skill is excluded by platform domain policy")
+            )
+            continue
+        if not skill.required_scope:
+            skipped.append(
+                SkillSkip(skill.name, "no_required_scope", "skill declares no required_scope")
+            )
+            continue
+        if skill.required_scope not in granted:
+            skipped.append(
+                SkillSkip(
+                    skill.name,
+                    "scope_not_granted",
+                    f"requires '{skill.required_scope}'; granted: {sorted(granted)}",
+                )
+            )
+            continue
+        if not skill.markdown_doc.strip():
+            skipped.append(
+                SkillSkip(skill.name, "no_markdown_doc", "skill has no markdown document")
+            )
+            continue
+        is_pinned = bool(pin and skill.name.lower() == pin)
+        matched, detail = _trigger_state(skill, hay)
+        if not matched and not is_pinned:
+            skipped.append(SkillSkip(skill.name, "trigger_not_matched", detail))
+            continue
+        # Carry the hit count so _order_key can rank by how specifically this
+        # message activated the skill, instead of by name.
+        eligible.append(replace(skill, match_hits=len(_trigger_hits(skill, hay))))
+
+    eligible.sort(key=_order_key)
+
+    injected: list[EnabledSkill] = []
+    spent = estimate_tokens(DIRECTIVE_HEADER)
+    for skill in eligible:
+        block = _render_block(skill)
+        cost = estimate_tokens(block) + 2
+        if spent + cost > budget:
+            # Whole-skill drop. Truncating here would deliver half an Operating
+            # Rules list, which reads as an instruction set with rules missing.
+            skipped.append(
+                SkillSkip(
+                    skill.name,
+                    "token_budget_exceeded",
+                    f"directive budget {budget} tokens exhausted",
+                )
+            )
+            continue
+        spent += cost
+        injected.append(skill)
+
+    return injected, skipped
+
+
 async def build_skill_directive(
     db: AsyncSession,
     workspace_id: Any,
@@ -596,71 +700,14 @@ async def build_skill_directive(
     if not rows:
         return SkillDirective(text="")
 
-    injected: list[EnabledSkill] = []
-    skipped: list[SkillSkip] = []
-    eligible: list[EnabledSkill] = []
+    injected, skipped = evaluate_skill_gates(
+        rows, granted, haystack, pinned=None, budget=budget
+    )
 
-    for row in rows:
-        skill = _resolve(row)
-        if not row.enabled:
-            skipped.append(SkillSkip(skill.name, "disabled", "enabled is false"))
-            continue
-        if skill.name.lower() in PROHIBITED_EXTERNAL_DOMAINS:
-            skipped.append(
-                SkillSkip(skill.name, "domain_policy_exclusion", "skill is excluded by platform domain policy")
-            )
-            continue
-        if not skill.required_scope:
-            skipped.append(
-                SkillSkip(skill.name, "no_required_scope", "skill declares no required_scope")
-            )
-            continue
-        if skill.required_scope not in granted:
-            skipped.append(
-                SkillSkip(
-                    skill.name,
-                    "scope_not_granted",
-                    f"requires '{skill.required_scope}'; granted: {sorted(granted)}",
-                )
-            )
-            continue
-        if not skill.markdown_doc.strip():
-            skipped.append(
-                SkillSkip(skill.name, "no_markdown_doc", "skill has no markdown document")
-            )
-            continue
-        matched, detail = _trigger_state(skill, haystack)
-        if not matched:
-            skipped.append(SkillSkip(skill.name, "trigger_not_matched", detail))
-            continue
-        # Carry the hit count so _order_key can rank by how specifically this
-        # message activated the skill, instead of by name.
-        eligible.append(replace(skill, match_hits=len(_trigger_hits(skill, haystack))))
-
-    eligible.sort(key=_order_key)
-
-    blocks: list[str] = []
-    spent = estimate_tokens(DIRECTIVE_HEADER)
-    for skill in eligible:
-        block = _render_block(skill)
-        cost = estimate_tokens(block) + 2
-        if spent + cost > budget:
-            # Whole-skill drop. Truncating here would deliver half an Operating
-            # Rules list, which reads as an instruction set with rules missing.
-            skipped.append(
-                SkillSkip(
-                    skill.name,
-                    "token_budget_exceeded",
-                    f"directive budget {budget} tokens exhausted",
-                )
-            )
-            continue
-        blocks.append(block)
-        spent += cost
-        injected.append(skill)
-
-    if not blocks:
+    if not injected:
         return SkillDirective(text="", skipped=tuple(skipped))
+
+    blocks = [_render_block(skill) for skill in injected]
 
     await record_injected_usage(workspace_id, injected, run_id=usage_run_id)
 

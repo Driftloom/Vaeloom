@@ -4,14 +4,13 @@ Verifies each checkpoint fix systematically.
 """
 from __future__ import annotations
 
-import asyncio
 import pytest
 
+from api.agents.qa_agent.handler import QAAgent
 from api.orchestrator.card_registry import card_registry
 from api.orchestrator.loop import _build_context_prompt
-from api.agents.qa_agent.handler import QAAgent
-from api.services.llm_service import LLMService
 from api.services.agent_costs import agent_cost_tracker
+from api.services.llm_service import LLMService
 
 
 # ── EV-12: Memory AgentCard contains write tools ──────────────────────────
@@ -61,6 +60,13 @@ async def test_ev01_heuristic_hallucination_ungrounded_numeric_claims():
 
 # ── EV-04 & EV-05: RAG chunk expansion and context prompt ─────────────────
 def test_ev05_context_prompt_includes_chunk_content():
+    """The prompt must carry the document identity, the retrieved chunk text,
+    the entity, and the user's stated preference.
+
+    The context is emitted by ``ContextAssembler.assemble_rag_prompt`` as
+    XML-fenced blocks: documents land in ``<untrusted_evidence>`` and
+    entities/preferences in ``<relevant_memories>`` with a provenance tag.
+    """
     rag = {
         "entities": [{"name": "Python", "type": "skill"}],
         "documents": [
@@ -74,10 +80,15 @@ def test_ev05_context_prompt_includes_chunk_content():
         "preferences": [{"name": "remote"}],
     }
     prompt = _build_context_prompt(rag)
-    assert "Doc: resumes/master.pdf" in prompt
-    assert "Relevant excerpt: Led distributed team" in prompt
-    assert "Entity: Python (skill)" in prompt
-    assert "Preference: remote" in prompt
+    assert "<untrusted_evidence" in prompt
+    assert "resumes/master.pdf" in prompt
+    assert "Led distributed team" in prompt
+    assert "<relevant_memories" in prompt
+    assert "Python (skill)" in prompt
+    assert "[src=user_preferences" in prompt
+    # A preference must never degrade into a "None: None" placeholder.
+    assert "None: None" not in prompt
+    assert "remote" in prompt
 
 
 # ── EV-06: Agent cost tracker wired in LLMService ─────────────────────────
@@ -108,6 +119,11 @@ async def test_ev06_track_usage_called_on_completion(monkeypatch):
 
     svc = LLMService()
     monkeypatch.setattr(svc, "_openai_completion", fake_openai)
+    # Hermetic key resolution: the provider call is faked, so the only thing
+    # the resolver must supply is a non-empty key for the requested provider.
+    async def fake_resolve(provider=None, **kwargs):
+        return (provider or "openai"), "test-key"
+    monkeypatch.setattr(svc, "_resolve_api_key", fake_resolve)
 
     res = await svc._raw_generate_completion(
         messages=[{"role": "user", "content": "hi"}],
@@ -137,6 +153,9 @@ async def test_ev08_output_safety_validation_flags_harm(monkeypatch):
 
     svc = LLMService()
     monkeypatch.setattr(svc, "_openai_completion", fake_openai)
+    async def fake_resolve(provider=None, **kwargs):
+        return (provider or "openai"), "test-key"
+    monkeypatch.setattr(svc, "_resolve_api_key", fake_resolve)
 
     res = await svc._raw_generate_completion(
         messages=[{"role": "user", "content": "hi"}],

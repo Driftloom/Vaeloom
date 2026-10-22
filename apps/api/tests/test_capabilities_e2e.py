@@ -1,6 +1,8 @@
 import uuid
+
 import pytest
 from httpx import AsyncClient
+
 from api.services.skill_catalog_service import SKILL_CATALOG
 
 pytestmark = pytest.mark.asyncio
@@ -137,7 +139,8 @@ class TestCapabilitiesE2E:
         assert test_skill_data["status"] in ("success", "warning", "error")
         assert "latency_ms" in test_skill_data
         assert "output" in test_skill_data
-        assert test_skill_data["output"]["skill_name"] == "forensic-code-auditor"
+        assert test_skill_data["output"] is not None, test_skill_data
+        assert test_skill_data["output"]["skill_name"] == "forensic-code-auditor", test_skill_data
         assert "violations" in test_skill_data["output"]
         assert test_skill_data["output"]["syntax_valid"] is False
         assert "estimated_tokens" in test_skill_data["output"]
@@ -153,10 +156,20 @@ class TestCapabilitiesE2E:
 
         # 9b. Telemetry fields and skill metadata are persisted on the row
         skill_row = next(s for s in skills if s["id"] == skill_id)
-        assert skill_row["usage_count"] == 1
-        assert skill_row["last_used_at"] is not None
+        # A skill message-probe is a DRY RUN: the endpoint answers "what would
+        # happen on a real turn", so it must not move usage_count. Counting a
+        # probe would report usage that never happened.
+        assert skill_row["usage_count"] == 0, skill_row
+        assert skill_row["last_used_at"] is None, skill_row
         assert skill_row["tags"] == ["Security", "Audit"]
         assert skill_row["autonomy"] == "autonomous"
+
+        # The tool test above really did execute, so the tool's counter moved.
+        all_res = await client.get("/api/v1/capabilities", headers=headers)
+        assert all_res.status_code == 200
+        tool_row = next(s for s in all_res.json() if s["id"] == tool_id)
+        assert tool_row["usage_count"] == 1, tool_row
+        assert tool_row["last_used_at"] is not None, tool_row
 
         # 10. Merge the workspace rows with the browsable catalog
         merged_res = await client.get(

@@ -117,7 +117,7 @@ class TestComposioOAuthRoutes:
         )
         assert r.status_code == 401
 
-    async def test_disconnect_route_owner_idempotent(self, client: AsyncClient):
+    async def test_disconnect_route_owner_idempotent(self, client: AsyncClient, monkeypatch):
         ha, ws_a = await self._setup(client)
         # Missing app -> 400 validation shape
         r = await client.post(
@@ -126,6 +126,12 @@ class TestComposioOAuthRoutes:
             headers=ha,
         )
         assert r.status_code == 400
+        # The route uses the module singleton, which fails closed without a key.
+        # Configure it explicitly so this test exercises the revoke path rather
+        # than the COMPOSIO_API_KEY_REQUIRED guard.
+        from api.services.composio_service import composio_service
+
+        monkeypatch.setattr(composio_service, "_api_key", "mock_key_for_test", raising=False)
         # Owner with mocked SDK and no connections -> success, nothing revoked
         mock_cls, _ = _mock_client_with_accounts([])
         with patch("composio.Composio", mock_cls):
