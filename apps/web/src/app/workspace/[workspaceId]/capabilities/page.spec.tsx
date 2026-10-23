@@ -454,6 +454,89 @@ describe('CapabilitiesPage', () => {
     expect(screen.getByRole('tab', { name: /Skills/i })).toHaveTextContent('Skills0');
   });
 
+  // ─── A2: server-first badge counts ────────────────────────────────────────
+
+  it('suppresses the seed count in a category that has server rows', async () => {
+    capsApi()['list'].mockResolvedValue([
+      {
+        ...BASE_ROW,
+        id: 'srv-tool-1',
+        name: 'live-tool-one',
+        category: 'tool',
+        installed: true,
+        bundled: false,
+      },
+      {
+        ...BASE_ROW,
+        id: 'srv-tool-2',
+        name: 'live-tool-two',
+        category: 'tool',
+        installed: true,
+        bundled: false,
+      },
+    ]);
+    await renderSkills();
+
+    // The server carries the truth for the whole category: the seed's four
+    // tool rows must not inflate the badge once server rows exist.
+    expect(screen.getByRole('tab', { name: /Tools/i })).toHaveTextContent('Tools2');
+  });
+
+  it('keeps the seed count for a category with no server rows', async () => {
+    capsApi()['list'].mockResolvedValue([]);
+    await renderSkills();
+
+    // A loaded-but-empty server list never strips the seed fallback: tool rows
+    // come entirely from the generated fallback catalog (68 rows) — the seed
+    // carries no hand-written tool rows.
+    expect(screen.getByRole('tab', { name: /Tools/i })).toHaveTextContent('Tools68');
+  });
+
+  it('counts MCP as installed workspace servers plus not-yet-installed built-ins', async () => {
+    capsApi()['list'].mockResolvedValue([]);
+    apiClient.connectorsApi['list'].mockResolvedValue([
+      {
+        id: 'conn-mcp-1',
+        name: 'memory',
+        type: 'mcp',
+        status: 'active',
+        workspace_id: 'ws-test-123',
+        config: {},
+      },
+    ]);
+    apiClient.connectorsApi['mcp']['builtin'].mockResolvedValue({
+      builtin_servers: [
+        { name: 'memory', config: {} },
+        { name: 'filesystem', config: {} },
+      ],
+    });
+    await renderSkills();
+
+    // `memory` is installed (visible once in the badge) and `filesystem` is a
+    // still-installable built-in; the seed carries no MCP rows at all.
+    expect(screen.getByRole('tab', { name: /MCP/i })).toHaveTextContent('MCP2');
+  });
+
+  it('reports a fresh server row on its own tab', async () => {
+    capsApi()['list'].mockResolvedValue([
+      {
+        ...BASE_ROW,
+        id: 'srv-plugin-1',
+        name: 'beta-hero',
+        category: 'plugin',
+        installed: true,
+        bundled: false,
+      },
+    ]);
+    await renderSkills();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('tab', { name: /Plugins/i }));
+    });
+    expect(await screen.findByText('beta-hero')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Plugins/i })).toHaveTextContent('Plugins1');
+  });
+
   it('names the search field with a stable label and wires the "/" shortcut hook', async () => {
     await renderSkills();
 

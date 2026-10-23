@@ -17,6 +17,8 @@ import {
   capabilityConfigMarkdownDoc,
   capabilityConfigTags,
   capabilityConfigRequiredScope,
+  type BuiltinMcpServer,
+  type ConnectorItem,
 } from '@/lib/api-client';
 import { useWorkspaceConnectors } from '../../../../hooks/useWorkspace';
 import { SkillsView } from '@/components/capabilities/SkillsView';
@@ -31,6 +33,7 @@ import {
 import { useSkillActions } from '@/components/capabilities/skills/useSkillActions';
 import { CapabilitiesWorkbenchSkeleton } from '@/components/capabilities/CapabilitiesWorkbenchSkeleton';
 import { capabilityKeys, invalidateCapabilities } from '@/lib/queries/capability-keys';
+import { builtinCommandLine, isStdioConfig } from '@/components/capabilities/mcp';
 
 // ─── Code-split heavy panes (plan E4) ────────────────────────────────────────
 const paneFallback = () => <CapabilitiesWorkbenchSkeleton />;
@@ -139,6 +142,59 @@ function toServerCategory(uiCategory: CapabilityCategory): string {
 const isInstalledRow = (row: SkillRow): boolean => row.installed;
 const countInstalled = (rows: SkillRow[]): number => rows.filter(isInstalledRow).length;
 
+/**
+ * The two lists McpView renders in its left column: the workspace's MCP
+ * connectors plus the built-in server catalog. Sharing one cached payload
+ * through the registered `mcp-servers` key means the tab badge and the pane
+ * are computed from the same truth and one invalidation covers both.
+ */
+interface McpServersSnapshot {
+  installed: ConnectorItem[];
+  builtins: BuiltinMcpServer[];
+}
+
+/**
+ * Tolerant like McpView's own load: a failed endpoint leaves its half empty
+ * rather than rejecting the whole snapshot.
+ */
+async function fetchMcpServersSnapshot(workspaceId: string): Promise<McpServersSnapshot> {
+  const [listRes, builtinRes] = await Promise.allSettled([
+    connectorsApi.list(workspaceId, 'mcp'),
+    connectorsApi.mcp.builtin(),
+  ]);
+  return {
+    installed: listRes.status === 'fulfilled' && Array.isArray(listRes.value) ? listRes.value : [],
+    builtins:
+      builtinRes.status === 'fulfilled'
+        ? ((builtinRes.value?.builtinServers ??
+            builtinRes.value?.builtin_servers ??
+            []) as BuiltinMcpServer[])
+        : [],
+  };
+}
+
+/**
+ * Badge semantics = the server lists McpView displays: every installed
+ * connector once, plus every built-in the workspace has not installed yet.
+ * Name and command matching mirror the install-state chips in the catalog so
+ * a badge number never disagrees with what the tab shows.
+ */
+function countMcpServers(snapshot: McpServersSnapshot | undefined): number {
+  if (!snapshot) return 0;
+  const installedNames = new Set(snapshot.installed.map((server) => server.name.toLowerCase()));
+  const installedCommands = new Set(
+    snapshot.installed
+      .filter((server) => isStdioConfig(server.config))
+      .map((server) => builtinCommandLine({ config: server.config } as BuiltinMcpServer)),
+  );
+  const openBuiltins = snapshot.builtins.filter(
+    (server) =>
+      !installedNames.has(server.name.toLowerCase()) &&
+      !installedCommands.has(builtinCommandLine(server)),
+  );
+  return snapshot.installed.length + openBuiltins.length;
+}
+
 function matchesQuery(row: SkillRow, query: string): boolean {
   if (!query) return true;
   const needle = query.toLowerCase();
@@ -239,9 +295,9 @@ function CapabilitiesContent() {
     { revalidateOnFocus: false, shouldRetryOnError: false },
   );
 
-  const { data: mcpConnectors } = useSWR(
-    workspaceId ? ['workspace-mcp-count', workspaceId] : null,
-    () => connectorsApi.list(workspaceId, 'mcp'),
+  const { data: mcpSnapshot } = useSWR(
+    workspaceId ? capabilityKeys.mcpServers(workspaceId) : null,
+    () => fetchMcpServersSnapshot(workspaceId),
     { revalidateOnFocus: false, shouldRetryOnError: false },
   );
 
@@ -342,23 +398,43 @@ function CapabilitiesContent() {
     );
   }, [liveCatalogKey, liveCatalog]);
 
+  const serverCounts = useMemo(() => {
+    const counts: Partial<Record<CapabilityCategory, number>> = {};
+    if (!Array.isArray(serverRows)) return counts;
+    for (const row of serverRows) {
+      const mapped = toUiCategory(row.category);
+      if (!mapped) continue;
+      counts[mapped] = (counts[mapped] ?? 0) + 1;
+    }
+    return counts;
+  }, [serverRows]);
+
   const categoryCounts = useMemo(() => {
     const counts: Record<CapabilityCategory, number> = {
       skills: installedCount,
       connectors: liveConnectors?.length ?? 0,
-      mcp: (mcpConnectors ?? []).filter((connector) => connector.type === 'mcp').length,
+      mcp: countMcpServers(mcpSnapshot),
       tools: 0,
       plugins: 0,
       agents: 0,
     };
     nonSkillRows.forEach((item) => {
-      if (item.category === 'connectors') return;
-      // mcp is counted from the connector hook above; the seed no longer carries
-      // MCP rows.
+      // connectors are counted from the workspace hook and mcp from the
+      // registered server snapshot; neither must also absorb rows merged into
+      // nonSkillRows (server capability rows for mcp share entities with the
+      // connector list, so counting both would double the badge).
+      if (item.category === 'connectors' || item.category === 'mcp') return;
       counts[item.category] += 1;
     });
+    // Server-first: once the workspace list names real rows for a category,
+    // that count wins and the seed row set is only the fallback for
+    // categories with no server rows.
+    for (const category of ['tools', 'plugins', 'agents'] as const) {
+      const serverCount = serverCounts[category];
+      if (typeof serverCount === 'number') counts[category] = serverCount;
+    }
     return counts;
-  }, [installedCount, liveConnectors, mcpConnectors, nonSkillRows]);
+  }, [installedCount, liveConnectors, mcpSnapshot, nonSkillRows, serverCounts]);
 
   const tabs = useMemo<TabItem[]>(
     () =>
