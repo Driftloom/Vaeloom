@@ -4343,6 +4343,48 @@ async def execute_tool(
             idem_key = None
             idem_claim = None
 
+    # ── 1d. Execution-path usage telemetry (fail-open) ────────────
+    # Every real execution attempt of a workspace tool bumps the matching
+    # `workspace_capabilities` row through the single service writer.
+    # Replays (logical memory LRU hit above, durable duplicate / in_progress
+    # above) return before this point and record nothing; retries inside
+    # section 2 re-ride this call, so the bump happens once per call. A
+    # workspace with no tracked row for this tool is a silent no-op; any
+    # failure here must never affect the execution itself.
+    try:
+        from ..services.capability_usage_service import (
+            _usage_session_cm,
+            find_capability,
+            record_usage,
+        )
+
+        async with _usage_session_cm(str(workspace_id)) as usage_session:
+            usage_row = await find_capability(
+                usage_session,
+                workspace_id=str(workspace_id),
+                name=tool.name,
+                category="tool",
+            )
+            if usage_row is None:
+                logger.debug(
+                    "TOOL_USAGE_NOT_TRACKED: no capability row for tool=%s "
+                    "workspace=%s — usage not recorded",
+                    tool.name,
+                    workspace_id,
+                )
+            else:
+                await record_usage(usage_session, usage_row)
+                await usage_session.commit()
+    except Exception as exc:
+        logger.warning(
+            "TOOL_USAGE_TELEMETRY_FAILED: tool=%s workspace=%s: %s: %s — "
+            "execution proceeds regardless",
+            tool.name,
+            workspace_id,
+            type(exc).__name__,
+            exc,
+        )
+
     # ── 2. Execute with retry ──────────────────────────────────────
     timeout = TOOL_TIMEOUT_OVERRIDES.get(
         tool.name, CATEGORY_TIMEOUTS.get(tool.category, 5)

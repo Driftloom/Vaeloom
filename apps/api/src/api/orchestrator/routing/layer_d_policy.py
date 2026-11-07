@@ -63,7 +63,7 @@ class LayerDPolicyGate:
 
         # 2. Entitlement & Tier Gating (Decoupled from Semantic Router)
         # If MVP scope is enforced by platform settings or tenant tier
-        is_mvp_enforced = getattr(settings, "mvp_scope_enforced", False) or workspace_tier == "mvp"
+        is_mvp_enforced = (getattr(settings, "mvp_scope_enforced", False) and not getattr(settings, "enterprise_routes_enabled", False)) or workspace_tier == "mvp"
         if is_mvp_enforced and manifest.tier_requirement != "mvp":
             logger.warning(
                 f"LAYER_D: Entitlement denial for capability '{cap_id}' "

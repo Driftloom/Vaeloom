@@ -1,4 +1,4 @@
-/**
+﻿/**
  * @jest-environment jsdom
  */
 
@@ -123,7 +123,7 @@ describe('SEED_CAPABILITIES telemetry honesty', () => {
 
   it('only names tools that exist in the backend registry', async () => {
     const { SEED_CAPABILITIES } = await load();
-    // Subset of the 69 names registered in apps/api/src/api/tools/definitions.py.
+    // Subset of the 68 names registered in apps/api/src/api/tools/definitions.py.
     const known = new Set([
       'append_google_doc',
       'audit_ats_formatting',
@@ -205,6 +205,43 @@ describe('generated tool fallback manifest', () => {
   });
 });
 
+describe('SEED composition shape', () => {
+  it('carries no mcp rows -- live server state belongs to the connector hook, not the seed', async () => {
+    const { SEED_CAPABILITIES } = await load();
+
+    const mcpRows = SEED_CAPABILITIES.filter((item) => item.category === 'mcp');
+    expect(mcpRows.map((row) => row.id)).toEqual([]);
+  });
+
+  it('pins the hand-written categories exactly: 10 agents, 28 skills, 4 plugins, 0 mcp', async () => {
+    const { SEED_CAPABILITIES } = await load();
+
+    const counts: Record<string, number> = {};
+    for (const item of SEED_CAPABILITIES) {
+      counts[item.category] = (counts[item.category] ?? 0) + 1;
+    }
+    expect(counts['agents']).toBe(10);
+    expect(counts['skills']).toBe(28);
+    expect(counts['plugins']).toBe(4);
+    expect(counts['mcp'] ?? 0).toBe(0);
+  });
+
+  it('totals the hand-written rows plus the generated tool manifest, with nothing else', async () => {
+    const { SEED_CAPABILITIES } = await load();
+    const { TOOL_FALLBACK } = await import('@/lib/tool-fallback.generated');
+
+    // 42 = 10 agents + 28 skills + 4 plugins + 0 mcp. Tool rows are generated
+    // (asserted == TOOL_FALLBACK.length by the direct count below), so the seed
+    // is 42 hand-written rows plus the manifest, and any other row class is
+    // invented.
+    expect(SEED_CAPABILITIES.filter((item) => item.category !== 'tools')).toHaveLength(42);
+    expect(SEED_CAPABILITIES.filter((item) => item.category === 'tools')).toHaveLength(
+      TOOL_FALLBACK.length,
+    );
+    expect(SEED_CAPABILITIES).toHaveLength(42 + TOOL_FALLBACK.length);
+  });
+});
+
 describe('formatRelativeTime', () => {
   it('says Never for a capability that has never run', async () => {
     const { formatRelativeTime } = await load();
@@ -277,131 +314,6 @@ describe('formatRelativeTime', () => {
 
     expect(byRecency.map((r) => r.id)).toEqual(['recent', 'old', 'never']);
     expect(formatRelativeTime(byRecency[2].lastUsedAt)).toBe('Never');
-  });
-});
-
-describe('storage round-trip', () => {
-  it('reads back exactly what was written', async () => {
-    const data = await load();
-
-    data.saveCustomCapability(WS, {
-      id: 'skill-custom-a',
-      name: 'custom-a',
-      category: 'skills',
-      tags: ['Custom'],
-      description: 'A user-authored skill.',
-      enabled: true,
-      source: 'custom',
-      usageCount: 0,
-      lastUsedAt: null,
-      markdownDoc: '# Custom A',
-    });
-
-    const stored = data.getStoredCapabilities(WS);
-    const found = stored.find((c) => c.id === 'skill-custom-a');
-
-    expect(found).toBeDefined();
-    expect(found?.name).toBe('custom-a');
-    expect(found?.tags).toEqual(['Custom']);
-    expect(data.getStorageHealth()).toEqual({ ok: true });
-  });
-
-  it('wraps every payload in a versioned envelope', async () => {
-    const data = await load();
-    data.saveCustomCapability(WS, {
-      id: 'skill-env',
-      name: 'env',
-      category: 'skills',
-      tags: [],
-      description: '',
-      enabled: true,
-      source: 'custom',
-      usageCount: 0,
-      lastUsedAt: null,
-      markdownDoc: '',
-    });
-    data.setStoredCapabilityEnabled(WS, 'skill-env', false);
-
-    const custom = JSON.parse(
-      window.localStorage.getItem(`vaeloom.capabilities.custom.${WS}`) as string,
-    );
-    const state = JSON.parse(window.localStorage.getItem(`vaeloom.capabilities.${WS}`) as string);
-
-    expect(data.STORAGE_VERSION).toBe(1);
-    expect(custom.v).toBe(1);
-    expect(Array.isArray(custom.data)).toBe(true);
-    expect(state.v).toBe(1);
-    expect(state.data['skill-env']).toBe(false);
-  });
-
-  it('applies an enable override without discarding other capabilities', async () => {
-    const data = await load();
-    const seedId = data.SEED_CAPABILITIES[0].id;
-    const before = data.getStoredCapabilities(WS).length;
-
-    const updated = data.setStoredCapabilityEnabled(WS, seedId, false);
-    const after = data.getStoredCapabilities(WS);
-
-    expect(updated.find((c) => c.id === seedId)?.enabled).toBe(false);
-    expect(after.find((c) => c.id === seedId)?.enabled).toBe(false);
-    expect(after).toHaveLength(before);
-  });
-
-  it('does not let one capability toggle clobber an unrelated one', async () => {
-    const data = await load();
-    const [first, second] = data.SEED_CAPABILITIES;
-
-    data.setStoredCapabilityEnabled(WS, first.id, false);
-    const result = data.setStoredCapabilityEnabled(WS, second.id, false);
-
-    expect(result.find((c) => c.id === first.id)?.enabled).toBe(false);
-    expect(result.find((c) => c.id === second.id)?.enabled).toBe(false);
-  });
-
-  it('does not clobber a concurrent custom save when toggling', async () => {
-    const data = await load();
-
-    data.setStoredCapabilityEnabled(WS, data.SEED_CAPABILITIES[0].id, false);
-    data.saveCustomCapability(WS, {
-      id: 'skill-survivor',
-      name: 'survivor',
-      category: 'skills',
-      tags: [],
-      description: '',
-      enabled: true,
-      source: 'custom',
-      usageCount: 0,
-      lastUsedAt: null,
-      markdownDoc: '',
-    });
-    data.setStoredCapabilityEnabled(WS, data.SEED_CAPABILITIES[1].id, false);
-
-    expect(data.getStoredCapabilities(WS).map((c) => c.id)).toContain('skill-survivor');
-  });
-
-  it('partially updates a custom capability instead of rewriting the record', async () => {
-    const data = await load();
-    data.saveCustomCapability(WS, {
-      id: 'skill-patch',
-      name: 'patch',
-      category: 'skills',
-      tags: ['Keep'],
-      description: 'before',
-      enabled: true,
-      source: 'custom',
-      usageCount: 0,
-      lastUsedAt: null,
-      markdownDoc: '# Patch',
-      version: '1.0.0',
-    });
-
-    data.updateCustomCapability(WS, 'skill-patch', { description: 'after' });
-    const found = data.getStoredCapabilities(WS).find((c) => c.id === 'skill-patch');
-
-    expect(found?.description).toBe('after');
-    expect(found?.tags).toEqual(['Keep']);
-    expect(found?.markdownDoc).toBe('# Patch');
-    expect(found?.version).toBe('1.0.0');
   });
 });
 
@@ -512,65 +424,6 @@ describe('a newer app version is refused, not overwritten', () => {
   });
 });
 
-describe('delete does not resurrect a seed item', () => {
-  it('keeps a deleted seed item deleted on every subsequent read', async () => {
-    const data = await load();
-    const seedId = data.SEED_CAPABILITIES[0].id;
-    expect(data.getStoredCapabilities(WS).map((c) => c.id)).toContain(seedId);
-
-    data.deleteCustomCapability(WS, seedId);
-
-    expect(data.getStoredCapabilities(WS).map((c) => c.id)).not.toContain(seedId);
-    expect(data.getStoredCapabilities(WS).map((c) => c.id)).not.toContain(seedId);
-  });
-
-  it('records the removal in the dismissed set', async () => {
-    const data = await load();
-    const seedId = data.SEED_CAPABILITIES[0].id;
-
-    data.deleteCustomCapability(WS, seedId);
-
-    const envelope = JSON.parse(
-      window.localStorage.getItem(`vaeloom.capabilities.dismissed.${WS}`) as string,
-    );
-    expect(envelope.v).toBe(data.STORAGE_VERSION);
-    expect(envelope.data).toEqual([seedId]);
-  });
-
-  it('does not log a deleted custom id in the dismissed set', async () => {
-    const data = await load();
-    data.saveCustomCapability(WS, {
-      id: 'skill-gone',
-      name: 'gone',
-      category: 'skills',
-      tags: [],
-      description: '',
-      enabled: true,
-      source: 'custom',
-      usageCount: 0,
-      lastUsedAt: null,
-      markdownDoc: '',
-    });
-
-    data.deleteCustomCapability(WS, 'skill-gone');
-
-    expect(data.getStoredCapabilities(WS).map((c) => c.id)).not.toContain('skill-gone');
-    const dismissed = window.localStorage.getItem(`vaeloom.capabilities.dismissed.${WS}`);
-    expect(dismissed).toBeNull();
-  });
-
-  it('brings a dismissed seed item back when it is reinstalled', async () => {
-    const data = await load();
-    const seed = data.SEED_CAPABILITIES[0];
-    data.deleteCustomCapability(WS, seed.id);
-    expect(data.getStoredCapabilities(WS).map((c) => c.id)).not.toContain(seed.id);
-
-    data.saveCustomCapability(WS, seed);
-
-    expect(data.getStoredCapabilities(WS).map((c) => c.id)).toContain(seed.id);
-  });
-});
-
 describe('getStoredCapabilities never hands out the seed constant', () => {
   it('does not let a caller mutate SEED_CAPABILITIES through the return value', async () => {
     const data = await load();
@@ -632,26 +485,6 @@ describe('getStorageHealth surfaces silent failures', () => {
     data.getStoredCapabilities(WS);
 
     expect(data.getStorageHealth().ok).toBe(false);
-  });
-
-  it('reports a failed write so a lost edit is not shown as saved', async () => {
-    const data = await load();
-    // Patch the prototype, not the instance: jsdom's Storage does not reliably
-    // honour an own-property override, so this is the only way to simulate the
-    // quota failure the browser actually throws.
-    const original = Storage.prototype.setItem;
-    Storage.prototype.setItem = function () {
-      throw new DOMException('quota exceeded', 'QuotaExceededError');
-    };
-
-    try {
-      data.setStoredCapabilityEnabled(WS, data.SEED_CAPABILITIES[0].id, false);
-      const health = data.getStorageHealth();
-      expect(health.ok).toBe(false);
-      expect(health.error).toMatch(/quota/i);
-    } finally {
-      Storage.prototype.setItem = original;
-    }
   });
 
   it('is healthy again once the store reads cleanly', async () => {

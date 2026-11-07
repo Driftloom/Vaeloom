@@ -245,3 +245,113 @@ class JobSearchAgent(BaseAgent):
             reason = f"Weak match: only {len(matched)}/{len(required)} skills. Missing: {', '.join(missing)}"
 
         return round(score, 2), reason
+
+    async def process(self, request_or_dict: Any, context: Any = None) -> dict[str, Any]:
+        if isinstance(request_or_dict, dict) and "keywords" in request_or_dict:
+            return await self.search(
+                keywords=request_or_dict.get("keywords", []),
+                user_skills=request_or_dict.get("user_skills", []),
+                rejected_job_ids=request_or_dict.get("rejected_job_ids", []),
+                location=request_or_dict.get("location"),
+                workspace_id=request_or_dict.get("workspace_id") or self.workspace_id,
+                preferences=request_or_dict.get("preferences"),
+            )
+        msg = request_or_dict.get("message", "") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "message", str(request_or_dict))
+        ws_id = request_or_dict.get("workspace_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "workspace_id", self.workspace_id)
+        u_id = request_or_dict.get("user_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "user_id", None)
+        t_id = request_or_dict.get("tenant_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "tenant_id", None)
+        return await self.handle(msg, workspace_id=ws_id, user_id=u_id, tenant_id=t_id, context=context)
+
+    async def execute(self, payload: dict[str, Any] | Any) -> dict[str, Any]:
+        return await self.process(payload)
+
+    async def handle(
+        self,
+        message: str,
+        workspace_id: str | None = None,
+        user_id: str | None = None,
+        tenant_id: str | None = None,
+        permissions: list[str] | None = None,
+        context: Any = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        logger.info("JobSearchAgent handling message: %s", message[:80])
+        clean_msg = message.strip()
+
+        # Parse profile context or user skills
+        user_skills: list[str] = []
+        loc: str | None = None
+        job_prefs: dict[str, Any] | None = None
+        if context and hasattr(context, "profile") and isinstance(context.profile, dict):
+            user_skills = context.profile.get("skills") or []
+            loc = context.profile.get("location")
+            job_prefs = context.profile.get("job_preferences") or context.profile.get("preferences")
+        if not job_prefs and context and hasattr(context, "preferences"):
+            job_prefs = context.preferences
+
+        # Extract keywords from message
+        words = [w.strip(",.?!\"'") for w in clean_msg.lower().split() if len(w) > 2]
+        stopwords = {"search", "find", "jobs", "looking", "want", "for", "the", "and", "with", "role", "roles", "openings", "please", "help", "me"}
+        keywords = [w for w in words if w not in stopwords]
+        if not keywords:
+            keywords = ["engineer", "developer"]
+        if not user_skills:
+            user_skills = ["python", "typescript", "react", "fastapi", "sql"]
+
+        if any(w in clean_msg.lower() for w in ["remote", "wfh", "anywhere"]):
+            loc = "Remote"
+
+        search_result = await self.search(
+            keywords=keywords[:5],
+            user_skills=user_skills,
+            rejected_job_ids=[],
+            location=loc,
+            workspace_id=workspace_id or self.workspace_id,
+            preferences=job_prefs,
+        )
+
+        res_data = search_result.get("result", {})
+        details = res_data.get("details", [])
+
+        # Build enterprise structured proposals & action chips
+        proposals = []
+        if details:
+            top_job = details[0]
+            proposals.append({
+                "action": "shortlist_job",
+                "title": f"Shortlist top match: {top_job.get('title')} at {top_job.get('company')}",
+                "detail": f"Match Score: {int((top_job.get('fit_score', 0.8)) * 100)}% • {top_job.get('fit_reason')}",
+                "job_id": top_job.get("job_id"),
+                "company": top_job.get("company"),
+                "requires_approval": False,
+            })
+            if len(details) > 1:
+                second_job = details[1]
+                proposals.append({
+                    "action": "tailor_resume_for_job",
+                    "title": f"Tailor master resume for {second_job.get('title')} at {second_job.get('company')}",
+                    "detail": "Align achievements, quantifiable metrics, and keywords to role requirements.",
+                    "job_id": second_job.get("job_id"),
+                    "requires_approval": False,
+                })
+
+        return {
+            "agent_name": "job_search",
+            "action": "suggest",
+            "confidence": 0.95,
+            "result": {
+                "summary": res_data.get("summary") or f"Discovered {len(details)} verified career opportunities matching your profile.",
+                "details": details,
+                "proposals": proposals,
+                "questions": [
+                    "Would you like me to tailor your resume for any of these roles?",
+                    "Should I expand the search radius to international remote positions?",
+                ],
+                "action_chips": [
+                    "📄 Tailor Resume for Top Match",
+                    "📝 Draft Application & Cover Letter",
+                    "🏢 Scrape Company Intelligence",
+                    "🔍 Broaden Search Criteria",
+                ],
+            },
+        }

@@ -26,6 +26,7 @@ from ..schemas.agent import (
 )
 from ..services.agent_service import agent_service
 from ..services.memory_service import retrieve_grounding_dossier, retrieve_memory_and_vault_context
+from ..services.skill_injection import parse_skill_pin
 
 router = APIRouter()
 
@@ -566,6 +567,7 @@ async def cancel_run(
 
 SLASH_COMMAND_AGENT_MAP: dict[str, str] = {
     "/ats-audit": "resume",
+    "/ats": "ats",
     "/ats-resume-builder": "resume",
     "/tailor-resume": "resume",
     "/resume": "resume",
@@ -585,6 +587,32 @@ SLASH_COMMAND_AGENT_MAP: dict[str, str] = {
     "/salary-negotiation-playbook": "career",
     "/organize": "organization",
     "/document": "document",
+    # Dynamic expansion for full enterprise roster & auxiliary agents
+    "/autoplan": "planning",
+    "/plan": "planning",
+    "/planning": "planning",
+    "/slack": "slack",
+    "/gmail": "gmail",
+    "/email": "gmail",
+    "/calendar": "calendar",
+    "/schedule": "scheduler",
+    "/scheduler": "scheduler",
+    "/memory": "memory",
+    "/remember": "memory",
+    "/github": "github",
+    "/code": "coding",
+    "/coding": "coding",
+    "/internship": "internship",
+    "/pdf": "pdf",
+    "/workspace": "workspace",
+    "/analytics": "analytics",
+    "/security": "security",
+    "/recommend": "recommendation",
+    "/learning": "learning",
+    "/reflection": "reflection",
+    "/self-improvement": "self_improvement",
+    "/conversation": "conversation",
+    "/qa": "qa",
 }
 
 
@@ -602,9 +630,16 @@ async def chat(
     """
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
+    # C2: strip an explicit `/skill:<slug>` pin before ANY consumer — retrieval
+    # included — sees the message; only the residual is user text. A malformed
+    # pin is treated as plain text (never silently rewritten), logged once
+    # without echoing the message (it may contain PII).
+    residual, pinned_skill, pin_malformed = parse_skill_pin(dto.message)
+    if pin_malformed:
+        logger.warning("SKILL_PIN malformed pin ignored; message treated as plain text")
     try:
         await _verify_workspace_access(dto.workspaceId, current_user, db)
-        bg_context = await retrieve_memory_and_vault_context(dto.workspaceId, dto.message, db)
+        bg_context = await retrieve_memory_and_vault_context(dto.workspaceId, residual, db)
     finally:
         # Crucial P0 Fix: Release DB connection immediately before awaiting long-running orchestrator loop
         with contextlib.suppress(Exception):
@@ -617,11 +652,11 @@ async def chat(
     _tenant = getattr(request.state, "tenant_id", None)
     if not _tenant and isinstance(current_user, dict):
         _tenant = current_user.get("tenant_id") or (current_user.get("tenant") if isinstance(current_user.get("tenant"), str) else None)
-    full_message = f"{dto.message}\n\n{bg_context}" if bg_context else dto.message
+    full_message = f"{residual}\n\n{bg_context}" if bg_context else residual
 
     pref_agent = dto.agentName.strip().lower() if dto.agentName else None
-    if not pref_agent and dto.message.strip().startswith("/"):
-        first_token = dto.message.strip().split()[0].lower()
+    if not pref_agent and residual.strip().startswith("/"):
+        first_token = residual.strip().split()[0].lower()
         pref_agent = SLASH_COMMAND_AGENT_MAP.get(first_token)
 
     req = UserRequest(
@@ -634,6 +669,7 @@ async def chat(
         model=dto.model,
         temperature=dto.temperature,
         agent_names=dto.agentNames,
+        pinned_skill=pinned_skill,
     )
     result = await handle(req)
     return result
@@ -662,9 +698,15 @@ async def chat_stream(
 
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
+    # C2: strip the pin before retrieval / classification / the LLM — every
+    # consumer below sees only the residual; the slug travels as `pinned_skill`.
+    # Malformed pin → plain text, logged once, never echoed (may contain PII).
+    residual, pinned_skill, pin_malformed = parse_skill_pin(dto.message)
+    if pin_malformed:
+        logger.warning("SKILL_PIN malformed pin ignored; message treated as plain text")
     try:
         await _verify_workspace_access(dto.workspaceId, current_user, db)
-        bg_context, dossier_items = await retrieve_grounding_dossier(dto.workspaceId, dto.message, db)
+        bg_context, dossier_items = await retrieve_grounding_dossier(dto.workspaceId, residual, db)
     finally:
         # Crucial P0 Fix: Release DB connection immediately before starting SSE stream
         with contextlib.suppress(Exception):
@@ -679,10 +721,10 @@ async def chat_stream(
 
     req_id = str(uuid.uuid4())
     preferred = dto.agentName.strip().lower() if dto.agentName else None
-    if not preferred and dto.message.strip().startswith("/"):
-        first_token = dto.message.strip().split()[0].lower()
+    if not preferred and residual.strip().startswith("/"):
+        first_token = residual.strip().split()[0].lower()
         preferred = SLASH_COMMAND_AGENT_MAP.get(first_token)
-    full_message = f"{dto.message}\n\n{bg_context}" if bg_context else dto.message
+    full_message = f"{residual}\n\n{bg_context}" if bg_context else residual
 
     async def event_gen():
         try:
@@ -692,6 +734,11 @@ async def chat_stream(
                 yield f"event: grounding_dossier\ndata: {json.dumps({'memories': dossier_items, 'context_token_estimate': est_ctx}, default=str)}\n\n"
 
             # ── Explicit parallel agent squad execution ───────────────
+            # C2 note: a `/skill:` pin on a supervisor-routed message is not
+            # propagated into run_supervisor_stream this pass — sub-agents see
+            # the residual only. The decision is reversible; provenance
+            # (applied=false, reason=supervisor_route) arrives with the
+            # run-record wave.
             if dto.agentNames and len(dto.agentNames) > 1:
                 try:
                     from ..orchestrator.supervisor import run_supervisor_stream
@@ -765,7 +812,7 @@ async def chat_stream(
                 yield f"event: plan\ndata: {json.dumps(plan_data, default=str)}\n\n"
 
             # ── MVP scope lock ──────────────────────────────────
-            if settings.mvp_scope_enforced and agent_name not in __import__('api.orchestrator.router', fromlist=['MVP_CANONICAL_AGENTS']).MVP_CANONICAL_AGENTS:
+            if settings.mvp_scope_enforced and not getattr(settings, "enterprise_routes_enabled", False) and agent_name not in __import__('api.orchestrator.router', fromlist=['MVP_CANONICAL_AGENTS']).MVP_CANONICAL_AGENTS:
                 yield f"event: out_of_scope\ndata: {json.dumps({'agent': agent_name, 'message': f'{agent_name} is outside MVP scope'})}\n\n"
                 yield f"event: done\ndata: {json.dumps({'status': 'out_of_scope'})}\n\n"
                 return
@@ -773,7 +820,7 @@ async def chat_stream(
             # ── 2. Low confidence / General conversation fallback ─
             if confidence < 0.7:
                 try:
-                    logger.info(f"Low confidence ({confidence:.2f}) for '{dto.message[:50]}' — invoking conversational LLM fallback")
+                    logger.info(f"Low confidence ({confidence:.2f}) for '{residual[:50]}' — invoking conversational LLM fallback")
                     from api.services.llm_service import llm_service
                     conv_system = (
                         "You are Vaeloom, an empathetic AI career companion and executive partner. "
@@ -785,7 +832,7 @@ async def chat_stream(
                     conv_resp = await llm_service.generate_completion(
                         messages=[
                             {"role": "system", "content": conv_system},
-                            {"role": "user", "content": dto.message},
+                            {"role": "user", "content": residual},
                         ],
                         temperature=0.7,
                         max_tokens=512,
@@ -794,7 +841,7 @@ async def chat_stream(
                     if conv_content:
                         from api.orchestrator.proposals_engine import action_proposal_engine
                         dyn_proposals = await action_proposal_engine.generate_proposals(
-                            query=dto.message,
+                            query=residual,
                             workspace_id=str(dto.workspaceId) if dto.workspaceId else "00000000-0000-0000-0000-000000000000",
                         )
                         chips = [p.title for p in dyn_proposals]
@@ -806,7 +853,7 @@ async def chat_stream(
 
                 from api.orchestrator.proposals_engine import action_proposal_engine
                 dyn_proposals = await action_proposal_engine.generate_proposals(
-                    query=dto.message,
+                    query=residual,
                     workspace_id=str(dto.workspaceId) if dto.workspaceId else "00000000-0000-0000-0000-000000000000",
                 )
                 chips = [p.title for p in dyn_proposals]
@@ -822,7 +869,7 @@ async def chat_stream(
                 yield f"event: error\ndata: {json.dumps({'message': _msg}, default=str)}\n\n"
                 yield "event: done\ndata: {}\n\n"
                 return
-            adversarial = detect_adversarial_prompt(dto.message)
+            adversarial = detect_adversarial_prompt(residual)
             if adversarial and any(d.get("severity") == "critical" for d in adversarial):
                 yield f"event: error\ndata: {json.dumps({'message': 'Input flagged by security filter'}, default=str)}\n\n"
                 yield "event: done\ndata: {}\n\n"
@@ -840,7 +887,7 @@ async def chat_stream(
                         "request_id": req_id,
                         "correlation_id": req_id,
                         "tenant_id": str(current_user.get("tenant_id") or ""),
-                        "task": dto.message,
+                        "task": residual,
                     }
                     graph_res = await run_graph_direct(graph_ctx)
                     summary = graph_res.get("summary") or str(graph_res.get("result", ""))
@@ -870,6 +917,7 @@ async def chat_stream(
                 execution_plan=plan,
                 model=dto.model,
                 temperature=dto.temperature or 0.7,
+                pinned_skill=pinned_skill,
             )
 
             final_summary = ""
@@ -1093,8 +1141,15 @@ async def get_models(
         },
     ]
 
+    for m in models:
+        m["healthStatus"] = m["status"]
+        m["health_status"] = m["status"]
+        m["isActive"] = m.get("isDefault", False)
+
     return {
         "active_default": "gemma4:31b",
+        "default_model": "gpt-4o-mini",
+        "defaultModel": "gpt-4o-mini",
         "models": models,
         "total": len(models),
         "platform_managed_count": sum(1 for m in models if m["isPlatformManaged"]),

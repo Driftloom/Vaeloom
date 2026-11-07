@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
@@ -9,12 +10,15 @@ import {
   EmptyState,
   FormField,
   Input,
+  lockScroll,
   SearchField,
   Select,
   TabPanel,
   Tabs,
   Textarea,
   Tooltip,
+  unlockScroll,
+  useFocusTrap,
 } from '@vaeloom/ui-kit';
 import {
   capabilitiesApi,
@@ -27,6 +31,7 @@ import type {
   CapabilityConfig,
   CapabilityDraftStatus,
   CapabilityDraftValidationResponse,
+  GitHubSkillSyncResultRecord,
 } from '@/lib/api-client';
 import { getStoredCapabilities } from '@/lib/capabilities-data';
 import { SHELL_METACHARACTERS } from './connectors/types';
@@ -91,6 +96,9 @@ function asOptions<T extends string>(values: readonly T[]) {
 
 /** The name pattern `routers/capabilities.py` validates on create. */
 const NAME_PATTERN = /^[a-zA-Z0-9_\-. ]{1,255}$/;
+
+/** The repository pattern `SyncGitHubSkillsRequest` validates on the server. */
+const GITHUB_REPO_PATTERN = /^[A-Za-z0-9._-]+\/[A-Za-z0-9._-]+$/;
 
 /**
  * `validate_mcp_config`, clause by clause, so the form can say *why* a config will
@@ -1405,9 +1413,6 @@ function DraftSourceNote({ outcome }: { outcome: CapabilityDraftValidationRespon
 
 // ─── Shared form pieces ──────────────────────────────────────────────────────
 
-const FOCUSABLE =
-  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
 /**
  * The tag editor, rendered once.
  *
@@ -1448,20 +1453,22 @@ function TagEditor({
             </button>
           </span>
         ))}
-        <input
-          type="text"
-          aria-label="Add a tag"
-          value={input}
-          onChange={(event: React.ChangeEvent<HTMLInputElement>) => onInput(event.target.value)}
-          onKeyDown={(event: React.KeyboardEvent<HTMLInputElement>) => {
-            if (event.key === 'Enter' || event.key === ',') {
-              event.preventDefault();
-              onAdd(input);
-            }
-          }}
-          placeholder="+ Type tag and press Enter"
-          className="bg-transparent text-xs text-text placeholder:text-text-muted focus:outline-none flex-1 min-w-[120px] px-1"
-        />
+        <div className="flex-1 min-w-[120px]">
+          <Input
+            type="text"
+            aria-label="Add a tag"
+            value={input}
+            onChange={(event: React.ChangeEvent<HTMLInputElement>) => onInput(event.target.value)}
+            onKeyDown={(event: React.KeyboardEvent<HTMLInputElement>) => {
+              if (event.key === 'Enter' || event.key === ',') {
+                event.preventDefault();
+                onAdd(input);
+              }
+            }}
+            placeholder="+ Type tag and press Enter"
+            className="bg-[transparent] border-[0px] px-[0px] py-[0px] text-[12px] text-text placeholder:text-text-muted focus:ring-[0px] shadow-[none]"
+          />
+        </div>
       </div>
       <div className="flex flex-wrap items-center gap-1">
         {suggestions.map((tag) => (
@@ -1862,16 +1869,26 @@ export function AddCapabilityModal({
   const [fileReport, setFileReport] = useState<{ name: string; detail: string } | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
 
+  const [syncRepo, setSyncRepo] = useState('');
+  const [syncRef, setSyncRef] = useState('');
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
+  const [syncResult, setSyncResult] = useState<GitHubSkillSyncResultRecord | null>(null);
+
   const [presetSearch, setPresetSearch] = useState('');
   const [presetFilter, setPresetFilter] = useState('all');
   const [draftOutcome, setDraftOutcome] = useState<DraftOutcome>({ kind: 'idle' });
   const [issues, setIssues] = useState<FieldIssue[]>([]);
   const [collisions, setCollisions] = useState<ReadonlySet<string>>(() => new Set<string>());
 
-  const nameRef = useRef<HTMLInputElement>(null);
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const lastFocusedRef = useRef<HTMLElement | null>(null);
+  const dialogRef = useFocusTrap(isOpen, onClose);
   const submittingRef = useRef(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    lockScroll();
+    return () => unlockScroll();
+  }, [isOpen]);
 
   // Names already taken, read once per open. `getStoredCapabilities` parses JSON
   // and can write a migration envelope, which is not something to do on every
@@ -1901,49 +1918,10 @@ export function AddCapabilityModal({
     setCategory(defaultCategory);
     setIssues([]);
     setImportError(null);
+    setSyncError(null);
     setDraftOutcome({ kind: 'idle' });
     submittingRef.current = false;
-    lastFocusedRef.current = document.activeElement as HTMLElement | null;
-    return () => lastFocusedRef.current?.focus?.();
   }, [isOpen, initialMode, defaultCategory]);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const first = dialogRef.current?.querySelector<HTMLElement>(FOCUSABLE);
-    (first ?? dialogRef.current)?.focus();
-  }, [isOpen]);
-
-  /**
-   * Escape and the focus trap live on the dialog element, not on `window`.
-   *
-   * A window listener fired for keystrokes aimed anywhere on the page, which is
-   * how Ctrl+Enter used to submit the Presets view: a view with no form and no
-   * submit button, in a modal whose footer hid the submit control.
-   */
-  const onDialogKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLDivElement>) => {
-      if (event.key === 'Escape') {
-        event.stopPropagation();
-        onClose();
-        return;
-      }
-      if (event.key !== 'Tab' || !dialogRef.current) return;
-      const nodes = Array.from(dialogRef.current.querySelectorAll<HTMLElement>(FOCUSABLE));
-      const firstNode = nodes[0];
-      const lastNode = nodes[nodes.length - 1];
-      if (!firstNode || !lastNode) {
-        event.preventDefault();
-        dialogRef.current.focus();
-      } else if (event.shiftKey && document.activeElement === firstNode) {
-        event.preventDefault();
-        lastNode.focus();
-      } else if (!event.shiftKey && document.activeElement === lastNode) {
-        event.preventDefault();
-        firstNode.focus();
-      }
-    },
-    [onClose],
-  );
 
   const addTag = useCallback((tag: string) => {
     const trimmed = tag.trim().replace(/^#/, '');
@@ -2031,7 +2009,7 @@ export function AddCapabilityModal({
     const found = validateDraft(draft, readiness);
     if (found.length > 0) {
       setIssues(found);
-      nameRef.current?.focus();
+      (document.getElementById('capability-name-input') as HTMLInputElement | null)?.focus();
       return;
     }
     submittingRef.current = true;
@@ -2251,6 +2229,32 @@ export function AddCapabilityModal({
     [importUrl, importCategory, onImport, onClose],
   );
 
+  /**
+   * Fetch and validate a GitHub repository's SKILL.md files, validation only.
+   *
+   * The call mirrors `onImportSubmit`'s swallowing shape (nothing awaits this
+   * handler, so a re-throw would be an unhandled rejection) but keeps its own
+   * state slice: a result never closes the dialog, and a failure renders as an
+   * alert without touching the URL-import outcome. `ref` is sent only when one
+   * was typed, and an empty repository makes no request at all.
+   */
+  async function onSyncGithubSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const repository = syncRepo.trim();
+    if (!repository) return;
+    const ref = syncRef.trim();
+    setSyncLoading(true);
+    setSyncError(null);
+    setSyncResult(null);
+    try {
+      setSyncResult(await capabilitiesApi.syncGithub(repository, ref || undefined));
+    } catch (error) {
+      setSyncError(error instanceof Error ? error.message : String(error));
+    } finally {
+      setSyncLoading(false);
+    }
+  }
+
   const canValidate = Boolean(workspaceId);
 
   /**
@@ -2357,11 +2361,11 @@ export function AddCapabilityModal({
 
       <div className="space-y-1.5">
         <label className="flex items-start gap-2 text-xs text-text-secondary cursor-pointer">
-          <input
+          <Input
             type="checkbox"
             checked={allowWindowsBatch}
             onChange={(event) => setAllowWindowsBatch(event.target.checked)}
-            className="mt-0.5"
+            className="w-[1rem] h-[1rem] mt-[2px] shrink-0 px-[0px] py-[0px] rounded-[4px] border-[0px] bg-[transparent] shadow-[none] focus:ring-[0px] accent-primary"
           />
           <span>
             Allow Windows batch wrapper (<code className="font-mono">.cmd</code>/
@@ -2376,11 +2380,11 @@ export function AddCapabilityModal({
         </label>
         {transport === 'http' && (
           <label className="flex items-start gap-2 text-xs text-text-secondary cursor-pointer">
-            <input
+            <Input
               type="checkbox"
               checked={allowInsecure}
               onChange={(event) => setAllowInsecure(event.target.checked)}
-              className="mt-0.5"
+              className="w-[1rem] h-[1rem] mt-[2px] shrink-0 px-[0px] py-[0px] rounded-[4px] border-[0px] bg-[transparent] shadow-[none] focus:ring-[0px] accent-primary"
             />
             <span>
               Allow plain http:// endpoint (development only)
@@ -2470,10 +2474,11 @@ export function AddCapabilityModal({
                 },
               )}
               <label className="flex items-center gap-1 text-2xs text-text-muted shrink-0">
-                <input
+                <Input
                   type="checkbox"
                   checked={param.required}
                   onChange={(event) => patchParam(index, { required: event.target.checked })}
+                  className="w-[1rem] h-[1rem] shrink-0 px-[0px] py-[0px] rounded-[4px] border-[0px] bg-[transparent] shadow-[none] focus:ring-[0px] accent-primary"
                 />
                 Req
               </label>
@@ -2482,7 +2487,7 @@ export function AddCapabilityModal({
                   type="button"
                   aria-label={`Remove parameter ${param.name || index + 1}`}
                   onClick={() => setToolParams((prev) => prev.filter((_, i) => i !== index))}
-                  className="text-text-muted hover:text-danger rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+                  className="text-text-muted hover:text-error rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
                 >
                   ×
                 </button>
@@ -2571,13 +2576,9 @@ export function AddCapabilityModal({
   const studio = STUDIO[category];
   const pluginEscape = category === 'plugins' ? findSandboxEscape(pluginCode) : null;
 
-  return (
+  const content = (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4">
-      <div
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"
-        onClick={onClose}
-        aria-hidden="true"
-      />
+      <div className="fixed inset-0 bg-black/60" onClick={onClose} aria-hidden="true" />
       <div
         ref={dialogRef}
         role="dialog"
@@ -2585,7 +2586,6 @@ export function AddCapabilityModal({
         aria-labelledby="add-capability-modal-title"
         aria-describedby="add-capability-modal-desc"
         tabIndex={-1}
-        onKeyDown={onDialogKeyDown}
         className="relative w-full max-w-5xl h-[670px] max-h-[90dvh] bg-surface border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden text-text antialiased focus:outline-none"
       >
         <header className="px-5 py-3 border-b border-border bg-surface-elevated flex items-start justify-between gap-4 shrink-0">
@@ -2828,11 +2828,15 @@ export function AddCapabilityModal({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
                   {/* Identity, shared by every category */}
                   <div className="space-y-3.5">
-                    <FormField label="Name / identifier" required error={nameIssue ?? undefined}>
-                      {({ id, errorId }: { id: string; errorId?: string }) => (
-                        <input
-                          ref={nameRef}
-                          id={id}
+                    <FormField
+                      label="Name / identifier"
+                      htmlFor="capability-name-input"
+                      required
+                      error={nameIssue ?? undefined}
+                    >
+                      {({ errorId }: { id: string; errorId?: string }) => (
+                        <Input
+                          id="capability-name-input"
                           type="text"
                           value={name}
                           aria-invalid={nameIssue ? true : undefined}
@@ -2842,7 +2846,7 @@ export function AddCapabilityModal({
                             setIssues([]);
                           }}
                           placeholder="e.g. code-synthesizer or ats-scoring"
-                          className="w-full px-3 py-1.5 rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary font-mono text-xs focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+                          className="font-mono text-[12px]"
                         />
                       )}
                     </FormField>
@@ -2905,7 +2909,7 @@ export function AddCapabilityModal({
                                       : 'bg-surface border-border text-text-muted hover:text-text'
                                   }`}
                                 >
-                                  <input
+                                  <Input
                                     type="checkbox"
                                     checked={checked}
                                     onChange={() =>
@@ -2915,6 +2919,7 @@ export function AddCapabilityModal({
                                           : [...prev, tool.id],
                                       )
                                     }
+                                    className="w-[1rem] h-[1rem] shrink-0 px-[0px] py-[0px] rounded-[4px] border-[0px] bg-[transparent] shadow-[none] focus:ring-[0px] accent-primary"
                                   />
                                   <span className="font-mono text-xs truncate">{tool.name}</span>
                                 </label>
@@ -3111,7 +3116,7 @@ export function AddCapabilityModal({
               >
                 <p className="text-xs font-semibold text-text">Drop your capability file here</p>
                 <p className="text-2xs text-text-muted mt-0.5">or browse (.md, .json, .yaml)</p>
-                <input
+                <Input
                   type="file"
                   accept=".md,.markdown,.json,.yaml,.yml"
                   className="sr-only"
@@ -3182,6 +3187,109 @@ export function AddCapabilityModal({
                 </div>
               </form>
             </div>
+
+            <div className="pt-3 border-t border-border">
+              <h3 className="text-xs font-semibold text-text mb-1">
+                Validate skills from a GitHub repository
+              </h3>
+              <p className="text-xs text-text-muted mb-2.5">
+                Fetches and validates the repository&apos;s SKILL.md files server-side and reports
+                the result. Nothing is installed into the workspace, and only the workspace owner
+                can call this.
+              </p>
+
+              <form onSubmit={onSyncGithubSubmit} noValidate className="space-y-3">
+                <Input
+                  label="GitHub repository (owner/repo)"
+                  required
+                  value={syncRepo}
+                  onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                    setSyncRepo(event.target.value)
+                  }
+                  placeholder="vaeloom/skills-community"
+                  helperText={
+                    syncRepo.trim() && !GITHUB_REPO_PATTERN.test(syncRepo.trim())
+                      ? 'Use owner/repo, for example vaeloom/skills-community.'
+                      : undefined
+                  }
+                />
+                <Input
+                  label="Branch / ref"
+                  value={syncRef}
+                  onChange={(event: React.ChangeEvent<HTMLInputElement>) =>
+                    setSyncRef(event.target.value)
+                  }
+                  placeholder="master"
+                />
+
+                {syncError && (
+                  <p role="alert" className="text-xs text-error">
+                    {syncError} The modal stayed open and the form stayed editable.
+                  </p>
+                )}
+
+                {syncResult && (
+                  <div className="rounded-md border border-border bg-surface-elevated p-3 space-y-2">
+                    <p className="text-xs font-medium text-text font-mono">
+                      {`${syncResult.repository} @ ${syncResult.ref}`}
+                    </p>
+                    {syncResult.skillsDiscovered > 0 && (
+                      <>
+                        <p className="text-xs text-text">
+                          {`${syncResult.skillsDiscovered} discovered · ${syncResult.skillsValid} valid · ${syncResult.skillsRejected} rejected`}
+                        </p>
+                        <ul className="space-y-2">
+                          {syncResult.skills.map((skill, skillIndex) => (
+                            <li key={`${skill.slug}-${skillIndex}`} className="text-xs">
+                              <span className="font-medium text-text">{skill.name}</span>{' '}
+                              <Badge variant={skill.valid ? 'success' : 'error'} size="sm">
+                                {skill.valid ? 'valid' : 'rejected'}
+                              </Badge>
+                              {!skill.valid &&
+                                skill.violations.map((violation, violationIndex) => (
+                                  <p
+                                    key={`${violation}-${violationIndex}`}
+                                    className="text-text-muted pl-3"
+                                  >
+                                    {violation}
+                                  </p>
+                                ))}
+                            </li>
+                          ))}
+                        </ul>
+                      </>
+                    )}
+                    {syncResult.skillsDiscovered === 0 && syncResult.errors.length === 0 && (
+                      <p className="text-xs text-text-muted">
+                        {`No SKILL.md files were found in ${syncResult.repository}.`}
+                      </p>
+                    )}
+                    {syncResult.skillsTruncated && (
+                      <p className="text-xs text-warning">
+                        The repository exposes more SKILL.md files than one sync processes; only the
+                        first batch was validated.
+                      </p>
+                    )}
+                    {syncResult.errors.length > 0 && (
+                      <ul role="alert" className="text-xs text-error space-y-1">
+                        {syncResult.errors.map((message, messageIndex) => (
+                          <li key={`${message}-${messageIndex}`}>{message}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
+
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  <Button type="button" variant="secondary" size="sm" onClick={onClose}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" variant="secondary" size="sm" loading={syncLoading}>
+                    {syncLoading ? 'Validating…' : 'Validate skills from GitHub'}
+                  </Button>
+                </div>
+              </form>
+            </div>
           </TabPanel>
         </div>
 
@@ -3211,4 +3319,9 @@ export function AddCapabilityModal({
       </div>
     </div>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(content, document.body);
+  }
+  return content;
 }

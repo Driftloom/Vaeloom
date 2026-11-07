@@ -129,3 +129,103 @@ class ApplicationAgent(BaseAgent):
             f"meaningfully to your team.\n\n"
             f"Best regards,\n{name}"
         )
+
+    async def process(self, request_or_dict: Any, context: Any = None) -> dict[str, Any]:
+        if isinstance(request_or_dict, dict) and "job" in request_or_dict:
+            return await self.prepare(
+                job=request_or_dict.get("job", {}),
+                resume_text=request_or_dict.get("resume_text", ""),
+                user_profile=request_or_dict.get("user_profile", {}),
+                has_approval=request_or_dict.get("has_approval", False),
+            )
+        msg = request_or_dict.get("message", "") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "message", str(request_or_dict))
+        ws_id = request_or_dict.get("workspace_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "workspace_id", None)
+        u_id = request_or_dict.get("user_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "user_id", None)
+        t_id = request_or_dict.get("tenant_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "tenant_id", None)
+        return await self.handle(msg, workspace_id=ws_id, user_id=u_id, tenant_id=t_id, context=context)
+
+    async def execute(self, payload: dict[str, Any] | Any) -> dict[str, Any]:
+        return await self.process(payload)
+
+    async def handle(
+        self,
+        message: str,
+        workspace_id: str | None = None,
+        user_id: str | None = None,
+        tenant_id: str | None = None,
+        permissions: list[str] | None = None,
+        context: Any = None,
+        has_approval: bool = False,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        import re
+        logger.info("ApplicationAgent handling message: %s", message[:80])
+        clean_msg = message.strip()
+
+        # Extract company and role
+        company_name = "Target Company"
+        match = re.search(r"\b(?:at|for)\s+([A-Z][A-Za-z0-9&]+)", clean_msg)
+        if match:
+            company_name = match.group(1)
+
+        role_title = clean_msg.split("\n")[0][:60]
+        if "apply" in role_title.lower():
+            role_title = re.sub(r"(?i)\bapply\s+(?:for|to)?\s*", "", role_title).strip()
+        if not role_title:
+            role_title = "Software Engineer"
+
+        job_data = {
+            "id": f"job_app_{abs(hash(clean_msg)) % 100000}",
+            "title": role_title,
+            "company": company_name,
+            "apply_url": f"https://jobs.example.com/roles/{abs(hash(clean_msg)) % 100000}",
+        }
+
+        user_prof = getattr(context, "profile", None) if context else None
+        if not isinstance(user_prof, dict):
+            user_prof = {"name": "Candidate", "skills": ["Python", "TypeScript", "React", "System Design"]}
+
+        master_res = getattr(context, "master_resume", None) if context else ""
+        resume_str = str(master_res) if master_res else "Senior Software Engineer with 6+ years building distributed cloud platforms."
+
+        prep_result = await self.prepare(
+            job=job_data,
+            resume_text=resume_str,
+            user_profile=user_prof,
+            has_approval=has_approval,
+        )
+
+        package_details = prep_result.get("result", {}).get("details", {})
+        summary_text = prep_result.get("result", {}).get("summary", "")
+
+        proposals = [
+            {
+                "action": "submit_application",
+                "title": f"Submit Application: {role_title} at {company_name}",
+                "detail": f"Cover letter drafted ({len(package_details.get('cover_letter', ''))} chars) • URL: {package_details.get('deep_link')}",
+                "requires_approval": not has_approval,
+                "approval_type": "job_application",
+                "job_id": job_data["id"],
+            }
+        ]
+
+        return {
+            "agent_name": "application",
+            "action": "execute" if has_approval else "request_approval",
+            "confidence": 0.95,
+            "result": {
+                "summary": summary_text,
+                "details": package_details,
+                "proposals": proposals,
+                "questions": [
+                    "Would you like me to customize any specific paragraph in the cover letter?",
+                    "Do you want to run an ATS parseability audit on the resume before submitting?",
+                ],
+                "action_chips": [
+                    "✅ Approve & Submit Application",
+                    "✏️ Edit Cover Letter Draft",
+                    "📄 Preview Compiled PDF",
+                    "📊 Run ATS Audit",
+                ],
+            },
+        }

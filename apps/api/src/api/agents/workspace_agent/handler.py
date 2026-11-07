@@ -177,7 +177,7 @@ class WorkspaceAgent(BaseAgent):
             f"Detected {len(sprawl)} potential sprawl items requiring attention."
         )
 
-        return {
+        res = {
             "agent_name": "workspace",
             "action": "suggest",
             "confidence": 0.92,
@@ -188,8 +188,26 @@ class WorkspaceAgent(BaseAgent):
                 "questions": [
                     "Would you like me to archive redundant copy files automatically?"
                 ] if sprawl else [],
+                "action_chips": [
+                    "📁 Analyze Vault Structure",
+                    "🧹 Purge Sprawl Items",
+                    "🏷️ Classify Files into Folders",
+                ],
             },
         }
+        return res
+
+    async def handle(
+        self,
+        message: str,
+        workspace_id: str | None = None,
+        user_id: str | None = None,
+        tenant_id: str | None = None,
+        permissions: list[str] | None = None,
+        context: Any = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        return await self.process({"message": message, "workspace_id": workspace_id, "user_id": user_id, "tenant_id": tenant_id}, context=context)
 
     async def execute(self, request: Any, context: Any = None) -> Any:
         return await self.process(request, context)

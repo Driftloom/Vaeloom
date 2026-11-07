@@ -145,3 +145,32 @@ Zero raw colors; honest seed protocol (`isSeed`, zero-invented-numbers test); al
 ## Appendix — UNVERIFIED items
 
 Exact roving-tabindex internals of McpView/Drawer tabrows; AddCapabilityModal full Tab-order matrix under dynamic DOM; dark/high-contrast resolution of `*-error` vs `*-danger` tokens; whether `capabilities.py` validates tool `name` on create (phantom rows bounded or not); whether any operator seeds `composio-*` listings directly in DB; seed-vs-live row-id parity for agents on a seeded DB; runtime behavior of `capabilitiesApi.test` category routing (read from comments, not executed).
+
+## Addressed-by-task — 2026 rework cross-reference
+
+This 2026-10-18 audit's findings were remediated by the Capabilities-workbench
+rework
+(`docs/superpowers/plans/2026-10-18-capabilities-workbench-rework.md`). The
+mapping below is annotated at commit `2ca9ff78` (Task 20 of the rework); the
+final scorecard re-verification is Task 22
+(`docs/Audits/2026-10-18-capabilities-workbench-enterprise-audit-v2.md`),
+pass bar ≥ 80. "In-flight" means the work exists in the rework's lane but the
+referenced commit had not landed at this commit — re-verify at T22.
+
+| Audit entry | Task / status |
+|---|---|
+| D2 static tool catalog; D7 12 phantom tools; Register #2; backlog P0 mirror+CI | T1 tool-fallback manifest (`scripts/gen_tool_fallback.py --check` self-check gate) + T3 Tools tab from `GET /capabilities/tools/definitions` |
+| D2 dual plugin registries; Register #7 | T6 one plugin registry |
+| D2 dead sync; Register #1/#3 | T9 sync-github wired into Import; T7 real usage telemetry |
+| D3 six divergent detail shells | T4/T5 `CapabilityDetailLayout` + `MetaRow` migration of all five subpages; T15 language/icon batch |
+| D4 untrapped/unescapable modals | T11 overlay recipe + `backdropBlur` guard; T12 single error family; T13 form atoms; T14 status dots, confirm dialog, tab roving, autonomy re-sync |
+| D5 stale-at-mount seams | T14; badge counts server-first pending as T21 |
+| D6 ~800 lines dead web code; wrappers `getCatalog`/`toggleCapability`/`getSyncStatus` | T17 dead-code deletions |
+| D7 11 seed-only skills | T18 seed trim (39 → 28 skills; 63/63 backend PASS) |
+| D6/P3 orphan packages `integrations/*`, `connectors/*`, `skills/` transpiler | T19 — archived by `git mv` to `archive/{integrations-legacy-ts,connectors-legacy-ts,connectors-mcp-ts,skills}` per ADR-048 (five commits `e44280fd`…`2ca9ff78`); `plugin-*` packages deliberately kept (plan contract) |
+| Removal-candidates "root `agents/*` investigate first" | T19 investigation note in ADR-048 — live Python packages, untouched |
+| D8 / skills audit P0-2 staleness | annotated in `docs/Audits/skills-feature-production-audit.md` — consumer committed (loop.py:446-467), producer parse in flight |
+| Register #4 composio token lifecycle | T10 refresh + disconnect actions |
+| Register #6 skill enforcement on static path | T8 (committed `ecb1b9ea`/`ac672e73`/`bc6b28ef`) |
+| Backlog P1 SWR keys + single invalidate | T2 `apps/web/src/lib/queries/capability-keys.ts` + `invalidateCapabilities` |
+| Backlog P2 backend-driven badges | T21 (pending at this commit) |

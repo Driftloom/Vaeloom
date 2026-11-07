@@ -1,7 +1,15 @@
 'use client';
 
 import React from 'react';
-import { Badge, Button, EmptyState, ErrorState, IconButton, StatusDot } from '@vaeloom/ui-kit';
+import {
+  Badge,
+  Button,
+  EmptyState,
+  ErrorState,
+  IconButton,
+  StatusDot,
+  TrashIcon,
+} from '@vaeloom/ui-kit';
 import { PlusIcon } from '@/lib/connectors-catalog';
 import type { BuiltinMcpServer, ConnectorItem } from '@/lib/api-client';
 import { CONNECTOR_BADGE_VARIANT, CONNECTOR_DOT_STATUS, CONNECTOR_STATUS_LABEL } from './types';
@@ -283,7 +291,7 @@ export function CustomProtocolsTab({
                       aria-label={`Remove ${conn.name}`}
                       variant="ghost"
                       size="sm"
-                      className="text-danger hover:text-danger/80"
+                      className="text-error hover:text-error/80"
                       onClick={() =>
                         onPendingDisconnect({
                           id: conn.id,
@@ -292,19 +300,7 @@ export function CustomProtocolsTab({
                         })
                       }
                     >
-                      <svg
-                        className="w-3.5 h-3.5"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                        />
-                      </svg>
+                      <TrashIcon size={14} />
                     </IconButton>
                   </span>
                 </div>

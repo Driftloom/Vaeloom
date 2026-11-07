@@ -1,5 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
-import { WORKSPACE_ROUTES, type RouteDefinition } from '../src/lib/route-manifest';
+import {
+  hasDynamicSegments,
+  WORKSPACE_ROUTES,
+  type RouteDefinition,
+} from '../src/lib/route-manifest';
 import { login } from './helpers';
 
 /**
@@ -39,6 +43,20 @@ import { login } from './helpers';
  * Skipping it here avoids asserting a URL the app intentionally rewrites.
  */
 const REDIRECT_STUBS = new Set(['connectors']);
+
+/**
+ * Dynamic detail routes declare a `[param]` segment, so the literal subpath is
+ * not a navigable address — sweeping it could only ever prove the not-found
+ * branch. Substitute a known-present sample id so the sweep still proves the
+ * route paints a real detail page: `ats-audit` is a seed skill
+ * (capabilities-data.ts) and resolves even on a cold workspace.
+ *
+ * A dynamic route with no sample fails the sweep loudly; silently skipping it
+ * would shrink coverage without anyone noticing.
+ */
+const ROUTE_PARAM_SAMPLES: Record<string, string> = {
+  'capability-skill': 'ats-audit',
+};
 
 /**
  * Unauthenticated, public surfaces. These render outside the workspace layout
@@ -96,7 +114,16 @@ test.describe('route smoke — full workspace surface', () => {
     const swept: string[] = [];
     for (const route of WORKSPACE_ROUTES) {
       if (REDIRECT_STUBS.has(route.id)) continue;
-      await assertWorkspaceRouteRendered(page, wsId, route);
+      const sample = ROUTE_PARAM_SAMPLES[route.id];
+      if (hasDynamicSegments(route.subpath) && !sample) {
+        throw new Error(
+          `${route.id} declares a dynamic subpath; add a concrete sample id to ROUTE_PARAM_SAMPLES`,
+        );
+      }
+      const concrete = sample
+        ? { ...route, subpath: route.subpath.replace(/\[[^\]]+\]/g, sample) }
+        : route;
+      await assertWorkspaceRouteRendered(page, wsId, concrete);
       swept.push(route.id);
     }
 

@@ -8,7 +8,18 @@ from api.migrations import MIGRATIONS, downgrade_to, run_migrations
 
 pytestmark = pytest.mark.asyncio
 
-EXPECTED_VERSIONS = {"0002_microservice_tables", "0003_approvals", "0004_memory_taxonomy", "0005_rls", "0006_idempotency", "0007_gmail_watch", "0008_document_content", "0009_feature_flags", "0010_document_versions_folders_shares"}
+EXPECTED_VERSIONS = {
+    "0002_microservice_tables",
+    "0003_approvals",
+    "0004_memory_taxonomy",
+    "0005_rls",
+    "0006_idempotency",
+    "0007_gmail_watch",
+    "0008_document_content",
+    "0009_feature_flags",
+    "0010_document_versions_folders_shares",
+    "0011_memory_type_packs",
+}
 
 
 @pytest_asyncio.fixture
@@ -60,6 +71,26 @@ class TestMigrationRunner:
             columns = await conn.run_sync(_columns)
         assert {"domain", "supersedes_id", "deleted_at"}.issubset(columns)
 
+    async def test_memory_type_packs_columns_and_seed(self, migration_engine):
+        async with migration_engine.begin() as conn:
+            await conn.execute(text(
+                "CREATE TABLE memories (id VARCHAR(36) PRIMARY KEY, type VARCHAR(50) NOT NULL, tenant_id VARCHAR(36))"
+            ))
+            await conn.execute(text(
+                "INSERT INTO memories (id, type, tenant_id) VALUES ('m-1', 'career', 't-1')"
+            ))
+        await run_migrations(migration_engine)
+        async with migration_engine.connect() as conn:
+            def _columns(sync_conn):
+                return {c["name"] for c in inspect(sync_conn).get_columns("memories")}
+            columns = await conn.run_sync(_columns)
+            assert {"type_pack_slug", "type_pack_version"}.issubset(columns)
+            assert await conn.run_sync(lambda sc: inspect(sc).has_table("memory_type_packs"))
+
+            res = await conn.execute(text("SELECT type_pack_slug, type_pack_version FROM memories WHERE id = 'm-1'"))
+            row = res.fetchone()
+            assert row == ("career", 1)
+
     async def test_downgrade_rolls_back(self, migration_engine):
         await run_migrations(migration_engine)
         rolled_back = await downgrade_to(migration_engine, None)
@@ -72,7 +103,15 @@ class TestMigrationRunner:
     async def test_downgrade_partial(self, migration_engine):
         await run_migrations(migration_engine)
         rolled_back = await downgrade_to(migration_engine, "0004_memory_taxonomy")
-        assert set(rolled_back) == {"0010_document_versions_folders_shares", "0009_feature_flags", "0008_document_content", "0007_gmail_watch", "0006_idempotency", "0005_rls"}
+        assert set(rolled_back) == {
+            "0011_memory_type_packs",
+            "0010_document_versions_folders_shares",
+            "0009_feature_flags",
+            "0008_document_content",
+            "0007_gmail_watch",
+            "0006_idempotency",
+            "0005_rls",
+        }
 
         async with migration_engine.begin() as conn:
             result = await conn.execute(text("SELECT version FROM schema_migrations ORDER BY version"))

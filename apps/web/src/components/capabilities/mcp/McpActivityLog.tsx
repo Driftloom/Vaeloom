@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Button } from '@vaeloom/ui-kit';
+import { Button, Select } from '@vaeloom/ui-kit';
 import { useToast } from '@/components/shared/Toast';
 import { type ConnectorItem } from '@/lib/api-client';
 import { type LogEntry } from './types';
@@ -59,19 +59,19 @@ export const McpActivityLog: React.FC<McpActivityLogProps> = ({
           <label htmlFor="mcp-log-filter" className="sr-only">
             Filter activity by server
           </label>
-          <select
+          <Select
             id="mcp-log-filter"
             value={logFilter}
-            onChange={(event) => onLogFilterChange(event.target.value)}
-            className="bg-surface border border-border rounded-md px-2 py-0.5 text-xs font-sans text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 cursor-pointer"
-          >
-            <option value="all">All events</option>
-            {installedServers.map((server) => (
-              <option key={server.id} value={server.name}>
-                {server.name}
-              </option>
-            ))}
-          </select>
+            onChange={(value: string) => onLogFilterChange(value)}
+            options={[
+              { value: 'all', label: 'All events' },
+              ...installedServers.map((server) => ({
+                value: server.name,
+                label: server.name,
+              })),
+            ]}
+            className="px-2 py-0.5 text-xs cursor-pointer font-sans"
+          />
         </div>
 
         <div className="flex items-center gap-2">

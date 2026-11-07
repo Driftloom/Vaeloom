@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Badge } from '@vaeloom/ui-kit';
+import { Badge, Input } from '@vaeloom/ui-kit';
 import {
   CAPABILITY_MAX_REACT_ROUNDS_KEY,
   MAX_REACT_ROUNDS,
@@ -164,7 +164,7 @@ export const AgentReactRoundsBudget: React.FC<AgentReactRoundsBudgetProps> = ({
           <label htmlFor="agent-react-rounds" className="text-2xs font-sans text-text-muted">
             Max rounds
           </label>
-          <input
+          <Input
             id="agent-react-rounds"
             type="number"
             step={1}
@@ -185,7 +185,7 @@ export const AgentReactRoundsBudget: React.FC<AgentReactRoundsBudgetProps> = ({
               }
             }}
             onBlur={onCommitRounds}
-            className="w-16 bg-surface-elevated border border-border rounded px-2 py-1 text-xs font-mono text-text text-center focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus:border-primary disabled:opacity-60"
+            className="w-[4rem] px-[8px] py-[4px] text-[12px] font-mono text-text text-center bg-surface-elevated rounded-[6px] shadow-[none]"
           />
           <Badge
             variant={

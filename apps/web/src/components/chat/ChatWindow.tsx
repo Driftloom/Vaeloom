@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { ConfirmationDialog } from '@vaeloom/ui-kit';
 import { ExecutionTimeline } from '@/components/execution/ExecutionTimeline';
 import { useRealtime } from '@/components/providers/RealtimeProvider';
 import { useChatAutoScroll } from '@/hooks/useChatAutoScroll';
@@ -40,6 +41,11 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
   const paramAgent = searchParams?.get('agent');
   const paramSkill = searchParams?.get('skill');
   const [activeSkill, setActiveSkill] = useState<string | null>(null);
+  const [pendingPrefill, setPendingPrefill] = useState<{
+    prompt: string;
+    signature: string;
+  } | null>(null);
+  const resolvedPrefillRef = useRef<string | null>(null);
   const { status: connectionStatus } = useRealtime();
 
   const { skills: rawSkills } = useWorkspaceCapabilities(workspaceId);
@@ -78,8 +84,11 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
     }
   }, [docName, docId, store.catalogState]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Deep-link integration from Skills & Capabilities Hub (?skill=... or ?agent=...)
+  // Deep-link integration from Skills & Capabilities Hub (?skill=... or ?agent=...).
+  // A prefill never silently destroys a draft: when one exists, the user
+  // confirms the replacement first (T4(a) — prefill-overwrite with confirm).
   useEffect(() => {
+    const signature = `${paramSkill ?? ''}|${paramPrompt ?? ''}|${paramAgent ?? ''}`;
     if (paramSkill) {
       const cleanSlug = paramSkill.replace(/^skill:/, '').trim();
       if (cleanSlug) {
@@ -93,15 +102,17 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
             store.setSelectedAgent(associatedAgent.id);
           }
         }
+        let promptToSet = `/skill:${cleanSlug} `;
+        if (paramPrompt) {
+          promptToSet = paramPrompt.startsWith(`/skill:${cleanSlug}`)
+            ? paramPrompt
+            : `/skill:${cleanSlug} ${paramPrompt}`;
+        }
         if (!store.input) {
-          let promptToSet = `/skill:${cleanSlug} `;
-          if (paramPrompt) {
-            promptToSet = paramPrompt.startsWith(`/skill:${cleanSlug}`)
-              ? paramPrompt
-              : `/skill:${cleanSlug} ${paramPrompt}`;
-          }
           store.setInput(promptToSet);
           inputRef.current?.focus();
+        } else if (store.input !== promptToSet && resolvedPrefillRef.current !== signature) {
+          setPendingPrefill((prev) => prev ?? { prompt: promptToSet, signature });
         }
       }
     } else {
@@ -111,9 +122,28 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
       if (paramPrompt && !store.input) {
         store.setInput(paramPrompt);
         inputRef.current?.focus();
+      } else if (
+        paramPrompt &&
+        store.input !== paramPrompt &&
+        resolvedPrefillRef.current !== signature
+      ) {
+        setPendingPrefill((prev) => prev ?? { prompt: paramPrompt, signature });
       }
     }
   }, [paramSkill, paramPrompt, paramAgent, enabledSkills]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const resolvePendingPrefill = useCallback(
+    (apply: boolean) => {
+      if (!pendingPrefill) return;
+      resolvedPrefillRef.current = pendingPrefill.signature;
+      if (apply) {
+        store.setInput(pendingPrefill.prompt);
+        inputRef.current?.focus();
+      }
+      setPendingPrefill(null);
+    },
+    [pendingPrefill, store],
+  );
 
   const streaming = store.messages.some((m) => m.status === 'streaming');
   const { handleScroll, scrollToBottom, showNewMessages } = useChatAutoScroll(
@@ -370,6 +400,17 @@ export function ChatWindow({ workspaceId }: { workspaceId: string }) {
           onClose={() => store.setIsMemoryDrawerOpen(false)}
           workspaceId={workspaceId}
           onRecallContext={(ctx) => store.setInput(store.input ? `${store.input}\n\n${ctx}` : ctx)}
+        />
+
+        <ConfirmationDialog
+          isOpen={pendingPrefill !== null}
+          onClose={() => resolvePendingPrefill(false)}
+          onConfirm={() => resolvePendingPrefill(true)}
+          title="Replace your draft?"
+          message="Launching from this link will replace your current chat draft with the skill prompt."
+          confirmLabel="Replace draft"
+          cancelLabel="Keep draft"
+          variant="warning"
         />
       </div>
     </div>

@@ -65,12 +65,13 @@ describe('invalidateCapabilities', () => {
   it("'all' revalidates each registered key exactly once", async () => {
     await invalidateCapabilities('ws-1');
 
-    expect(mutateMock).toHaveBeenCalledTimes(5);
+    expect(mutateMock).toHaveBeenCalledTimes(6);
     expect(mutateMock).toHaveBeenNthCalledWith(1, capabilityKeys.list('ws-1'));
     expect(mutateMock).toHaveBeenNthCalledWith(2, capabilityKeys.skills('ws-1'));
     expect(mutateMock).toHaveBeenNthCalledWith(3, capabilityKeys.agentCatalog('ws-1'));
     expect(mutateMock).toHaveBeenNthCalledWith(4, capabilityKeys.pluginRegistry('ws-1'));
-    expect(mutateMock).toHaveBeenNthCalledWith(5, connectorsKey('ws-1'));
+    expect(mutateMock).toHaveBeenNthCalledWith(5, capabilityKeys.mcpServers('ws-1'));
+    expect(mutateMock).toHaveBeenNthCalledWith(6, connectorsKey('ws-1'));
   });
 
   it("scope 'list' touches only the list key", async () => {

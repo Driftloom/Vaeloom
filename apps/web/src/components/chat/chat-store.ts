@@ -1505,6 +1505,27 @@ export function useChatStore(workspaceId: string): ChatStore {
     });
   }, [patchThread, queuePersist, toast]);
 
+  /**
+   * Persist the title a new thread derives from its first prompt.
+   *
+   * `newThread` creates the server row up front so the conversation exists
+   * server-side from the moment the user sees it, which means the row starts
+   * with a placeholder title. The first `send` patches the local title only,
+   * and the conversation-list merge (where server metadata wins) then restores
+   * the placeholder in the rail. Rename once the create resolves so both agree.
+   */
+  const persistFirstTurnTitle = useCallback(
+    async (localId: string, title: string) => {
+      const serverId = await ensureServerThread(localId);
+      if (!serverId || !mountedRef.current) return;
+      const res = await ConversationApi.rename(workspaceIdRef.current, serverId, title);
+      if (!mountedRef.current || !res.ok) return;
+      patchThread(serverId, (t) => ({ ...t, title: res.data.title }));
+      void mutateListRef.current?.();
+    },
+    [ensureServerThread, patchThread],
+  );
+
   // ── The send pipeline ──────────────────────────────────────────────────────
   const send = useCallback(
     async (override?: string) => {
@@ -1554,12 +1575,16 @@ export function useChatStore(workspaceId: string): ChatStore {
       // Resolve the thread first, then append. Title comes from the user's own
       // words — the old code derived it from the mutated `raw`, so attaching a
       // file produced a title like "my question\n\n[File stored…".
+      const derivedTitle = promptText.slice(0, 40);
       let threadId = activeIdRef.current;
-      if (!threadId || !threadsRef.current.some((t) => t.id === threadId)) {
+      const currentThread = threadId
+        ? threadsRef.current.find((t) => t.id === threadId)
+        : undefined;
+      if (!threadId || !currentThread) {
         threadId = nextId('th');
         const thread: Thread = {
           id: threadId,
-          title: promptText.slice(0, 40),
+          title: derivedTitle,
           ...(agentForCall ? { agentName: agentForCall } : {}),
           createdAt: nowIso(),
           updatedAt: nowIso(),
@@ -1575,6 +1600,10 @@ export function useChatStore(workspaceId: string): ChatStore {
           title: thread.title,
           ...(agentForCall ? { agentName: agentForCall } : {}),
         });
+      } else if (currentThread.messages.length === 0 && currentThread.title !== derivedTitle) {
+        // Existing empty thread: `newThread` already created the row with a
+        // placeholder title, so the prompt title needs an explicit rename.
+        void persistFirstTurnTitle(threadId, derivedTitle);
       }
 
       const userMessage: ChatMessage = {
@@ -1600,7 +1629,7 @@ export function useChatStore(workspaceId: string): ChatStore {
 
       patchThread(threadId, (t) => ({
         ...t,
-        title: t.messages.length === 0 ? promptText.slice(0, 40) : t.title,
+        title: t.messages.length === 0 ? derivedTitle : t.title,
         messages: [...t.messages, userMessage, agentMessage],
       }));
       // The user turn is already terminal, so it can be persisted immediately. The
@@ -1667,6 +1696,7 @@ export function useChatStore(workspaceId: string): ChatStore {
       ensureServerThread,
       patchMessage,
       patchThread,
+      persistFirstTurnTitle,
       queuePersist,
       toast,
       workspaceId,

@@ -18,6 +18,9 @@ retained so ``parse`` still does not match ``parser``.
 """
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -206,3 +209,18 @@ def test_tokenize_discards_punctuation_and_empty_fragments() -> None:
     ]
     assert _tokenize("") == []
     assert _tokenize("///") == []
+
+
+# ── shared frontend matrix ───────────────────────────────────────────────
+
+_TRIGGER_MATRIX_PATH = Path(__file__).parent / "fixtures" / "skills-trigger-matrix.json"
+_TRIGGER_MATRIX = json.loads(_TRIGGER_MATRIX_PATH.read_text(encoding="utf-8"))["cases"]
+
+
+@pytest.mark.parametrize("case", _TRIGGER_MATRIX, ids=[c["name"] for c in _TRIGGER_MATRIX])
+def test_shared_matrix_cases_match_backend_semantics(case: dict) -> None:
+    """The same case file drives the frontend matcher
+    (apps/web .../skills/__tests__/trigger-matcher.test.ts), so the client-side
+    preview can never disagree with the server about which phrase fired."""
+    skill = _skill("matrix", tuple(case["triggers"]))
+    assert _trigger_hits(skill, _normalize(case["message"])) == case["expectedHits"]

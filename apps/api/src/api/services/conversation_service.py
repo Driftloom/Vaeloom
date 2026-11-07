@@ -230,8 +230,25 @@ class ConversationService:
         """Autonomously ingest user thoughts, preferences, decisions, and notes from chat into dynamic memory (memories table)."""
         from ..schemas.memory import MemoryCreate
         from .memory_service import memory_service
+        from .skill_injection import parse_skill_pin
 
         cleaned = (text or "").strip()
+
+        # An opening `/skill:<slug>` pin is a command, not content. Strip it and
+        # ingest the residual, carrying the slug as provenance — the transcript
+        # keeps the raw text, so this is the last seam before the token could
+        # leak into a memory row. A malformed pin leaves the text byte-identical
+        # and a pure pin yields an empty residual; both fall through to the
+        # slash-command skip below, unchanged.
+        residual, pin_slug, pin_malformed = parse_skill_pin(cleaned)
+        if pin_slug is not None:
+            cleaned = residual.strip()
+        elif pin_malformed and cleaned.startswith("/"):
+            logger.warning(
+                "Chat turn opens with a malformed skill pin; treated as a slash command (%s)",
+                client_id[:8],
+            )
+
         if len(cleaned) < 15:
             return
 
@@ -280,7 +297,11 @@ class ConversationService:
             tags=["chat", "memory"],
             source_type="chat",
             source_label=f"Chat message ({client_id[:8]})",
-            metadata={"client_id": client_id, "channel": "chat"},
+            metadata={
+                "client_id": client_id,
+                "channel": "chat",
+                **({"skill_slug": pin_slug} if pin_slug is not None else {}),
+            },
         )
 
         try:

@@ -854,3 +854,34 @@ export const CheckSquareIcon: React.FC<IconProps> = ({
     <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
   </svg>
 );
+
+export const MessageIcon: React.FC<IconProps> = ({
+  size = 16,
+  className = '',
+  color,
+  ...props
+}) => (
+  <svg
+    width={size}
+    height={size}
+    {...defaultProps}
+    stroke={color || 'currentColor'}
+    className={className}
+    {...props}
+  >
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+  </svg>
+);
+
+export const ZapIcon: React.FC<IconProps> = ({ size = 16, className = '', color, ...props }) => (
+  <svg
+    width={size}
+    height={size}
+    {...defaultProps}
+    stroke={color || 'currentColor'}
+    className={className}
+    {...props}
+  >
+    <path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z" />
+  </svg>
+);

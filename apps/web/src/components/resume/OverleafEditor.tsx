@@ -196,16 +196,16 @@ export function OverleafEditor({ workspaceId, resumeId }: Props) {
   }
 
   return (
-    <div className="flex flex-col h-full min-h-[500px] flex-1 bg-white border border-border rounded-lg overflow-hidden">
+    <div className="flex flex-col h-full min-h-[500px] flex-1 bg-surface border border-border rounded-lg overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-white gap-2">
+      <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-surface gap-2">
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-semibold">Vaeloom Resume Studio</h2>
           <span className="text-xs text-muted hidden sm:inline">
             — Overleaf way · split-pane live
           </span>
           <span
-            className={`text-2xs px-1.5 py-0.5 rounded border ${saving ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-emerald-50 text-emerald-700 border-emerald-200'}`}
+            className={`text-2xs px-1.5 py-0.5 rounded border ${saving ? 'bg-warning/10 text-warning border-warning/30' : 'bg-success/10 text-success border-success/30'}`}
           >
             {saving ? 'Saving…' : 'Saved'}
           </span>
@@ -214,7 +214,7 @@ export function OverleafEditor({ workspaceId, resumeId }: Props) {
           <select
             value={selectedSlug}
             onChange={(e) => setSelectedSlug(e.target.value)}
-            className="text-xs border border-border rounded px-2 py-1 bg-white"
+            className="text-xs border border-border rounded px-2 py-1 bg-surface"
           >
             {templates.map((t) => (
               <option key={t.slug} value={t.slug}>
@@ -238,7 +238,7 @@ export function OverleafEditor({ workspaceId, resumeId }: Props) {
           <button
             key={t}
             onClick={() => setTab(t)}
-            className={`px-3 py-1 rounded ${tab === t ? 'bg-white border border-border font-medium' : 'hover:bg-white/60'}`}
+            className={`px-3 py-1 rounded ${tab === t ? 'bg-surface border border-border font-medium' : 'hover:bg-surface-hover'}`}
           >
             {t === 'source' ? 'Source Code' : t === 'visual' ? 'Visual Form' : 'AI Chat'}
           </button>
@@ -321,14 +321,14 @@ export function OverleafEditor({ workspaceId, resumeId }: Props) {
                 <div className="border border-border rounded overflow-hidden">
                   <div className="px-3 py-2 bg-surface-50 text-xs font-medium flex items-center justify-between">
                     Agent diff — {diffOps.length} change(s){' '}
-                    <span className="text-emerald-600">provenance kept</span>
+                    <span className="text-success">provenance kept</span>
                   </div>
                   {diffOps.map((d, i) => (
                     <div key={i} className="p-3 text-xs border-t border-border space-y-1">
-                      <div className="line-through text-red-600 bg-red-50 px-2 py-1 rounded">
+                      <div className="line-through text-error bg-error/10 px-2 py-1 rounded">
                         {d.oldText.slice(0, 300)}
                       </div>
-                      <div className="text-emerald-700 bg-emerald-50 px-2 py-1 rounded">
+                      <div className="text-success bg-success/10 px-2 py-1 rounded">
                         {d.newText.slice(0, 300)}
                       </div>
                       <div className="text-muted">{d.rationale}</div>
@@ -337,13 +337,13 @@ export function OverleafEditor({ workspaceId, resumeId }: Props) {
                   <div className="p-2 flex gap-2 bg-surface-50">
                     <button
                       onClick={handleAcceptDiff}
-                      className="flex-1 py-1.5 rounded bg-emerald-600 text-white text-xs font-medium"
+                      className="flex-1 py-1.5 rounded bg-success text-white text-xs font-medium"
                     >
                       Accept All
                     </button>
                     <button
                       onClick={() => setShowDiff(false)}
-                      className="flex-1 py-1.5 rounded border border-border bg-white text-xs"
+                      className="flex-1 py-1.5 rounded border border-border bg-surface text-xs"
                     >
                       Reject
                     </button>
@@ -365,10 +365,10 @@ export function OverleafEditor({ workspaceId, resumeId }: Props) {
 
       {/* Log panel — tectonic/PDF errors */}
       {markers.length > 0 && (
-        <div className="border-t border-border bg-amber-50/50 px-3 py-2 text-xs max-h-24 overflow-auto">
-          <div className="font-medium text-amber-800">Compile log — {markers.length} issue(s)</div>
+        <div className="border-t border-border bg-warning/10 px-3 py-2 text-xs max-h-24 overflow-auto">
+          <div className="font-medium text-warning">Compile log — {markers.length} issue(s)</div>
           {markers.map((m, i) => (
-            <div key={i} className={m.severity === 'error' ? 'text-red-600' : 'text-amber-700'}>
+            <div key={i} className={m.severity === 'error' ? 'text-error' : 'text-warning'}>
               L{m.line}: {m.message}
             </div>
           ))}
@@ -393,7 +393,7 @@ function VisualForm({ resume, onUpdate }: { resume: ResumeResponse; onUpdate: (c
         <input
           value={form.name ?? ''}
           onChange={(e) => setForm({ ...form, name: e.target.value })}
-          className="w-full mt-1 px-2 py-1.5 border border-border rounded text-sm bg-white"
+          className="w-full mt-1 px-2 py-1.5 border border-border rounded text-sm bg-surface"
         />
       </label>
       <label className="block text-xs">
@@ -401,7 +401,7 @@ function VisualForm({ resume, onUpdate }: { resume: ResumeResponse; onUpdate: (c
         <input
           value={form.title ?? ''}
           onChange={(e) => setForm({ ...form, title: e.target.value })}
-          className="w-full mt-1 px-2 py-1.5 border border-border rounded text-sm bg-white"
+          className="w-full mt-1 px-2 py-1.5 border border-border rounded text-sm bg-surface"
         />
       </label>
       <label className="block text-xs">
@@ -410,7 +410,7 @@ function VisualForm({ resume, onUpdate }: { resume: ResumeResponse; onUpdate: (c
           value={form.summary ?? ''}
           onChange={(e) => setForm({ ...form, summary: e.target.value })}
           rows={3}
-          className="w-full mt-1 px-2 py-1.5 border border-border rounded text-sm bg-white"
+          className="w-full mt-1 px-2 py-1.5 border border-border rounded text-sm bg-surface"
         />
       </label>
       <div className="text-xs">
@@ -425,7 +425,7 @@ function VisualForm({ resume, onUpdate }: { resume: ResumeResponse; onUpdate: (c
               const exp0 = { ...(form.experience?.[0] ?? {}), bullets: next };
               setForm({ ...form, experience: [exp0, ...(form.experience?.slice(1) ?? [])] });
             }}
-            className="w-full mt-1 px-2 py-1.5 border border-border rounded text-sm bg-white"
+            className="w-full mt-1 px-2 py-1.5 border border-border rounded text-sm bg-surface"
           />
         ))}
       </div>

@@ -46,6 +46,7 @@ const fakeApi = {
   test: jest.fn(),
   validateDraft: jest.fn(),
   update: jest.fn(),
+  syncGithub: jest.fn(),
 };
 
 jest.mock('@/lib/api-client', () => {
@@ -57,6 +58,7 @@ jest.mock('@/lib/api-client', () => {
       test: (body: unknown) => fakeApi.test(body),
       validateDraft: (body: unknown) => fakeApi.validateDraft(body),
       update: (id: string, body: unknown) => fakeApi.update(id, body),
+      syncGithub: (repository: string, ref?: string) => fakeApi.syncGithub(repository, ref),
     },
   };
 });
@@ -587,6 +589,22 @@ describe('AddCapabilityModal DOM contract', () => {
     const textarea = within(dialog()).getByLabelText('Sandbox input payload (JSON)');
     expect(textarea.tagName).toBe('TEXTAREA');
   });
+
+  it('renders through the ui-kit overlay portal', () => {
+    const view = render(
+      <AddCapabilityModal
+        isOpen
+        onClose={jest.fn()}
+        onCreate={jest.fn()}
+        onImport={jest.fn()}
+        defaultCategory="skills"
+      />,
+    );
+    const shell = screen.getByRole('dialog');
+    expect(document.body.contains(shell)).toBe(true);
+    expect(view.container.contains(shell)).toBe(false);
+    view.unmount();
+  });
 });
 
 // ─── Fabricated panels are gone ──────────────────────────────────────────────
@@ -1073,5 +1091,242 @@ describe('AddCapabilityModal create payload', () => {
     const capability = harness.onCreate.mock.calls[0][0];
     expect(capability.metadata).not.toHaveProperty('required_scope');
     expect(capability.requiredScope).toBeUndefined();
+  });
+});
+
+// ─── GitHub sync pane ────────────────────────────────────────────────────────
+
+describe('AddCapabilityModal GitHub sync pane', () => {
+  /**
+   * The result of `POST /capabilities/sync-github` as the api-client returns it
+   * (post-`transformKeys`). Every number a test asserts must trace to this
+   * fixture: the UI renders the response object, never a literal.
+   */
+  function githubSyncResult(overrides: Record<string, unknown> = {}) {
+    return {
+      repository: 'vaeloom/skills-community',
+      ref: 'master',
+      skillsDiscovered: 3,
+      skillsValid: 2,
+      skillsRejected: 1,
+      skills: [
+        {
+          slug: 'contract-review',
+          name: 'contract-review',
+          description: 'Review contracts for risk.',
+          tags: ['legal'],
+          requiredScope: 'memory.read',
+          autonomy: 'suggest',
+          trustClass: 'community',
+          triggers: ['/review'],
+          version: '1.0.0',
+          author: 'GitHub Community',
+          markdownDoc: '# contract-review',
+          valid: true,
+          validationStatus: 'success',
+          violations: [],
+        },
+        {
+          slug: 'bad-actor',
+          name: 'bad-actor',
+          description: 'Overreaches its declared scope.',
+          tags: [],
+          requiredScope: 'system.execute',
+          autonomy: 'autonomous',
+          trustClass: 'root',
+          triggers: [],
+          version: '0.0.1',
+          author: 'GitHub Community',
+          markdownDoc: '# bad-actor',
+          valid: false,
+          validationStatus: 'rejected',
+          violations: [
+            "trust_class 'root' is not one of ['community', 'core_trusted']",
+            'scope system.execute is not reachable under autonomy suggest',
+          ],
+        },
+        {
+          slug: 'plain-helper',
+          name: 'plain-helper',
+          description: 'A second valid skill.',
+          tags: [],
+          requiredScope: 'memory.write',
+          autonomy: 'suggest',
+          trustClass: 'community',
+          triggers: [],
+          version: '1.0.0',
+          author: 'GitHub Community',
+          markdownDoc: '# plain-helper',
+          valid: true,
+          validationStatus: 'success',
+          violations: [],
+        },
+      ],
+      errors: [],
+      persisted: false,
+      skillsTruncated: false,
+      ...overrides,
+    };
+  }
+
+  function typeSyncRepo(value: string) {
+    fireEvent.change(within(dialog()).getByLabelText('GitHub repository (owner/repo)'), {
+      target: { value },
+    });
+  }
+
+  function clickSync() {
+    return act(async () => {
+      fireEvent.submit(
+        within(dialog()).getByRole('button', { name: /Validate skills from GitHub/i }),
+      );
+    });
+  }
+
+  it('renders the fixture-exact counts and the rejected skill violations, nothing for valid rows', async () => {
+    const harness = renderModal({ initialMode: 'import' });
+    fakeApi.syncGithub.mockResolvedValueOnce(githubSyncResult());
+
+    typeSyncRepo('vaeloom/skills-community');
+    await clickSync();
+
+    expect(fakeApi.syncGithub).toHaveBeenCalledTimes(1);
+    expect(fakeApi.syncGithub.mock.calls[0][0]).toBe('vaeloom/skills-community');
+    expect(fakeApi.syncGithub.mock.calls[0][1]).toBeUndefined();
+    // The header echoes the response, not the form state.
+    expect(within(dialog()).getByText('vaeloom/skills-community @ master')).toBeInTheDocument();
+    expect(within(dialog()).getByText('3 discovered · 2 valid · 1 rejected')).toBeInTheDocument();
+
+    const rejected = within(dialog()).getByText('bad-actor').closest('li');
+    expect(rejected).not.toBeNull();
+    expect(rejected).toHaveTextContent(
+      "trust_class 'root' is not one of ['community', 'core_trusted']",
+    );
+    expect(rejected).toHaveTextContent(
+      'scope system.execute is not reachable under autonomy suggest',
+    );
+
+    const valid = within(dialog()).getByText('contract-review').closest('li');
+    expect(valid).not.toBeNull();
+    expect(valid).not.toHaveTextContent('trust_class');
+    // markdown_doc travels in the payload but must not be rendered here.
+    expect(within(dialog()).queryByText('# contract-review')).toBeNull();
+
+    // The URL-import form did not fire with it, and the modal did not close.
+    expect(harness.onImport).not.toHaveBeenCalled();
+    expect(harness.onClose).not.toHaveBeenCalled();
+    // Loading cleared: the idle label is back.
+    expect(
+      within(dialog()).getByRole('button', { name: /Validate skills from GitHub/i }),
+    ).toBeInTheDocument();
+  });
+
+  it('renders the verbatim empty message and no counts line', async () => {
+    renderModal({ initialMode: 'import' });
+    fakeApi.syncGithub.mockResolvedValueOnce(
+      githubSyncResult({ skillsDiscovered: 0, skillsValid: 0, skillsRejected: 0, skills: [] }),
+    );
+
+    typeSyncRepo('vaeloom/skills-community');
+    await clickSync();
+
+    expect(
+      await within(dialog()).findByText(
+        'No SKILL.md files were found in vaeloom/skills-community.',
+      ),
+    ).toBeInTheDocument();
+    expect(within(dialog()).queryByText(/discovered · /)).toBeNull();
+  });
+
+  it('with zero discovered and errors, renders only the errors — no empty message, no counts', async () => {
+    renderModal({ initialMode: 'import' });
+    fakeApi.syncGithub.mockResolvedValueOnce(
+      githubSyncResult({
+        skillsDiscovered: 0,
+        skillsValid: 0,
+        skillsRejected: 0,
+        skills: [],
+        errors: ['GitHub API returned HTTP 404: Not Found for vaeloom/nope-missing.'],
+      }),
+    );
+
+    typeSyncRepo('vaeloom/skills-community');
+    await clickSync();
+
+    expect(
+      await within(dialog()).findByText(
+        'GitHub API returned HTTP 404: Not Found for vaeloom/nope-missing.',
+      ),
+    ).toBeInTheDocument();
+    // The empty-form message is bound to a genuinely empty repository (no
+    // errors); a failed fetch must not read as "repo exists, empty".
+    expect(
+      within(dialog()).queryByText('No SKILL.md files were found in vaeloom/skills-community.'),
+    ).toBeNull();
+    expect(within(dialog()).queryByText(/discovered · /)).toBeNull();
+  });
+
+  it('clears a stale result on a fresh failure, keeps Cancel interactive and clears loading', async () => {
+    const harness = renderModal({ initialMode: 'import' });
+    fakeApi.syncGithub.mockResolvedValueOnce(githubSyncResult());
+    fakeApi.syncGithub.mockRejectedValueOnce(
+      new Error('Request failed (403): Only the workspace owner may perform this operation'),
+    );
+
+    typeSyncRepo('vaeloom/skills-community');
+    await clickSync();
+
+    // A result exists after the first attempt and is gone after the failed one:
+    // a fresh error must not stand next to a stale success.
+    expect(
+      await within(dialog()).findByText('vaeloom/skills-community @ master'),
+    ).toBeInTheDocument();
+    await clickSync();
+
+    const alert = await within(dialog()).findByRole('alert');
+    expect(alert).toHaveTextContent(
+      'Request failed (403): Only the workspace owner may perform this operation',
+    );
+    expect(alert).toHaveTextContent(/stayed open/);
+    expect(within(dialog()).queryByText('vaeloom/skills-community @ master')).toBeNull();
+
+    // Loading cleared: the idle label is back.
+    expect(
+      within(dialog()).getByRole('button', { name: /Validate skills from GitHub/i }),
+    ).toBeInTheDocument();
+    // Cancel stayed enabled and is still clickable.
+    const cancels = within(dialog()).getAllByRole('button', { name: /^Cancel$/ });
+    expect(cancels[0]).not.toBeDisabled();
+    fireEvent.click(cancels[0]);
+    expect(harness.onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders a truncation notice that carries no invented number', async () => {
+    renderModal({ initialMode: 'import' });
+    fakeApi.syncGithub.mockResolvedValueOnce(
+      githubSyncResult({
+        skillsDiscovered: 4,
+        skillsValid: 3,
+        skillsRejected: 1,
+        skillsTruncated: true,
+        errors: [
+          'Repository exposes 257 SKILL.md files; processing the first 200 (set-skipped=57).',
+        ],
+      }),
+    );
+
+    typeSyncRepo('vaeloom/skills-community');
+    await clickSync();
+
+    const notice = await within(dialog()).findByText(/more SKILL\.md files than one sync/i);
+    // The notice states the fact without a limit number; the backend's own
+    // message in errors[] carries the exact counts and renders verbatim.
+    expect(notice.textContent).not.toMatch(/[0-9]/);
+    expect(within(dialog()).getByText('4 discovered · 3 valid · 1 rejected')).toBeInTheDocument();
+    expect(
+      within(dialog()).getByText(
+        'Repository exposes 257 SKILL.md files; processing the first 200 (set-skipped=57).',
+      ),
+    ).toBeInTheDocument();
   });
 });

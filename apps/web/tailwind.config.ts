@@ -283,6 +283,17 @@ const config: Config = {
         'elevation-modal': 'var(--elevation-modal)',
         'elevation-card': 'var(--elevation-card)',
       },
+      backdropBlur: {
+        // `xs` is a Tailwind v4 scale entry; this project is v3.4, so every
+        // `backdrop-blur-xs` purged silently and rendered nothing — the same
+        // registry dead zone `boxShadow.xs` covers above. Declared here so a
+        // future consumer cannot ship a class that renders nothing: this row
+        // is first-party parity, not a licence to keep the spelling, and the
+        // design-system guardrails scan bans it in the capabilities subtree.
+        // Value matches v3 `blur-sm` (4px) so the intended frost is
+        // preserved rather than invented.
+        xs: '4px',
+      },
       spacing: {
         // `0.2` was used in 38 files (capability view chips, Sidebar rows).
         // Below the v3 default floor of 0.5, so it purged. Scaled off the

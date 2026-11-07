@@ -52,7 +52,9 @@ const CORE_ROUTES: CoreRoute[] = [
   {
     name: 'files',
     seg: '/files',
-    expectPath: (ws) => `/workspace/${ws}/files`,
+    // /files is a redirect stub (files/page.tsx:12) onto the documents hub, so
+    // the URL after navigation is NOT /files.
+    expectPath: (ws) => `/workspace/${ws}/documents`,
     marker: (page) => h1(page, 'Workspace Files', true),
   },
   {

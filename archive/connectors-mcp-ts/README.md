@@ -1,6 +1,8 @@
 # Archived — Legacy TS MCP Connector
 
-**Archived:** 2026-08-27 per ADR-036 and ADR-037
+**Archived:** 2026-08-27 per ADR-036 and ADR-037; full package tree moved here
+2026-10-22 per ADR-048 under `mcp/` (zero imports confirmed by pre-flight
+sweep).
 
 `connectors/mcp` (TS: `index.ts`, `mcp.connector.ts`, `transport.ts`) was a
 working stdio/HTTP-SSE JSON-RPC MCP client but was **never wired into the Python

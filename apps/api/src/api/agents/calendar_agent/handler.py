@@ -113,7 +113,7 @@ class CalendarAgent(BaseAgent):
             f"Computed {len(suggested_slots)} alternate slots."
         )
 
-        return {
+        res = {
             "agent_name": "calendar",
             "action": "suggest",
             "confidence": 0.95,
@@ -124,8 +124,26 @@ class CalendarAgent(BaseAgent):
                 "questions": [
                     f"Would you like to move '{conflicts[0]['event_b']}' to {suggested_slots[0]}?"
                 ] if conflicts else [],
+                "action_chips": [
+                    "📅 View Daily Schedule",
+                    "🔍 Resolve Conflicts",
+                    "➕ Add Focus Block",
+                ],
             },
         }
+        return res
+
+    async def handle(
+        self,
+        message: str,
+        workspace_id: str | None = None,
+        user_id: str | None = None,
+        tenant_id: str | None = None,
+        permissions: list[str] | None = None,
+        context: Any = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        return await self.process({"message": message, "workspace_id": workspace_id, "user_id": user_id, "tenant_id": tenant_id})
 
     async def execute(self, request: Any, context: Any = None) -> Any:
         return await self.process(request)

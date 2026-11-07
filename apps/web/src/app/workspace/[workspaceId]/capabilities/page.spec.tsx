@@ -211,13 +211,6 @@ jest.mock('@/lib/api-client', () => {
         }
         fakeDb.skills = fakeDb.skills.filter((entry) => entry.id !== id);
       }),
-      toggleCapability: jest.fn().mockImplementation(async (id: string, enabled: boolean) => {
-        fakeDb.updates.push({ id, body: { enabled } });
-        const row = fakeDb.skills.find((entry) => entry.id === id);
-        if (!row) throw httpError(404, 'Capability not found');
-        row.enabled = enabled;
-        return { ...row };
-      }),
       test: jest.fn().mockResolvedValue({
         status: 'success',
         capability: 'test-cap',
@@ -461,6 +454,89 @@ describe('CapabilitiesPage', () => {
     expect(screen.getByRole('tab', { name: /Skills/i })).toHaveTextContent('Skills0');
   });
 
+  // ─── A2: server-first badge counts ────────────────────────────────────────
+
+  it('suppresses the seed count in a category that has server rows', async () => {
+    capsApi()['list'].mockResolvedValue([
+      {
+        ...BASE_ROW,
+        id: 'srv-tool-1',
+        name: 'live-tool-one',
+        category: 'tool',
+        installed: true,
+        bundled: false,
+      },
+      {
+        ...BASE_ROW,
+        id: 'srv-tool-2',
+        name: 'live-tool-two',
+        category: 'tool',
+        installed: true,
+        bundled: false,
+      },
+    ]);
+    await renderSkills();
+
+    // The server carries the truth for the whole category: the seed's four
+    // tool rows must not inflate the badge once server rows exist.
+    expect(screen.getByRole('tab', { name: /Tools/i })).toHaveTextContent('Tools2');
+  });
+
+  it('keeps the seed count for a category with no server rows', async () => {
+    capsApi()['list'].mockResolvedValue([]);
+    await renderSkills();
+
+    // A loaded-but-empty server list never strips the seed fallback: tool rows
+    // come entirely from the generated fallback catalog (68 rows) — the seed
+    // carries no hand-written tool rows.
+    expect(screen.getByRole('tab', { name: /Tools/i })).toHaveTextContent('Tools68');
+  });
+
+  it('counts MCP as installed workspace servers plus not-yet-installed built-ins', async () => {
+    capsApi()['list'].mockResolvedValue([]);
+    apiClient.connectorsApi['list'].mockResolvedValue([
+      {
+        id: 'conn-mcp-1',
+        name: 'memory',
+        type: 'mcp',
+        status: 'active',
+        workspace_id: 'ws-test-123',
+        config: {},
+      },
+    ]);
+    apiClient.connectorsApi['mcp']['builtin'].mockResolvedValue({
+      builtin_servers: [
+        { name: 'memory', config: {} },
+        { name: 'filesystem', config: {} },
+      ],
+    });
+    await renderSkills();
+
+    // `memory` is installed (visible once in the badge) and `filesystem` is a
+    // still-installable built-in; the seed carries no MCP rows at all.
+    expect(screen.getByRole('tab', { name: /MCP/i })).toHaveTextContent('MCP2');
+  });
+
+  it('reports a fresh server row on its own tab', async () => {
+    capsApi()['list'].mockResolvedValue([
+      {
+        ...BASE_ROW,
+        id: 'srv-plugin-1',
+        name: 'beta-hero',
+        category: 'plugin',
+        installed: true,
+        bundled: false,
+      },
+    ]);
+    await renderSkills();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('tab', { name: /Plugins/i }));
+    });
+    expect(await screen.findByText('beta-hero')).toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: /Plugins/i })).toHaveTextContent('Plugins1');
+  });
+
   it('names the search field with a stable label and wires the "/" shortcut hook', async () => {
     await renderSkills();
 
@@ -589,12 +665,12 @@ describe('CapabilitiesPage', () => {
 
     // Installed, but disabled: it must still be counted and still be listed.
     expect(screen.getByRole('button', { name: /^Installed \(1\)/i })).toBeInTheDocument();
-    // Derived, not a literal. The browsable set is every seed skill except the
-    // one the server now owns (`acceptance-criteria-review` merges into the
-    // installed row), plus `catalog-only-skill` which is not in the seed at all.
+    // Derived, not a literal. The browsable set is every seed skill — the seed
+    // no longer carries the name this server row uses, so nothing merges —
+    // plus `catalog-only-skill`, the one catalog row with no installed pair.
     const seedSkills = SEED_CAPABILITIES.filter(isSkill).length;
     expect(screen.getByRole('button', { name: /^Browse \(/i })).toHaveTextContent(
-      `Browse (${seedSkills - 1 + 1})`,
+      `Browse (${seedSkills + 1})`,
     );
     expect(skillRowButton('acceptance-criteria-review')).toBeInTheDocument();
     expect(screen.getAllByText('Disabled').length).toBeGreaterThanOrEqual(1);
@@ -743,7 +819,7 @@ describe('CapabilitiesPage', () => {
   it('rejects editing instructions when the skill has no server row', async () => {
     await renderSkills();
     await openBrowse();
-    await userClickRow('accessibility-testing');
+    await userClickRow('career-coaching');
 
     await userEditDoc('# Local only edit', { expectSaved: false });
 
@@ -752,7 +828,7 @@ describe('CapabilitiesPage', () => {
     expect(mockToast).toHaveBeenCalledWith(
       expect.objectContaining({
         tone: 'error',
-        title: expect.stringContaining('Could not save instructions for accessibility-testing'),
+        title: expect.stringContaining('Could not save instructions for career-coaching'),
         detail: expect.stringContaining('no workspace capability row'),
       }),
     );
@@ -1089,7 +1165,7 @@ describe('CapabilitiesPage', () => {
     await act(async () => {
       fireEvent.click(browseCta);
     });
-    expect(screen.getAllByText('acceptance-criteria-review').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('career-coaching').length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText('No skills installed')).not.toBeInTheDocument();
   });
 
@@ -1108,7 +1184,7 @@ describe('CapabilitiesPage', () => {
       fireEvent.click(screen.getByRole('button', { name: /^Reset search$/i }));
     });
     expect(screen.queryByText('No skills match this search')).not.toBeInTheDocument();
-    expect(screen.getAllByText('acceptance-criteria-review').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText('career-coaching').length).toBeGreaterThanOrEqual(1);
   });
 
   it('reports an empty catalog as its own condition with a create call to action', async () => {

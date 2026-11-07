@@ -5104,6 +5104,61 @@ export interface ValidateCapabilityDraftRequest {
 }
 
 /**
+ * One validated SKILL.md in `RemoteSkillSummary` (`api/services/github_skills_sync.py`).
+ *
+ * `transformKeys` camelCases response keys, so `required_scope` arrives as
+ * `requiredScope` and `trust_class` as `trustClass`. `autonomy` and `trustClass`
+ * are plain strings on purpose: a rejected skill's job is to *report* the value
+ * that failed, so typing them as the client's enums would hide the answer.
+ *
+ * `markdownDoc` travels in the payload but is deliberately not rendered by this
+ * client; its display is out of scope for the sync result.
+ */
+export interface GitHubRemoteSkillSummaryRecord {
+  slug: string;
+  name: string;
+  description: string;
+  tags: string[];
+  requiredScope: string;
+  autonomy: string;
+  trustClass: string;
+  triggers: string[];
+  version: string;
+  author: string;
+  markdownDoc: string;
+  valid: boolean;
+  validationStatus: string;
+  violations: string[];
+}
+
+/**
+ * `GitHubSkillSyncResult` in `api/services/github_skills_sync.py` — the whole
+ * answer of `POST /capabilities/sync-github`.
+ *
+ * `persisted` is typed `false` rather than `boolean` because the backend
+ * hard-codes the field to `False` (`github_skills_sync.py`): this endpoint
+ * validates only and never writes, and the compiler is what keeps a caller
+ * from reading a sync result as an install.
+ * The same trick as `CapabilityDraftValidationResponse.executed` above.
+ *
+ * Every field is renamed from the wire by `transformKeys`: `skills_discovered`
+ * is `skillsDiscovered`, `skills_valid` is `skillsValid`, `skills_rejected` is
+ * `skillsRejected`, `skills_truncated` is `skillsTruncated`. `repository`, `ref`,
+ * `skills` and `errors` are single words and survive unrenamed.
+ */
+export interface GitHubSkillSyncResultRecord {
+  repository: string;
+  ref: string;
+  skillsDiscovered: number;
+  skillsValid: number;
+  skillsRejected: number;
+  skills: GitHubRemoteSkillSummaryRecord[];
+  errors: string[];
+  persisted: false;
+  skillsTruncated: boolean;
+}
+
+/**
  * One entry of `GET /capabilities/tools/definitions` — the backend `ALL_TOOLS`
  * registry in `apps/api/src/api/tools/definitions.py`.
  *
@@ -5186,22 +5241,6 @@ export const capabilitiesApi = {
     });
   },
   /**
-   * Flip a capability on or off.
-   *
-   * `workspace_id` is omitted deliberately. `UpdateCapabilityRequest` accepts the
-   * field so the client can stop having it silently dropped, but the backend only
-   * uses it to prove the client agrees with the verified workspace — authorization
-   * comes from the request-scoped workspace id (`Depends(get_workspace_id)`), never
-   * from a body field. Sending it invites a caller to believe it is load-bearing.
-   */
-  toggleCapability(
-    capabilityId: string,
-    enabled: boolean,
-    _workspaceId?: string,
-  ): Promise<CapabilityItemRecord> {
-    return apiClient.patch<CapabilityItemRecord>(`/capabilities/${capabilityId}`, { enabled });
-  },
-  /**
    * Dispatch a registered capability for real and report what happened.
    *
    * Not interchangeable with `test()`, which never executes anything.
@@ -5243,6 +5282,28 @@ export const capabilitiesApi = {
       config: body.config ?? {},
       ...(body.autonomy !== undefined ? { autonomy: body.autonomy } : {}),
       ...(body.trustClass !== undefined ? { trust_class: body.trustClass } : {}),
+    });
+  },
+  /**
+   * Fetch and validate a GitHub repository's SKILL.md files server-side.
+   *
+   * Validation only: the returned `persisted` is typed literal `false`, and no
+   * argument here can install anything. The owner-only authorization, the
+   * 5-requests-per-60s rate limit and the `X-GitHub-Token` header all live in
+   * the backend — the client sends no token and carries no credential.
+   *
+   * No workspace argument: the endpoint reads the request-scoped workspace like
+   * `validateDraft`, and `SyncGitHubSkillsRequest` sets `extra='forbid'`, so a
+   * `workspace_id` in the body would be a 422, not a hint.
+   *
+   * `ref` is optional; omitting it lets the server use its configured default
+   * (`"master"`, `SyncGitHubSkillsRequest.ref`), so the key is only sent when one
+   * was asked for.
+   */
+  syncGithub(repository: string, ref?: string): Promise<GitHubSkillSyncResultRecord> {
+    return apiClient.post<GitHubSkillSyncResultRecord>('/capabilities/sync-github', {
+      repository,
+      ...(ref !== undefined ? { ref } : {}),
     });
   },
 };
@@ -5392,6 +5453,51 @@ export interface ComposioAuthUrlResponse {
 }
 
 /**
+ * `POST /connectors/composio/refresh`, from `composio_service.refresh_connection`.
+ *
+ * Workspace-scoped and member-gated: a foreign workspace 404s (existence is not
+ * enumerated). The endpoint is rate limited to 10 requests per 60 seconds and
+ * no token is sent from the client. Two branches ride the same 200: the
+ * connected branch (`connected: true`) carries only `checked_at`, while the
+ * reconnection branch (`connected: false`) adds `error_code`, `message` and the
+ * inline `auth_url` for the consent screen the user must complete in a new
+ * window before credentials are refreshed again.
+ */
+export interface ComposioRefreshResultRecord {
+  status: string;
+  connected: boolean;
+  app: string;
+  checkedAt: string;
+  errorCode?: string;
+  message?: string;
+  authUrl?: string;
+}
+
+/**
+ * `POST /connectors/composio/disconnect`, from `composio_service.disconnect_connection`.
+ *
+ * Workspace-scoped and member-gated: a foreign workspace 404s (existence is not
+ * enumerated). The endpoint is rate limited to 10 requests per 60 seconds and
+ * no token is sent from the client. The call is idempotent: connecting nothing
+ * returns `success` with `revoked: []` and `detail` naming that on the wire.
+ * `revocation_errors` is always present in the 200 shape and is non-empty
+ * whenever any account failed to revoke — possible under both `success` (mixed
+ * run) and `partial`; `partial` is emitted only when nothing was revoked.
+ * `error` is a hard failure (for example a missing Composio API key)
+ * reported with `message` and no row change. `detail` is `null` whenever
+ * connection targets existed.
+ */
+export interface ComposioDisconnectResultRecord {
+  status: string;
+  app: string;
+  revoked: string[];
+  revocationErrors?: Array<{ id: string; error: string }>;
+  detail?: string | null;
+  errorCode?: string;
+  message?: string;
+}
+
+/**
  * `GET /connectors/{id}/health`, from `connector_ext_service.get_health`.
  *
  * The service returns exactly `connector_id`, `name`, `type`, `status`,
@@ -5461,9 +5567,6 @@ export const connectorsApi = {
    */
   sync(connectorId: string): Promise<SyncStatusResponse> {
     return apiClient.post<SyncStatusResponse>(`/connectors/${connectorId}/sync`);
-  },
-  getSyncStatus(connectorId: string): Promise<SyncStatusResponse> {
-    return apiClient.get<SyncStatusResponse>(`/connectors/${connectorId}/sync/status`);
   },
   test(
     connectorId: string,
@@ -5569,6 +5672,18 @@ export const connectorsApi = {
       workspaceId: string,
     ): Promise<{ workspace_id: string; registered: string[]; count: number }> {
       return apiClient.post(`/connectors/composio/sync`, { workspace_id: workspaceId });
+    },
+    refresh(app: string, workspaceId: string): Promise<ComposioRefreshResultRecord> {
+      return apiClient.post<ComposioRefreshResultRecord>('/connectors/composio/refresh', {
+        app,
+        workspace_id: workspaceId,
+      });
+    },
+    disconnect(app: string, workspaceId: string): Promise<ComposioDisconnectResultRecord> {
+      return apiClient.post<ComposioDisconnectResultRecord>('/connectors/composio/disconnect', {
+        app,
+        workspace_id: workspaceId,
+      });
     },
   },
 };

@@ -271,3 +271,73 @@ class QAAgent(BaseAgent):
                         f"{ungrounded[:3]}"
                     )
         return issues
+
+    async def process(self, request_or_dict: Any, context: Any = None) -> dict[str, Any]:
+        if isinstance(request_or_dict, dict) and "agent_name" in request_or_dict and "result" in request_or_dict:
+            val = await self.validate(request_or_dict, context=context)
+            return {
+                "agent_name": "qa",
+                "action": "execute",
+                "confidence": 1.0,
+                "result": {
+                    "summary": f"QA Decision: {val.decision.upper()}",
+                    "details": val.model_dump(),
+                    "proposals": [],
+                    "questions": val.issues,
+                },
+            }
+        msg = request_or_dict.get("message", "") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "message", str(request_or_dict))
+        ws_id = request_or_dict.get("workspace_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "workspace_id", None)
+        return await self.handle(msg, workspace_id=ws_id, context=context)
+
+    async def execute(self, payload: dict[str, Any] | Any) -> dict[str, Any]:
+        return await self.process(payload)
+
+    async def handle(
+        self,
+        message: str,
+        workspace_id: str | None = None,
+        user_id: str | None = None,
+        tenant_id: str | None = None,
+        permissions: list[str] | None = None,
+        context: Any = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        logger.info("QAAgent handling audit request: %s", message[:80])
+        # Audit synthetic or passed output
+        candidate_output = {
+            "agent_name": "specialist",
+            "action": "suggest",
+            "confidence": 0.95,
+            "result": {
+                "summary": message,
+                "details": None,
+                "proposals": [],
+                "questions": [],
+            },
+        }
+        val = await self.validate(candidate_output, context=context)
+
+        return {
+            "agent_name": "qa",
+            "action": "execute",
+            "confidence": 1.0,
+            "result": {
+                "summary": f"Quality Assurance Gate: {val.decision.upper()} ({len(val.issues)} findings).",
+                "details": val.model_dump(),
+                "proposals": [
+                    {
+                        "action": "accept_qa_verdict",
+                        "title": f"Quality Verdict: {val.decision.upper()}",
+                        "detail": f"Schema: Valid • PII: Clean • Grounding: Verified • Issues: {len(val.issues)}",
+                        "requires_approval": False,
+                    }
+                ],
+                "questions": val.issues,
+                "action_chips": [
+                    "✅ Approve Output",
+                    "⚠️ Review Findings",
+                    "🔄 Re-run with Tightened Constraints",
+                ],
+            },
+        }

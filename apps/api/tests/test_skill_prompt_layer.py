@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from contextlib import asynccontextmanager
 from typing import Any
 
 import pytest
@@ -278,13 +279,30 @@ async def _skill(
     return row
 
 
-async def _run_loop(db: AsyncSession, workspace_id: str, message: str) -> dict[str, Any]:
+def _use_test_db(monkeypatch, db_session: AsyncSession):
+    """Point the loop's skill lookup at this test's session.
+
+    The lookup opens its own short-lived ``api.database.scoped_session`` (the
+    request session is absent on the buffered route and already closed on the
+    streaming one). Without this patch it resolves the global factory and
+    touches a stray ``./test_dev.db``.
+    """
+    import api.database as database
+
+    @asynccontextmanager
+    async def _session(**kwargs: Any):
+        yield db_session
+
+    monkeypatch.setattr(database, "scoped_session", _session)
+
+
+async def _run_loop(monkeypatch, db_session: AsyncSession, workspace_id: str, message: str) -> dict[str, Any]:
+    _use_test_db(monkeypatch, db_session)
     result = await _try_react_loop(
         agent=_SkillAgent(),
         message=message,
         workspace_id=workspace_id,
         agent_name="dummy",
-        db=db,
         request_id=f"req-skill-layer-{uuid.uuid4().hex[:8]}",
     )
     assert result is not None, result
@@ -635,7 +653,7 @@ async def test_loop_puts_skills_in_the_untrusted_turn_and_manifest(
         "markdown_doc": doc, "required_scope": "memory.read", "tags": ["QA"],
     })
 
-    result = await _run_loop(db_session, ws, "summarize my documents")
+    result = await _run_loop(monkeypatch, db_session, ws, "summarize my documents")
     turns = _turns(captured)
     system = next(content for role, content in turns if role == "system")
     user = next(content for role, content in turns if role == "user")
@@ -669,7 +687,7 @@ async def test_loop_prompt_is_byte_identical_when_no_skill_is_injectable(
     captured = _capture_loop(monkeypatch)
 
     ws = await _workspace(db_session)
-    await _run_loop(db_session, ws, "summarize my documents")
+    await _run_loop(monkeypatch, db_session, ws, "summarize my documents")
     baseline = _turns(captured, 0)
 
     await _skill(db_session, ws, "gated-skill", config={
@@ -679,7 +697,7 @@ async def test_loop_prompt_is_byte_identical_when_no_skill_is_injectable(
         "markdown_doc": _skill_doc("Loopoff"), "required_scope": "memory.read",
     }, enabled=False)
 
-    await _run_loop(db_session, ws, "summarize my documents")
+    await _run_loop(monkeypatch, db_session, ws, "summarize my documents")
     after = _turns(captured, 1)
 
     assert len(captured) == 2
@@ -709,7 +727,7 @@ async def test_loop_keeps_the_skip_audit_after_the_layer_move(
     })
 
     with caplog.at_level("INFO", logger="api.orchestrator.loop"):
-        await _run_loop(db_session, ws, "summarize my documents")
+        await _run_loop(monkeypatch, db_session, ws, "summarize my documents")
 
     assert "kept-skill" in caplog.text
     assert "dropped-skill=scope_not_granted" in caplog.text
@@ -734,7 +752,7 @@ async def test_loop_never_leaks_another_tenants_skill_into_the_prompt(
         "markdown_doc": _skill_doc("Ownskill"), "required_scope": "memory.read",
     })
 
-    result = await _run_loop(db_session, ws_a, "summarize my documents")
+    result = await _run_loop(monkeypatch, db_session, ws_a, "summarize my documents")
     turns = _turns(captured)
     whole = "\n".join(content for _, content in turns)
 
@@ -760,14 +778,14 @@ async def test_loop_prompt_is_unchanged_when_the_skill_lookup_fails(
     captured = _capture_loop(monkeypatch)
 
     ws = await _workspace(db_session)
-    await _run_loop(db_session, ws, "summarize my documents")
+    await _run_loop(monkeypatch, db_session, ws, "summarize my documents")
     baseline = _turns(captured, 0)
 
     async def boom(*args: Any, **kwargs: Any) -> Any:
         raise RuntimeError("capability table unreachable")
 
     monkeypatch.setattr(si, "build_skill_directive", boom)
-    result = await _run_loop(db_session, ws, "summarize my documents")
+    result = await _run_loop(monkeypatch, db_session, ws, "summarize my documents")
 
     assert _turns(captured, 1) == baseline
     assert "[platform_policy]" in _turns(captured, 1)[0][1]

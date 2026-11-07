@@ -169,4 +169,15 @@ export async function expectRouteRendered(
   await expect(marker, `${seg} did not render its route-specific landmark`).toBeVisible({
     timeout: 30_000,
   });
+
+  // Next.js can commit the route body a beat before it restores <title> during a
+  // client-side redirect (e.g. /files -> /documents). An axe scan in that window
+  // reports [document-title] against the navigation frame, not the settled page.
+  // Wait for the title so the gates measure the route rather than the transition.
+  await expect
+    .poll(() => page.title(), {
+      message: `${seg} left the document title empty after navigation`,
+      timeout: 10_000,
+    })
+    .not.toBe('');
 }

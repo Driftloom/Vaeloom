@@ -1,6 +1,7 @@
 # Archived — Legacy TS Integrations
 
-**Archived:** 2026-08-27 per ADR-037
+**Archived:** 2026-08-27 per ADR-037; full package trees moved here 2026-10-22
+per ADR-048 (zero imports confirmed by pre-flight sweep).
 
 These six TypeScript packages (`calendar`, `email`, `github`, `google-drive`,
 `notion`, `slack`) were fully implemented (~380 lines each, OAuth + CRUD +

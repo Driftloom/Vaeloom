@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Button, Modal } from '@vaeloom/ui-kit';
+import { Button, Input, Modal } from '@vaeloom/ui-kit';
 
 export interface CustomProtocolModalProps {
   isOpen: boolean;
@@ -77,14 +77,13 @@ export function CustomProtocolModal({
           >
             Connector name
           </label>
-          <input
+          <Input
             id="custom-connector-name"
             type="text"
             required
             value={customName}
             onChange={(event) => onCustomNameChange(event.target.value)}
             placeholder="Internal analytics MCP"
-            className="w-full px-3 py-1.5 bg-surface border border-border rounded text-text text-xs placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           />
         </div>
 
@@ -100,12 +99,12 @@ export function CustomProtocolModal({
                   ] as const
                 ).map(([value, label]) => (
                   <label key={value} className="flex items-center gap-1.5 cursor-pointer text-text">
-                    <input
+                    <Input
                       type="radio"
                       name="mcpTransport"
                       checked={customMcpTransport === value}
                       onChange={() => onCustomMcpTransportChange(value)}
-                      className="accent-primary"
+                      className="w-[1rem] h-[1rem] shrink-0 px-[0px] py-[0px] rounded-[9999px] border-[0px] bg-[transparent] shadow-[none] accent-primary"
                     />
                     <span>{label}</span>
                   </label>
@@ -122,14 +121,13 @@ export function CustomProtocolModal({
                   >
                     Executable to run
                   </label>
-                  <input
+                  <Input
                     id="custom-command"
                     type="text"
                     required
                     value={customCommand}
                     onChange={(event) => onCustomCommandChange(event.target.value)}
                     placeholder="npx"
-                    className="w-full px-3 py-1.5 bg-surface border border-border rounded text-text text-xs placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                   />
                 </div>
                 <div>
@@ -139,13 +137,12 @@ export function CustomProtocolModal({
                   >
                     Arguments (space separated)
                   </label>
-                  <input
+                  <Input
                     id="custom-args"
                     type="text"
                     value={customArgs}
                     onChange={(event) => onCustomArgsChange(event.target.value)}
                     placeholder="-y @modelcontextprotocol/server-postgres"
-                    className="w-full px-3 py-1.5 bg-surface border border-border rounded text-text text-xs placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                   />
                 </div>
               </>
@@ -157,14 +154,13 @@ export function CustomProtocolModal({
                 >
                   Server URL (https)
                 </label>
-                <input
+                <Input
                   id="custom-mcp-url"
                   type="url"
                   required
                   value={customUrl}
                   onChange={(event) => onCustomUrlChange(event.target.value)}
                   placeholder="https://mcp.internal.company.com/sse"
-                  className="w-full px-3 py-1.5 bg-surface border border-border rounded text-text text-xs placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 />
               </div>
             )}
@@ -180,14 +176,13 @@ export function CustomProtocolModal({
               >
                 Endpoint base URL
               </label>
-              <input
+              <Input
                 id="custom-base-url"
                 type="url"
                 required
                 value={customUrl}
                 onChange={(event) => onCustomUrlChange(event.target.value)}
                 placeholder="https://api.company.com/v1"
-                className="w-full px-3 py-1.5 bg-surface border border-border rounded text-text text-xs placeholder:text-text-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               />
             </div>
             <div>
@@ -197,12 +192,11 @@ export function CustomProtocolModal({
               >
                 API key or bearer token (optional)
               </label>
-              <input
+              <Input
                 id="custom-api-key"
                 type="password"
                 value={customApiKey}
                 onChange={(event) => onCustomApiKeyChange(event.target.value)}
-                className="w-full px-3 py-1.5 bg-surface border border-border rounded text-text text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               />
             </div>
           </>
