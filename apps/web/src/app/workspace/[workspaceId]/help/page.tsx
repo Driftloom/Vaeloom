@@ -6,7 +6,7 @@ import { useParams } from 'next/navigation';
 import { Card, Input, Button, SearchIcon, ChevronDownIcon, ChevronUpIcon } from '@vaeloom/ui-kit';
 import { PageHeader } from '@/components/shared/Page';
 import { FilterPills } from '@/components/shared/FilterPills';
-import { WORKSPACE_ROUTES } from '@/lib/route-manifest';
+import { hasDynamicSegments, WORKSPACE_ROUTES } from '@/lib/route-manifest';
 
 interface LiveHelpArticle {
   id: string;
@@ -105,22 +105,22 @@ export default function HelpCenterPage() {
     ];
 
     // Append route-specific mini-guides
-    const routeGuides: LiveHelpArticle[] = WORKSPACE_ROUTES.filter((r) => r.subpath).map(
-      (route) => ({
-        id: `route-${route.id}`,
-        category:
-          route.section === 'Operations'
-            ? 'AGENTS_AUTONOMY'
-            : route.section === 'Assist'
-              ? 'GETTING_STARTED'
-              : 'CONNECTORS',
-        title: `${route.label} Guide`,
-        summary: route.description || `Documentation and quick tips for using ${route.label}.`,
-        content: `Access ${route.label} at /workspace/${workspaceId}/${route.subpath}. This module operates under ${route.dataMode.toUpperCase()} mode with verified backend API integration.`,
-        readTime: '2 min read',
-        link: `/workspace/${workspaceId}/${route.subpath}`,
-      }),
-    );
+    const routeGuides: LiveHelpArticle[] = WORKSPACE_ROUTES.filter(
+      (r) => r.subpath && !hasDynamicSegments(r.subpath),
+    ).map((route) => ({
+      id: `route-${route.id}`,
+      category:
+        route.section === 'Operations'
+          ? 'AGENTS_AUTONOMY'
+          : route.section === 'Assist'
+            ? 'GETTING_STARTED'
+            : 'CONNECTORS',
+      title: `${route.label} Guide`,
+      summary: route.description || `Documentation and quick tips for using ${route.label}.`,
+      content: `Access ${route.label} at /workspace/${workspaceId}/${route.subpath}. This module operates under ${route.dataMode.toUpperCase()} mode with verified backend API integration.`,
+      readTime: '2 min read',
+      link: `/workspace/${workspaceId}/${route.subpath}`,
+    }));
 
     return [...coreGuides, ...routeGuides];
   }, [workspaceId]);

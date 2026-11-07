@@ -53,26 +53,32 @@ describe('SkillIntegrationBar', () => {
   describe('getAgentForSkill mapping logic', () => {
     it('maps ATS skills to ATS Auditor agent', () => {
       const agent = getAgentForSkill('ats-audit');
-      expect(agent.id).toBe('ats');
-      expect(agent.name).toBe('ATS Auditor');
+      expect(agent?.id).toBe('ats');
+      expect(agent?.name).toBe('ATS Auditor');
     });
 
     it('maps job discovery skills to Job Search Scout agent', () => {
       const agent = getAgentForSkill('job-discovery-radar');
-      expect(agent.id).toBe('job_search');
-      expect(agent.name).toBe('Job Search Scout');
+      expect(agent?.id).toBe('job_search');
+      expect(agent?.name).toBe('Job Search Scout');
     });
 
     it('maps cover letter and form filler skills to Application Agent', () => {
       const agent = getAgentForSkill('cover-letter-architect');
-      expect(agent.id).toBe('application');
-      expect(agent.name).toBe('Application Agent');
+      expect(agent?.id).toBe('application');
+      expect(agent?.name).toBe('Application Agent');
     });
 
     it('maps interview and coaching skills to Career Strategist agent', () => {
       const agent = getAgentForSkill('star-interview-prep');
-      expect(agent.id).toBe('career');
-      expect(agent.name).toBe('Career Strategist');
+      expect(agent?.id).toBe('career');
+      expect(agent?.name).toBe('Career Strategist');
+    });
+
+    it('returns undefined for skills with no specialist mapping', () => {
+      expect(getAgentForSkill('sentiment')).toBeUndefined();
+      expect(getAgentForSkill('word-count')).toBeUndefined();
+      expect(getAgentForSkill('')).toBeUndefined();
     });
   });
 
@@ -91,7 +97,24 @@ describe('SkillIntegrationBar', () => {
       const pushedUrl = mockPush.mock.calls[0][0];
       expect(pushedUrl).toContain('/workspace/ws-prod/chat?');
       expect(pushedUrl).toContain('agent=ats');
+      expect(pushedUrl).toContain('skill=ats-audit');
       expect(pushedUrl).toContain('prompt=Use+audit+my+resume');
+    });
+
+    it('omits the agent param and shows a neutral label when no specialist agent is mapped', () => {
+      const row = makeRow('sentiment');
+      render(<SkillIntegrationBar row={row} workspaceId="ws-prod" />);
+
+      expect(screen.queryByText(/Autonomous Agent Orchestrator/)).not.toBeInTheDocument();
+      expect(screen.queryByText(/Triggers routed via/)).not.toBeInTheDocument();
+      expect(screen.getByText('Auto agent selection')).toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole('button', { name: /Launch in Chat/i }));
+
+      expect(mockPush).toHaveBeenCalledTimes(1);
+      const pushedUrl = mockPush.mock.calls[0][0];
+      expect(pushedUrl).toContain('skill=sentiment');
+      expect(pushedUrl).not.toContain('agent=');
     });
 
     it('renders Vault Grounding link when skill requires memory scope', () => {

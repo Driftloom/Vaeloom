@@ -33,6 +33,18 @@ An injection decision is always justified by a real field on the row:
 ``config["markdown_doc"]`` (else the catalog entry's)
     The document that is actually delivered.
 
+Pinning — ``/skill:<slug>``
+---------------------------
+A message may open with an explicit pin, ``/skill:<slug>``, naming one
+workspace skill that must be injected for this turn. :func:`parse_skill_pin`
+strips the token off the message (the raw pin never reaches an LLM) and returns
+the residual text, the slug, and whether the pin was malformed. A pin bypasses
+**only the trigger gate** — never ``enabled``, platform domain policy,
+``required_scope``, the ``markdown_doc`` requirement, or the token budget. A pin
+matching no row is reported as ``pinned_unknown``, never silently dropped. A
+pinned skill sorts first in :func:`evaluate_skill_gates`, so it wins a contested
+budget but is still dropped — and named — when the budget cannot fit it.
+
 Trust
 -----
 A skill document is workspace-authored text: any member of the workspace can
@@ -106,21 +118,23 @@ SKILL_CATEGORY = "skill"
 # the same window, so they get a minority share and the rest of the prompt is
 # untouched.
 #
-# Measured against the real catalog (33 entries, mean rendered block ~483
-# tokens, all 33 summing to ~16,056):
+# Measured against the real catalog (28 entries, mean rendered block ~499
+# tokens, all 28 summing to ~13,971; re-measured 2026-10-19 against the
+# committed catalog by rendering every entry through _render_block and
+# estimate_tokens):
 #
 #   budget   skills admitted   share of the 8k outer budget
-#     1500            4                   19%   <- previous value
-#     2500            6                   31%
-#     4000           10                   50%   <- this value
-#     6000           14                   75%
-#    16056           33                  201%
+#     1500            3                   19%   <- previous value
+#     2500            4                   31%
+#     4000            7                   50%   <- this value
+#     6000           11                   75%
+#    14123           28                  177%
 #
-# 1500 admitted only 4 of 33 skills, and selection was alphabetical, so the
-# skills that reached the model were decided by which name sorted first rather
-# than by what the user asked. 4000 admits ~10 skills while holding skills to
-# half the outer budget, leaving room for the memory/evidence/tool layers that
-# share the envelope.
+# 1500 admitted only 3 of 28 skills, so the budget, not relevance, decided which
+# few survived; the match-sensitive ordering in _order_key narrowed that gap but
+# cannot admit more than a tight budget allows. 4000 admits ~7 skills while
+# holding skills to half the outer budget, leaving room for the
+# memory/evidence/tool layers that share the envelope.
 #
 # The outer compiler spends `max(512, 8000 - system_tokens - 500)` on context,
 # so with a realistic 3k system prompt the envelope is ~4.5k. Raising this
@@ -146,6 +160,21 @@ DIRECTIVE_HEADER = (
 
 _LABEL_SAFE_RE = re.compile(r"[^A-Za-z0-9._:/-]+")
 _LABEL_MAX = 64
+
+# ── explicit pin: ``/skill:<slug>`` ────────────────────────────────────────
+# The one token a user can type to name a skill for a single turn. Parsed by
+# parse_skill_pin at the API seam (routers/chat.py, routers/agents.py) and
+# stripped before ANY consumer — classifier, retrieval, LLM — sees the message;
+# the slug travels beside the residual as pinned_skill. Detection is
+# case-insensitive on purpose: a case-variant pin is a user *trying* to pin, and
+# passing the literal token through would feed it to the model as prose.
+SKILL_PIN_PREFIX = "/skill:"
+# Whole message, anchored: a pin is only a pin when it OPENS the message.
+_PIN_LINE_RE = re.compile(r"^/skill:(?P<slug>[^\s]+)(?:\s+(?P<rest>.*))?$", re.DOTALL)
+# Slug grammar is fixed and narrow — it must round-trip into prompts, logs and
+# lookups unchanged. Lowercase only; no leading punctuation; ``..`` is rejected
+# separately because the class below admits dots.
+_PIN_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 
 # ── usage telemetry ───────────────────────────────────────────────────────
 # Kill switch. Read from ``settings`` when that attribute exists so there is one
@@ -222,10 +251,10 @@ async def record_injected_usage(
       name, the granted scopes and the user message. None of them identifies a
       run — the same agent can legitimately be asked the same question twice, so
       deriving a key from them would silently merge two real uses. So the key is
-      an explicit parameter, and when the caller does not supply one this counts
-      every injection. Until the loop passes ``usage_run_id=request.id`` at
-      ``loop.py:1331``, a multi-iteration run over-counts; the WARNING below says
-      so on every occurrence instead of letting the number look trustworthy.
+      an explicit parameter. The orchestrator loop supplies one
+      (``usage_run_id=request_id`` at ``loop.py:1556``); a caller that omits it
+      counts every injection, and the WARNING below says so on every occurrence
+      instead of letting the number look trustworthy.
     * **Never fatal.** Every layer is guarded: telemetry that breaks an agent turn
       is worse than no telemetry at all.
     """
@@ -343,6 +372,43 @@ def _safe_label(value: str) -> str:
 
 def _normalize(text: str) -> str:
     return " ".join((text or "").lower().split())
+
+
+def parse_skill_pin(message: str) -> tuple[str, str | None, bool]:
+    """Split an explicit ``/skill:<slug>`` pin off a user message.
+
+    Returns ``(residual, slug, malformed)``:
+
+    * A well-formed pin must **open** the message and carry a slug matching
+      ``^[a-z0-9][a-z0-9._-]{0,63}$`` with no ``..``::
+
+          "/skill:resume-tailor please tighten this"
+              -> ("please tighten this", "resume-tailor", False)
+          "/skill:resume-tailor"
+              -> ("", "resume-tailor", False)
+
+    * Anything else that **contains** the token — a mid-message pin, doubled
+      slashes, a case variant, an empty/uppercase/over-long/``..`` slug — is
+      malformed: ``(message, None, True)``, residual byte-identical. The caller
+      decides the policy (log once, treat as plain text); this function never
+      guesses.
+    * A message with no ``/skill:`` token at all passes through byte-identical:
+      ``(message, None, False)``.
+
+    Never raises, and never mutates malformed input: silently rewriting a
+    message a user can see is worse than not pinning at all.
+    """
+    text = message or ""
+    if text.startswith(SKILL_PIN_PREFIX):
+        match = _PIN_LINE_RE.match(text)
+        if match:
+            slug = match.group("slug")
+            if _PIN_SLUG_RE.match(slug) and ".." not in slug:
+                return (match.group("rest") or ""), slug, False
+        return text, None, True
+    if SKILL_PIN_PREFIX in text.lower():
+        return text, None, True
+    return text, None, False
 
 
 def _resolve(row: WorkspaceCapability) -> EnabledSkill:
@@ -558,43 +624,54 @@ def _order_key(skill: EnabledSkill) -> tuple[int, int, str]:
     )
 
 
-async def build_skill_directive(
-    db: AsyncSession,
-    workspace_id: Any,
-    *,
-    agent_name: str,
-    allowed_scopes: Sequence[str] | None,
-    user_message: str = "",
-    token_budget: int | None = None,
-    usage_run_id: str | None = None,
-) -> SkillDirective:
-    """Build the skill directive block for the UNTRUSTED
-    ``PromptLayers.workspace_skills`` layer.
+def render_skill_directive(injected: Sequence[EnabledSkill]) -> str:
+    """Render the full directive text for an already-evaluated skill set.
 
-    ``user_message`` and ``token_budget`` are keywords with defaults so the
-    documented four-argument call still works; the orchestrator passes both.
-
-    ``usage_run_id`` is the run identifier :func:`record_injected_usage` keys its
-    once-per-run dedupe on. It is optional because the caller that owns the run
-    id is the orchestrator, and it must not have to change for counting to work:
-    with it, a retried or replayed run counts each skill once; without it, every
-    injection counts and a WARNING says why.
-
-    Returns ``SkillDirective(text="")`` when nothing is injected — no header, no
-    fence — so a workspace with no applicable skills produces a byte-identical
-    compiled prompt.
+    Pure: the exact header/fence assembly the runtime wrapper delivers. Direct
+    callers are usage probes that preview what *would* be sent without
+    recording: evaluate via :func:`evaluate_skill_gates`, render here, never
+    touch :func:`build_skill_directive` (the only writer of usage telemetry).
     """
-    granted = {s.strip() for s in (allowed_scopes or []) if s and s.strip()}
-    haystack = _normalize(user_message)
-    budget = SKILL_DIRECTIVE_TOKEN_BUDGET if token_budget is None else max(0, int(token_budget))
+    if not injected:
+        return ""
+    blocks = [_render_block(skill) for skill in injected]
+    return f"{DIRECTIVE_HEADER}\n\n" + "\n\n".join(blocks)
 
-    rows = await _skill_rows(db, workspace_id)
-    if not rows:
-        return SkillDirective(text="")
 
+def evaluate_skill_gates(
+    rows: Sequence[WorkspaceCapability],
+    granted: set[str],
+    haystack: str,
+    *,
+    pinned: str | None = None,
+    budget: int = SKILL_DIRECTIVE_TOKEN_BUDGET,
+) -> tuple[list[EnabledSkill], list[SkillSkip]]:
+    """Apply every injection gate to ``rows``; return ``(injected, skipped)``.
+
+    Pure — no I/O, no telemetry, no logging. Separated from
+    :func:`build_skill_directive` so the decision is testable on its own and so
+    usage probes can evaluate without ever recording.
+
+    ``pinned`` is a slug from :func:`parse_skill_pin`. It bypasses the trigger
+    gate **only**: an enabled, in-scope, policy-allowed pinned skill is injected
+    even when the message matches none of its triggers, and it sorts first so
+    it wins a contested budget. Every other gate still applies; a pinned skill
+    that loses the budget is still named in ``skipped``. A pin matching no row
+    is reported as ``pinned_unknown`` — never silently dropped.
+    """
+    pinned_lower = (pinned or "").strip().lower() or None
     injected: list[EnabledSkill] = []
     skipped: list[SkillSkip] = []
     eligible: list[EnabledSkill] = []
+
+    if pinned_lower and not any(row.name.lower() == pinned_lower for row in rows):
+        skipped.append(
+            SkillSkip(
+                pinned_lower,
+                "pinned_unknown",
+                "no workspace skill matches this pin",
+            )
+        )
 
     for row in rows:
         skill = _resolve(row)
@@ -625,17 +702,26 @@ async def build_skill_directive(
                 SkillSkip(skill.name, "no_markdown_doc", "skill has no markdown document")
             )
             continue
+        is_pinned = bool(pinned_lower and skill.name.lower() == pinned_lower)
         matched, detail = _trigger_state(skill, haystack)
-        if not matched:
+        if not matched and not is_pinned:
             skipped.append(SkillSkip(skill.name, "trigger_not_matched", detail))
             continue
         # Carry the hit count so _order_key can rank by how specifically this
-        # message activated the skill, instead of by name.
+        # message activated the skill, instead of by name. A pinned skill gets
+        # the same treatment: a pin does not fabricate trigger evidence.
         eligible.append(replace(skill, match_hits=len(_trigger_hits(skill, haystack))))
 
-    eligible.sort(key=_order_key)
+    # Pinned first, then the deterministic order within each band, so a pinned
+    # skill can only be out-ranked by the budget itself — and when that drops
+    # it, the drop is named.
+    eligible.sort(
+        key=lambda skill: (
+            0 if (pinned_lower and skill.name.lower() == pinned_lower) else 1,
+        )
+        + _order_key(skill)
+    )
 
-    blocks: list[str] = []
     spent = estimate_tokens(DIRECTIVE_HEADER)
     for skill in eligible:
         block = _render_block(skill)
@@ -651,16 +737,60 @@ async def build_skill_directive(
                 )
             )
             continue
-        blocks.append(block)
         spent += cost
         injected.append(skill)
 
-    if not blocks:
+    return injected, skipped
+
+
+async def build_skill_directive(
+    db: AsyncSession,
+    workspace_id: Any,
+    *,
+    agent_name: str,
+    allowed_scopes: Sequence[str] | None,
+    user_message: str = "",
+    token_budget: int | None = None,
+    usage_run_id: str | None = None,
+    pinned_skill: str | None = None,
+) -> SkillDirective:
+    """Build the skill directive block for the UNTRUSTED
+    ``PromptLayers.workspace_skills`` layer.
+
+    ``user_message`` and ``token_budget`` are keywords with defaults so the
+    documented four-argument call still works; the orchestrator passes both.
+
+    ``usage_run_id`` is the run identifier :func:`record_injected_usage` keys its
+    once-per-run dedupe on. It is optional because the caller that owns the run
+    id is the orchestrator, and it must not have to change for counting to work:
+    with it, a retried or replayed run counts each skill once; without it, every
+    injection counts and a WARNING says why.
+
+    ``pinned_skill`` is the slug produced by :func:`parse_skill_pin` at the API
+    seam (the message the caller passes is the residual, pin already stripped).
+    It bypasses the trigger gate only; :func:`evaluate_skill_gates` owns the
+    semantics, so this wrapper cannot drift from them.
+
+    Returns ``SkillDirective(text="")`` when nothing is injected — no header, no
+    fence — so a workspace with no applicable skills produces a byte-identical
+    compiled prompt.
+    """
+    granted = {s.strip() for s in (allowed_scopes or []) if s and s.strip()}
+    haystack = _normalize(user_message)
+    budget = SKILL_DIRECTIVE_TOKEN_BUDGET if token_budget is None else max(0, int(token_budget))
+
+    rows = await _skill_rows(db, workspace_id)
+
+    injected, skipped = evaluate_skill_gates(
+        rows, granted, haystack, pinned=pinned_skill, budget=budget
+    )
+
+    text = render_skill_directive(injected)
+    if not text:
         return SkillDirective(text="", skipped=tuple(skipped))
 
     await record_injected_usage(workspace_id, injected, run_id=usage_run_id)
 
-    text = f"{DIRECTIVE_HEADER}\n\n" + "\n\n".join(blocks)
     return SkillDirective(
         text=text,
         injected=tuple(skill.name for skill in injected),

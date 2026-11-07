@@ -1,7 +1,10 @@
 import uuid
+from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx import AsyncClient
+
+from api.services.memory_service import memory_service
 
 pytestmark = pytest.mark.asyncio
 
@@ -467,4 +470,68 @@ class TestConversations:
         assert len(chat_mems) >= 1
         assert chat_mems[0]["type"] == "preference"
         assert "Distributed Systems" in chat_mems[0]["content"]
+
+    async def _send_turn(self, client: AsyncClient, headers: dict, conv_id: str, text: str, client_id: str):
+        return await client.post(
+            f"/api/v1/workspaces/{headers['X-Workspace-Id']}/conversations/{conv_id}/messages",
+            json={"role": "user", "text": text, "client_id": client_id},
+            headers=headers,
+        )
+
+    async def test_skill_pin_is_stripped_and_recorded_as_provenance(self, client: AsyncClient):
+        """A valid `/skill:<slug>` pin is a command: memory holds only the residual, the slug travels as metadata."""
+        headers, workspace_id = await self._auth_and_workspace(client)
+        conv = await self._create(client, headers, title="Pinned Chat")
+
+        text = "/skill:resume-tailor remember I prefer remote Staff roles with $220k base."
+        with patch.object(memory_service, "create_memory", new=AsyncMock(return_value=None)) as mocked:
+            res = await self._send_turn(client, headers, conv["id"], text, "c-pin-valid")
+        assert res.status_code == 201
+
+        assert mocked.await_count == 1
+        dto = mocked.await_args.kwargs["dto"]
+        assert dto.content == "remember I prefer remote Staff roles with $220k base."
+        assert "/skill:" not in dto.content
+        assert dto.metadata == {
+            "client_id": "c-pin-valid",
+            "channel": "chat",
+            "skill_slug": "resume-tailor",
+        }
+
+    async def test_pure_skill_pin_still_ingests_nothing(self, client: AsyncClient):
+        """A bare pin carries no thought of its own — the empty residual is skipped exactly as before."""
+        headers, workspace_id = await self._auth_and_workspace(client)
+        conv = await self._create(client, headers, title="Bare Pin Chat")
+
+        with patch.object(memory_service, "create_memory", new=AsyncMock(return_value=None)) as mocked:
+            res = await self._send_turn(client, headers, conv["id"], "/skill:resume-tailor", "c-pin-bare")
+        assert res.status_code == 201
+
+        assert mocked.await_count == 0
+
+    async def test_malformed_skill_pin_stays_a_slash_command(self, client: AsyncClient):
+        """`/skill:Upper` fails the slug grammar; the turn keeps the existing slash-command behavior and records no memory."""
+        headers, workspace_id = await self._auth_and_workspace(client)
+        conv = await self._create(client, headers, title="Malformed Pin Chat")
+
+        with patch.object(memory_service, "create_memory", new=AsyncMock(return_value=None)) as mocked:
+            res = await self._send_turn(
+                client, headers, conv["id"], "/skill:Upper remember I prefer remote roles.", "c-pin-malformed",
+            )
+        assert res.status_code == 201
+
+        assert mocked.await_count == 0
+
+    async def test_non_skill_slash_commands_remain_excluded(self, client: AsyncClient):
+        """Negative control: the pin change is not a blanket lift of the slash-command skip."""
+        headers, workspace_id = await self._auth_and_workspace(client)
+        conv = await self._create(client, headers, title="Slash Command Chat")
+
+        with patch.object(memory_service, "create_memory", new=AsyncMock(return_value=None)) as mocked:
+            res = await self._send_turn(
+                client, headers, conv["id"], "/help me tighten my resume summary for senior roles.", "c-slash-help",
+            )
+        assert res.status_code == 201
+
+        assert mocked.await_count == 0
 

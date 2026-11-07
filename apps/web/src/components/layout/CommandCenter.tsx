@@ -5,7 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '../../hooks/useAuth';
 import { useTheme } from '../../hooks/useTheme';
 import { searchApi } from '@/lib/api-client';
-import { WORKSPACE_ROUTES } from '@/lib/route-manifest';
+import { hasDynamicSegments, WORKSPACE_ROUTES } from '@/lib/route-manifest';
 import {
   BrainIcon,
   CpuIcon,
@@ -154,7 +154,9 @@ export function CommandCenter({
   const isEnterprise = me?.capabilities?.enterprise === true;
 
   const navigationCommands = useMemo<CommandItem[]>(() => {
-    return WORKSPACE_ROUTES.filter((r) => !r.enterprise || isEnterprise).map((r) => {
+    return WORKSPACE_ROUTES.filter(
+      (r) => (!r.enterprise || isEnterprise) && !hasDynamicSegments(r.subpath),
+    ).map((r) => {
       const path = r.subpath ? `/${r.subpath}` : '';
       return {
         id: `nav-${r.id}`,

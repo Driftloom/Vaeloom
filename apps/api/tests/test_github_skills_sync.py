@@ -2,7 +2,9 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from httpx import Response
+from starlette.requests import Request
 
+from api.middleware.rate_limit import RateLimitMiddleware
 from api.services.github_skills_sync import (
     GitHubSkillSyncResult,
     parse_remote_skill_md,
@@ -554,4 +556,107 @@ async def test_sync_skips_oversized_documents():
 
 def test_sync_result_defaults_to_not_persisted():
     assert GitHubSkillSyncResult(repository="a/b", ref="main").persisted is False
+
+
+# --------------------------------------------------------------------------
+# Rate limiting, enforced
+#
+# TestRateLimits in test_capability_authorization.py pins the declared value on
+# the registered route object. That leaves two holes this section closes:
+#
+# 1. The route object is not what the middleware sees. dispatch() runs before
+#    routing, so the middleware must rediscover the decorator by walking
+#    app.routes -- the exact path that historically fell back to the platform
+#    default while advertising the decorator value in a header.
+# 2. A declared limit is not an enforced limit. The 6th call in the window
+#    must be refused by the limiter itself, before any route code runs.
+# --------------------------------------------------------------------------
+
+PLATFORM_DEFAULT_MAX = 60
+SWEEP_LIMIT = (5, 60)
+
+
+def _mounted_app():
+    """The capabilities router mounted the way production mounts it."""
+    from fastapi import FastAPI
+
+    from api.routers import capabilities
+
+    app = FastAPI()
+    app.include_router(capabilities.router, prefix="/api/v1/capabilities")
+    return app
+
+
+def _scope_for(app, path: str, method: str) -> dict:
+    """A request scope shaped the way BaseHTTPMiddleware sees it.
+
+    ``scope["route"]`` is deliberately absent: dispatch runs before Starlette
+    routes the request, so discovery has to walk ``app.routes`` itself. That
+    walk is part of what is under test.
+    """
+    return {
+        "type": "http",
+        "asgi": {"version": "3.0", "spec_version": "2.3"},
+        "http_version": "1.1",
+        "method": method,
+        "path": path,
+        "raw_path": path.encode(),
+        "root_path": "",
+        "scheme": "http",
+        "query_string": b"",
+        "headers": [],
+        "client": ("1.2.3.4", 1234),
+        "server": ("test", 80),
+        "app": app,
+    }
+
+
+def test_middleware_resolves_the_sweep_limit_through_the_included_router():
+    """Discovery, not declaration: the middleware must find (5, 60).
+
+    If discovery regressed to the platform default the resolved value here
+    would be (60, 60), and the behavioral test below would pass its first 60
+    calls -- so this test is what makes that one discriminating.
+    """
+    app = _mounted_app()
+    middleware = RateLimitMiddleware(
+        app=None, requests_per_minute=PLATFORM_DEFAULT_MAX, window_seconds=60
+    )
+    request = Request(_scope_for(app, "/api/v1/capabilities/sync-github", "POST"))
+    assert middleware._get_limits(request) == SWEEP_LIMIT
+
+
+@pytest.mark.asyncio
+async def test_sync_github_refuses_the_sixth_call_in_the_window():
+    """Behavioral: the decorated budget is the one enforced.
+
+    ``call_next`` is a stub, so the statuses describe the limiter's decision
+    rather than the route's. The undecorated read probe afterwards proves the
+    refusal belongs to this route's bucket, not to the process as a whole.
+    """
+    from starlette.responses import Response as StarletteResponse
+
+    app = _mounted_app()
+    middleware = RateLimitMiddleware(
+        app=None, requests_per_minute=PLATFORM_DEFAULT_MAX, window_seconds=60
+    )
+    call_next = AsyncMock(return_value=StarletteResponse())
+
+    codes: list[int] = []
+    for _ in range(SWEEP_LIMIT[0] + 1):
+        request = Request(_scope_for(app, "/api/v1/capabilities/sync-github", "POST"))
+        response = await middleware.dispatch(request, call_next)
+        codes.append(response.status_code)
+
+    assert codes == [200, 200, 200, 200, 200, 429]
+    refused = response
+    assert "Rate limit exceeded" in refused.body.decode()
+    assert int(refused.headers["Retry-After"]) >= 1
+
+    # Negative control: a read on the same router is a different bucket and
+    # must not be caught by the sweep's exhaustion.
+    read = await middleware.dispatch(
+        Request(_scope_for(app, "/api/v1/capabilities/catalog", "GET")), call_next
+    )
+    assert read.status_code == 200
 
