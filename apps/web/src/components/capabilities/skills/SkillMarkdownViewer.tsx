@@ -51,13 +51,17 @@ export const SkillMarkdownViewer: React.FC<SkillMarkdownViewerProps> = ({
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
+          // The host page already owns the single <h1> (the skill name), so the
+          // document title inside SKILL.md is rendered as a title bar rather
+          // than a second page-level heading. It keeps the shared markdown
+          // h1 type scale without breaking the one-h1-per-page contract.
           h1: ({ children }) => (
-            <h1 className="flex items-center justify-between pb-2 border-b border-border mb-3">
+            <div className="flex items-center justify-between pb-2 border-b border-border mb-3 font-display font-semibold text-text text-xl leading-tight">
               <span>{children}</span>
               <Badge variant="default" size="sm">
                 SKILL.md
               </Badge>
-            </h1>
+            </div>
           ),
           code: ({ node, className: codeClassName, children, ...props }) => {
             if (!codeClassName) {

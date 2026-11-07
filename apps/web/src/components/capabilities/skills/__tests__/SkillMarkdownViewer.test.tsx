@@ -15,6 +15,13 @@ jest.mock('react-markdown', () => ({
   }) {
     return (
       <div data-testid="markdown-harness">
+        {props.components.h1 ? (
+          props.components.h1({ children: 'Docs' })
+        ) : (
+          // Fail loudly if the override is removed: a markdown h1 inside a
+          // detail page is a second page-level heading.
+          <h1>Docs</h1>
+        )}
         {props.components.h2 ? (
           props.components.h2({ children: 'Getting Started' })
         ) : (
@@ -53,6 +60,15 @@ describe('SkillMarkdownViewer', () => {
     // override component and every hand-rolled inline utility on it is gone.
     const inheritedClass = heading.getAttribute('class');
     expect(inheritedClass === null || inheritedClass === '').toBe(true);
+  });
+
+  it('renders the SKILL.md title without a second page-level <h1>', () => {
+    renderViewer();
+    // route-smoke.spec.ts asserts exactly one <h1> per route; the detail page's
+    // PageHeader owns it, so the document heading must not add another.
+    expect(screen.queryByRole('heading', { level: 1 })).not.toBeInTheDocument();
+    expect(screen.getByText('Docs')).toBeInTheDocument();
+    expect(screen.getByText('SKILL.md')).toBeInTheDocument();
   });
 
   it('keeps copy state per block when two blocks share a prefix (A8)', async () => {
