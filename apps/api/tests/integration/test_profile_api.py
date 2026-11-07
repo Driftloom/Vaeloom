@@ -109,13 +109,25 @@ class TestProfileApi:
         assert "Full-time" in data["job_preferences"]["job_types"]
         assert data["job_preferences"]["remote_preference"] == "Remote"
 
-    async def test_get_avatar_public(self, client: AsyncClient):
-        # Unauthenticated request to /api/v1/profile/avatar/{id} should return 404, not 401
+    async def test_get_avatar_public(self, client: AsyncClient, auth_headers: dict):
+        """The avatar endpoint is NOT anonymous: commit 14ebca17
+        ("fix(security): shrink middleware public surface") deliberately
+        removed /api/v1/profile/avatar/ from the middleware's public
+        prefixes, so an anonymous caller is challenged before the avatar is
+        even looked up. An authenticated caller for an avatar that does not
+        exist gets 404 -- existence is not leaked."""
         res = await client.get("/api/v1/profile/avatar/00000000-0000-0000-0000-000000000000")
+        assert res.status_code == 401
+
+        res = await client.get(
+            "/api/v1/profile/avatar/00000000-0000-0000-0000-000000000000",
+            headers=auth_headers,
+        )
         assert res.status_code == 404
 
     async def test_auto_populate_from_resume(self, client: AsyncClient, auth_headers: dict, db_session):
         import uuid
+
         from api.models.schema import Resume
 
         ws_res = await client.post("/api/v1/workspaces", json={"name": "AutoPopulate WS"}, headers=auth_headers)
@@ -166,13 +178,23 @@ class TestProfileApi:
         assert prof_res.status_code == 200
         user_id = prof_res.json()["id"]
 
-        pub_res = await client.get(f"/api/v1/profile/public/{user_id}")
+        # Same as the avatar: /api/v1/profile/public/ left the middleware's
+        # public surface in 14ebca17, so an anonymous caller is challenged.
+        anon_res = await client.get(f"/api/v1/profile/public/{user_id}")
+        assert anon_res.status_code == 401
+
+        pub_res = await client.get(f"/api/v1/profile/public/{user_id}", headers=auth_headers)
         assert pub_res.status_code == 200
         pub_data = pub_res.json()
         assert pub_data["id"] == user_id
         assert "display_name" in pub_data
+        # The public payload must not carry the private fields.
+        assert "email" not in pub_data
 
-        bad_res = await client.get("/api/v1/profile/public/00000000-0000-0000-0000-000000000000")
+        bad_res = await client.get(
+            "/api/v1/profile/public/00000000-0000-0000-0000-000000000000",
+            headers=auth_headers,
+        )
         assert bad_res.status_code == 404
 
     async def test_ats_readiness(self, client: AsyncClient, auth_headers: dict):

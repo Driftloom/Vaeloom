@@ -146,7 +146,7 @@ async def test_loop_plan_and_act_hydrates_real_context(db_session):
     assert "agent_context" in plan
     ctx = plan["agent_context"]
     assert ctx is not None
-    assert "Kubernetes Orchestration" in ctx.profile["skills"]
+    assert "Kubernetes Orchestration" in ctx["profile"]["skills"]
 
     act_res = await act_phase(plan, req)
     assert act_res["action"] == "suggest"

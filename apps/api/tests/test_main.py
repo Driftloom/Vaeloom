@@ -245,6 +245,8 @@ class TestLifespan:
         with patch.object(mod, "engine", mock_engine), \
              patch.object(mod, "Base") as mock_base, \
              patch.object(mod, "validate_settings"), \
+             patch("api.database._target_url", return_value="postgresql+asyncpg://u:p@localhost/db"), \
+             patch("api.database._migration_url", return_value=None), \
              patch("alembic.command.upgrade") as mock_upgrade:
             async with mod.lifespan(mod.app):
                 pass

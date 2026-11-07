@@ -14,7 +14,8 @@ class TestMvpScopeLock:
     """
 
     CANONICAL = ["organization", "memory", "resume", "ats", "job_search",
-                 "application", "gmail", "scheduler", "planning", "research"]
+                 "application", "gmail", "scheduler", "planning", "research",
+                 "conversation"]
     ENTERPRISE = ["career", "learning", "github", "coding",
                   "reminder", "analytics", "recommendation", "reflection",
                   "security", "connector", "plugin", "drive"]
@@ -84,5 +85,6 @@ class TestMvpScopeLock:
         assert MVP_CANONICAL_AGENTS == frozenset({
             "organization", "memory", "resume", "ats", "job_search",
             "application", "gmail", "scheduler", "planning", "research",
+            "conversation",
         })
-        assert len(MVP_CANONICAL_AGENTS) == 10
+        assert len(MVP_CANONICAL_AGENTS) == 11

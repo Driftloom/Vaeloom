@@ -66,8 +66,13 @@ class TestScenarioResearch:
         from api.orchestrator.state import LoopState
         _mem_store()
         agent = MockAgent()
-        req = AgentRequest(agent, "s1-research", "research python career paths", "ws", "memory")
-        plan = await plan_phase(req, LoopState("s1-research", workspace_id="ws"))
+        workspace_id = "00000000-0000-4000-8000-000000000001"
+        req = AgentRequest(
+            agent, "s1-research", "research python career paths", workspace_id, "memory"
+        )
+        plan = await plan_phase(
+            req, LoopState("s1-research", workspace_id=workspace_id)
+        )
         assert "rag_context" in plan and "context_manifest" in (plan["rag_context"] or {})
 
         async def _act(plan, request, on_token=None, state=None):

@@ -27,28 +27,34 @@ async def test_fallback_vector_store_in_memory_cosine():
     store = FallbackVectorStore()
     
     # Insert 3 records with distinct vectors and metadata
-    r1 = VectorRecord(id="doc1", vector=[1.0, 0.0, 0.0], metadata={"category": "engineering"})
-    r2 = VectorRecord(id="doc2", vector=[0.0, 1.0, 0.0], metadata={"category": "design"})
-    r3 = VectorRecord(id="doc3", vector=[0.707, 0.707, 0.0], metadata={"category": "engineering"})
+    scope = {"workspace_id": "ws1"}
+    r1 = VectorRecord(id="doc1", vector=[1.0, 0.0, 0.0], metadata={**scope, "category": "engineering"})
+    r2 = VectorRecord(id="doc2", vector=[0.0, 1.0, 0.0], metadata={**scope, "category": "design"})
+    r3 = VectorRecord(id="doc3", vector=[0.707, 0.707, 0.0], metadata={**scope, "category": "engineering"})
     
     await store.upsert([r1, r2, r3])
     
     # Query vector close to doc1
-    results = await store.search([0.9, 0.1, 0.0], limit=2)
+    results = await store.search([0.9, 0.1, 0.0], limit=2, filters=scope)
     assert len(results) == 2
     assert results[0].id == "doc1"
     assert results[1].id == "doc3"
     
     # Query with metadata filter
-    filtered = await store.search([0.9, 0.1, 0.0], limit=5, filters={"category": "design"})
+    filtered = await store.search(
+        [0.9, 0.1, 0.0], limit=5, filters={**scope, "category": "design"}
+    )
     assert len(filtered) == 1
     assert filtered[0].id == "doc2"
     
     # Delete
     await store.delete(["doc1"])
-    remaining = await store.search([1.0, 0.0, 0.0], limit=5)
+    remaining = await store.search([1.0, 0.0, 0.0], limit=5, filters=scope)
     assert len(remaining) == 2
     assert "doc1" not in [r.id for r in remaining]
+
+    with pytest.raises(ValueError, match="tenant_id or workspace_id"):
+        await store.search([1.0, 0.0, 0.0], limit=5)
 
 
 # -----------------------------------------------------------------------------

@@ -14,9 +14,33 @@ class TestVectorStore:
 
         store = FallbackVectorStore()
         await store.upsert([])
-        results = await store.search([0.1] * 1536)
+        results = await store.search(
+            [0.1] * 1536, filters={"workspace_id": "ws-1"}
+        )
         assert results == []
         await store.delete(["a"])
+
+    async def test_fallback_store_rejects_unscoped_search(self):
+        """Zero-trust guard: a search without a tenant/workspace scope is a
+        programming error, not an unscoped read."""
+        from api.infrastructure.vector_store import FallbackVectorStore
+
+        store = FallbackVectorStore()
+        for bad in (None, {}, {"source_type": "memory"}):
+            with pytest.raises(ValueError, match="Zero-Trust violation"):
+                await store.search([0.1] * 1536, filters=bad)
+
+    async def test_fallback_store_filters_by_workspace(self):
+        from api.infrastructure.vector_store import FallbackVectorStore, VectorRecord
+
+        store = FallbackVectorStore()
+        await store.upsert([
+            VectorRecord(id="a", vector=[1.0, 0.0], metadata={"workspace_id": "ws-1"}),
+            VectorRecord(id="b", vector=[1.0, 0.0], metadata={"workspace_id": "ws-2"}),
+        ])
+        found = await store.search([1.0, 0.0], filters={"workspace_id": "ws-1"})
+        assert [r.id for r in found] == ["a"]
+        assert await store.search([1.0, 0.0], filters={"workspace_id": "ws-3"}) == []
 
     async def test_get_vector_store_default(self):
         from api.infrastructure.vector_store import get_vector_store
@@ -39,7 +63,6 @@ class TestVectorStore:
 
         with patch.dict("os.environ", {"VECTOR_STORE": "qdrant"}):
             with patch("api.infrastructure.vector_store.QdrantStore") as mock_qdrant:
-                import builtins
                 original_import = __builtins__["__import__"] if isinstance(__builtins__, dict) else __builtins__.__import__
 
                 def mock_import(name, *args, **kwargs):
@@ -72,7 +95,9 @@ class TestVectorStore:
 
         mock_session.reset_mock()
         mock_session.execute = AsyncMock(return_value=mock_exec_result)
-        results = await store.search([0.1] * 1536)
+        results = await store.search(
+            [0.1] * 1536, filters={"workspace_id": "ws-1"}
+        )
         assert results == []
 
         await store.delete([records[0].id])

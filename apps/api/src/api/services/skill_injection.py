@@ -97,7 +97,7 @@ import os
 import re
 import uuid as uuid_mod
 from collections import OrderedDict
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, replace
 from typing import Any
 
@@ -173,7 +173,8 @@ SKILL_PIN_PREFIX = "/skill:"
 _PIN_LINE_RE = re.compile(r"^/skill:(?P<slug>[^\s]+)(?:\s+(?P<rest>.*))?$", re.DOTALL)
 # Slug grammar is fixed and narrow — it must round-trip into prompts, logs and
 # lookups unchanged. Lowercase only; no leading punctuation; ``..`` is rejected
-# separately because the class below admits dots.
+# separately because the class below admits dots. Kept here so the probe
+# endpoint and the injection gate validate against the same rule.
 _PIN_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9._-]{0,63}$")
 
 # ── usage telemetry ───────────────────────────────────────────────────────
@@ -640,41 +641,49 @@ def render_skill_directive(injected: Sequence[EnabledSkill]) -> str:
 
 def evaluate_skill_gates(
     rows: Sequence[WorkspaceCapability],
-    granted: set[str],
+    granted_scopes: Iterable[str] | None,
     haystack: str,
     *,
     pinned: str | None = None,
     budget: int = SKILL_DIRECTIVE_TOKEN_BUDGET,
 ) -> tuple[list[EnabledSkill], list[SkillSkip]]:
-    """Apply every injection gate to ``rows``; return ``(injected, skipped)``.
+    """Evaluate every skill gate for a workspace and report the outcome.
 
-    Pure — no I/O, no telemetry, no logging. Separated from
-    :func:`build_skill_directive` so the decision is testable on its own and so
-    usage probes can evaluate without ever recording.
+    Pure and database-free: the rows are passed in, so the dry-run probe in
+    ``routers.capabilities`` and the production injection in
+    :func:`build_skill_directive` run the SAME gate logic. A probe therefore
+    cannot disagree with what a real turn would do -- there is one code path,
+    not a reimplementation.
 
-    ``pinned`` is a slug from :func:`parse_skill_pin`. It bypasses the trigger
-    gate **only**: an enabled, in-scope, policy-allowed pinned skill is injected
-    even when the message matches none of its triggers, and it sorts first so
-    it wins a contested budget. Every other gate still applies; a pinned skill
-    that loses the budget is still named in ``skipped``. A pin matching no row
-    is reported as ``pinned_unknown`` — never silently dropped.
+    Gates, in order, each justified by a real field on the row:
+    ``enabled`` -> ``domain_policy`` -> ``required_scope`` -> ``scope_granted``
+    -> ``markdown_doc`` -> ``pin`` -> ``trigger`` -> ``budget``.
+
+    ``pinned`` names the skill the caller pinned for this turn. A pin bypasses
+    the *trigger* gate for that one skill only (the caller asked for it
+    explicitly); every other gate still applies, and the pinned skill sorts
+    first so only the budget itself can drop it. A pin that matches no skill in
+    this workspace is reported as ``pinned_unknown`` but never blocks a row --
+    it is not a reason to change what the other skills do.
+
+    Returns ``(injected, skipped)``. ``injected`` are the skills that would be
+    rendered into the prompt, already budget-ordered; ``skipped`` records why
+    every other skill did not make it. Nothing is dropped silently.
     """
-    pinned_lower = (pinned or "").strip().lower() or None
-    injected: list[EnabledSkill] = []
-    skipped: list[SkillSkip] = []
-    eligible: list[EnabledSkill] = []
+    granted = {s.strip() for s in (granted_scopes or []) if s and s.strip()}
+    pin = (pinned or "").strip().lower() or None
+    hay = _normalize(haystack)
 
-    if pinned_lower and not any(row.name.lower() == pinned_lower for row in rows):
+    resolved = [(row, _resolve(row)) for row in rows]
+
+    skipped: list[SkillSkip] = []
+    if pin is not None and not any(skill.name.lower() == pin for _row, skill in resolved):
         skipped.append(
-            SkillSkip(
-                pinned_lower,
-                "pinned_unknown",
-                "no workspace skill matches this pin",
-            )
+            SkillSkip(pin, "pinned_unknown", f"pin '{pin}' matches no skill in this workspace")
         )
 
-    for row in rows:
-        skill = _resolve(row)
+    eligible: list[EnabledSkill] = []
+    for row, skill in resolved:
         if not row.enabled:
             skipped.append(SkillSkip(skill.name, "disabled", "enabled is false"))
             continue
@@ -702,26 +711,27 @@ def evaluate_skill_gates(
                 SkillSkip(skill.name, "no_markdown_doc", "skill has no markdown document")
             )
             continue
-        is_pinned = bool(pinned_lower and skill.name.lower() == pinned_lower)
-        matched, detail = _trigger_state(skill, haystack)
+        is_pinned = bool(pin and skill.name.lower() == pin)
+        matched, detail = _trigger_state(skill, hay)
         if not matched and not is_pinned:
             skipped.append(SkillSkip(skill.name, "trigger_not_matched", detail))
             continue
         # Carry the hit count so _order_key can rank by how specifically this
         # message activated the skill, instead of by name. A pinned skill gets
         # the same treatment: a pin does not fabricate trigger evidence.
-        eligible.append(replace(skill, match_hits=len(_trigger_hits(skill, haystack))))
+        eligible.append(replace(skill, match_hits=len(_trigger_hits(skill, hay))))
 
     # Pinned first, then the deterministic order within each band, so a pinned
-    # skill can only be out-ranked by the budget itself — and when that drops
+    # skill can only be out-ranked by the budget itself -- and when that drops
     # it, the drop is named.
     eligible.sort(
         key=lambda skill: (
-            0 if (pinned_lower and skill.name.lower() == pinned_lower) else 1,
+            0 if (pin and skill.name.lower() == pin) else 1,
         )
         + _order_key(skill)
     )
 
+    injected: list[EnabledSkill] = []
     spent = estimate_tokens(DIRECTIVE_HEADER)
     for skill in eligible:
         block = _render_block(skill)
@@ -771,8 +781,8 @@ async def build_skill_directive(
     It bypasses the trigger gate only; :func:`evaluate_skill_gates` owns the
     semantics, so this wrapper cannot drift from them.
 
-    Returns ``SkillDirective(text="")`` when nothing is injected — no header, no
-    fence — so a workspace with no applicable skills produces a byte-identical
+    Returns ``SkillDirective(text="")`` when nothing is injected -- no header, no
+    fence -- so a workspace with no applicable skills produces a byte-identical
     compiled prompt.
     """
     granted = {s.strip() for s in (allowed_scopes or []) if s and s.strip()}

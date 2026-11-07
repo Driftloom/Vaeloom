@@ -2567,9 +2567,21 @@ def _mark_static_skill_directive(result: Any, injected: list[str] | None = None)
     return result
 
 
+def _coerce_agent_context(raw: Any) -> Any:
+    if isinstance(raw, dict):
+        try:
+            from .base import AgentContext
+
+            return AgentContext(**raw)
+        except Exception:
+            return raw
+    return raw
+
+
 async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token: Any = None, state: Any | None = None) -> dict[str, Any]:
     agent = request.agent
     message = plan.get("message", request.message)
+    agent_context = _coerce_agent_context(plan.get("agent_context"))
     # Enrich message with RAG context if available (plan_phase injected it)
     # Context engineering cap: keep RAG prompt at most 2000 chars to prevent explosion
     context_prompt = plan.get("context_prompt", "")
@@ -2652,7 +2664,6 @@ async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token
     # Static dispatch below is the deterministic primary path; ReAct is best-effort.
     if settings.agent_react_enabled:
         try:
-            agent_context = plan.get("agent_context")
             react_result = await _try_react_loop(
                 agent,
                 message,
@@ -2693,7 +2704,6 @@ async def _act_phase_inner(plan: dict[str, Any], request: AgentRequest, on_token
             pass
 
     try:
-        agent_context = plan.get("agent_context")
         # Task 8: the static ladder now mirrors the ReAct prompt seam. The
         # directive is appended to the dispatched message quarantined, exactly
         # like the RAG append — UNTRUSTED workspace text must never ride the

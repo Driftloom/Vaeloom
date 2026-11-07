@@ -28,9 +28,13 @@ async def _make_workspace(client: AsyncClient, headers: dict, name: str) -> str:
 
 
 class TestFinal02ApprovalWorkspaceBinding:
-    async def test_list_with_foreign_workspace_returns_empty(
+    async def test_list_with_foreign_workspace_is_denied(
         self, client: AsyncClient
     ):
+        """A caller-supplied workspace_id the caller does not belong to is
+        rejected at the tenant boundary (403) before the approvals service is
+        reached. The service-level empty-list fallback stays as a second line
+        of defence, but the HTTP contract is a hard denial."""
         ha = await _signup(client, "final-aa@test.com")
         hb = await _signup(client, "final-ab@test.com")
         ws_a = await _make_workspace(client, ha, "A ws")
@@ -43,8 +47,7 @@ class TestFinal02ApprovalWorkspaceBinding:
         res = await client.get(
             "/api/v1/approvals", params={"workspace_id": ws_a}, headers=hb
         )
-        assert res.status_code == 200, res.text
-        assert res.json()["total"] == 0
+        assert res.status_code == 403, res.text
 
     async def test_request_with_foreign_workspace_rejected(
         self, client: AsyncClient

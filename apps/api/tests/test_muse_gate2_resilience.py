@@ -8,16 +8,21 @@ single-effect resume. Nothing shared is touched.
 """
 import asyncio
 import json
-import subprocess
+import os
 import sys
 import uuid
 
 import pytest
-from sqlalchemy import func, select, text
+from sqlalchemy import text
 
 pytestmark = pytest.mark.asyncio
 
-CRASH_CHILD = "C:\\Users\\Dell\\AppData\\Local\\Temp\\opencode_gate2\\crash_child.py"
+# The crash child lives in the repo (tests/fixtures/) so the proof runs on any
+# checkout. It used to point at a hardcoded absolute path on one developer's
+# machine, which made this test fail everywhere else.
+CRASH_CHILD = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "fixtures", "gate2_crash_child.py"
+)
 
 
 async def test_process_death_preserves_durable_state(tmp_path):
@@ -28,7 +33,6 @@ async def test_process_death_preserves_durable_state(tmp_path):
     proc = await asyncio.create_subprocess_exec(
         sys.executable, CRASH_CHILD, str(db_path), idem_key,
         stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT,
-        cwd="C:\\PROJECTS\\PIOS\\ClonU\\Driftloom\\Vaeloom",
     )
     try:
         # Wait for the commit marker, then kill mid-sleep (real death, not mock).
@@ -121,14 +125,16 @@ async def test_multi_tenant_parallel_isolation():
     """Three tenants × workspaces execute memory search concurrently; each
     sees only its own rows. Separate SQLite files avoid lock contention and
     prove the queries (not just the driver) carry the scope."""
+    import tempfile
+
     from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
     from sqlalchemy.pool import NullPool
-    from api.database import Base
+
     import api.models  # noqa: F401
+    from api.database import Base
     from api.models.schema import Memory
     from api.schemas.memory import MemorySearch
     from api.services.memory_service import MemoryService
-    import tempfile, os
 
     async def _lane(i: int):
         from sqlalchemy import event as _sa_event

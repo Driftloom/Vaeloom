@@ -314,7 +314,12 @@ class TestReindex:
             _fetchone(_str_row("[0.1,0.2,0.3]")),
             MagicMock(),
         ])
-        results = await svc.reindex(user_id=None, tenant_id=None, db=db)
+        results = await svc.reindex(
+            user_id=None,
+            tenant_id=None,
+            db=db,
+            workspace_id="00000000-0000-4000-8000-000000000001",
+        )
         assert results == [{"user_id": "u1", "status": "reindexed"}]
 
     async def test_with_user_id_filter(self):
@@ -326,7 +331,12 @@ class TestReindex:
             _fetchone(_str_row("[0.5,0.5]")),
             MagicMock(),
         ])
-        results = await svc.reindex(user_id="u42", tenant_id=None, db=db)
+        results = await svc.reindex(
+            user_id="u42",
+            tenant_id=None,
+            db=db,
+            workspace_id="00000000-0000-4000-8000-000000000001",
+        )
         assert results == [{"user_id": "u42", "status": "reindexed"}]
 
     async def test_with_tenant_id_filter(self):
@@ -338,7 +348,12 @@ class TestReindex:
             _fetchone(_str_row("[0.1,0.2]")),
             MagicMock(),
         ])
-        results = await svc.reindex(user_id=None, tenant_id="t1", db=db)
+        results = await svc.reindex(
+            user_id=None,
+            tenant_id="t1",
+            db=db,
+            workspace_id="00000000-0000-4000-8000-000000000001",
+        )
         assert results == [{"user_id": "u1", "status": "reindexed"}]
 
     async def test_no_users_found(self):
@@ -346,5 +361,10 @@ class TestReindex:
         svc = RecommendationService()
         db = AsyncMock()
         db.execute = AsyncMock(return_value=_fetchall([]))
-        results = await svc.reindex(user_id=None, tenant_id=None, db=db)
+        results = await svc.reindex(
+            user_id=None,
+            tenant_id=None,
+            db=db,
+            workspace_id="00000000-0000-4000-8000-000000000001",
+        )
         assert results == []

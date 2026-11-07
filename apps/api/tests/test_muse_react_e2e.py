@@ -18,7 +18,6 @@ import asyncio
 import json
 import os
 import re
-import time
 import uuid
 
 import pytest
@@ -173,6 +172,7 @@ def react_harness(monkeypatch, db_session, tmp_path):
     """Full real-path harness: flag on, real llm_service logic, scripted stream,
     fake buffered transport, test DB factories, isolated file checkpoints."""
     import httpx as _httpx_mod
+
     from api.services import llm_service as mod
 
     monkeypatch.setattr(settings, "agent_react_enabled", True)
@@ -428,7 +428,11 @@ async def test_REACT_E2E_06_approval_cycle(react_harness):
 
 @pytest.mark.asyncio
 async def test_REACT_E2E_07_cancellation(react_harness):
-    from api.orchestrator.state import LoopState, load_or_create_state, request_cancel, save_checkpoint
+    from api.orchestrator.state import (
+        LoopState,
+        request_cancel,
+        save_checkpoint,
+    )
     db = react_harness["db"]
     ws = str(uuid.uuid4())
 
@@ -605,8 +609,8 @@ async def test_REACT_E2E_14_concurrent_isolation(react_harness, monkeypatch, lev
     db = react_harness["db"]
     engine = db.bind
     maker = async_sessionmaker(engine, expire_on_commit=False)
-    import api.database as _dbmod
     import api.agents.memory.consolidator as _cmod
+    import api.database as _dbmod
     monkeypatch.setattr(_dbmod, "async_session_factory", maker)
     monkeypatch.setattr(
         _cmod, "get_session_cm", lambda workspace_id=None, **kw: maker()
@@ -665,7 +669,6 @@ async def test_REACT_E2E_15_combined_failure_no_fabrication(react_harness):
         raise LLMTransientError("all providers down", 503)
         yield  # pragma: no cover — keep generator shape
 
-    import api.orchestrator.loop as _loop
     orig_stream = LLMService.generate_completion_with_tools_stream
     LLMService.generate_completion_with_tools_stream = _always_fail_stream
     try:
@@ -775,14 +778,18 @@ async def scripted(self, messages, tools=None, **kwargs):
     rounds = sum(1 for m in messages if isinstance(m, dict)
                  and m.get("role") == "assistant" and m.get("tool_calls"))
     if rounds == 0:
+        print("CHILD_ROUND1_TOOL_PROPOSED", flush=True)
         yield {"type": "tool_calls",
                "tool_calls": [{"id": "call-kill-0", "type": "function",
                                "function": {"name": "create_entity",
                                             "arguments": json.dumps(ARGS)}}]}
     else:
         # Park here: the parent terminates us mid-round-1 (after the tool
-        # checkpointed). Deterministic kill window, no timing race.
-        await asyncio.sleep(60)
+        # checkpointed). Deterministic kill window, no timing race. The park
+        # is long on purpose: the parent needs room to boot- and observe us
+        # on a loaded CI machine before it may pull the plug.
+        print("CHILD_ROUND2_PARKED", flush=True)
+        await asyncio.sleep(300)
         yield {"type": "text_delta", "text": '{"summary": "child survived", "proposals": []}'}
     yield {"type": "done"}
 
@@ -791,6 +798,15 @@ async def main():
     settings.agent_react_enabled = True
     settings.llm_api_key = "test-key-32-chars-long-for-tests!!"
     eng = create_async_engine("sqlite+aiosqlite:///" + os.environ["REACT_DB"], poolclass=NullPool)
+    from sqlalchemy import event as sa_event
+
+    @sa_event.listens_for(eng.sync_engine, "connect")
+    def _busy_timeout(dbapi_connection, _record):
+        # The parent polls this database while the child writes. Without a busy
+        # timeout SQLite refuses the write the moment a reader holds the file,
+        # and the child dies before it can checkpoint anything.
+        dbapi_connection.execute("PRAGMA busy_timeout=15000")
+
     maker = async_sessionmaker(eng, expire_on_commit=False)
     dbmod.async_session_factory = maker
     cmod.async_session_factory = maker
@@ -817,6 +833,7 @@ async def test_REACT_E2E_08_process_death_recovery(react_harness, tmp_path, monk
     fresh worker resumes: no duplicate side effect, no bypass, no skip."""
     import subprocess
     import sys as _sys
+
     from api.services.approval import ApprovalManager
 
     db = react_harness["db"]
@@ -853,20 +870,26 @@ async def test_REACT_E2E_08_process_death_recovery(react_harness, tmp_path, monk
         subprocess.Popen, [_sys.executable, str(child_script)],
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, env=env,
         cwd=os.path.join(os.getcwd()))
+    # The parent watches the CHECKPOINT FILE and nothing else.
+    #
+    # It used to poll the database for the child's row. A read transaction on
+    # the SQLite file blocks the child's write, and the child's write is
+    # exactly what the parent is waiting for -- so the two deadlocked until
+    # the timeout, and the child died before it could checkpoint anything.
+    # The checkpoint file is written AFTER the tool's row, so its presence
+    # proves the write landed, and reading it takes no database lock at all.
+    checkpoint_file = state_dir / f"{req_id}.json"
     try:
         # The kill may land before/during/after the gated write — every branch
         # must be safe (zero-or-one effects, never two; never skipped approval).
-        # Poll for the write, then terminate forcefully (TerminateProcess on
-        # Windows — no cleanup handlers run).
+        # Poll for the checkpoint, then terminate forcefully (TerminateProcess
+        # on Windows — no cleanup handlers run).
         saw_write = False
-        for _ in range(100):
+        for _ in range(400):
             await asyncio.sleep(0.3)
             if proc.poll() is not None:
                 break
-            rows = (await db.execute(select(Entity).where(
-                Entity.workspace_id == uuid.UUID(ws),
-                Entity.canonical_name == "Killmark Entity"))).scalars().all()
-            if rows:
+            if checkpoint_file.exists():
                 saw_write = True
                 proc.terminate()
                 break
@@ -893,7 +916,9 @@ async def test_REACT_E2E_08_process_death_recovery(react_harness, tmp_path, monk
     from api.orchestrator.state import load_or_create_state
     st = await load_or_create_state(req_id)
     snap = (st.phases or {}).get(f"react_run_{req_id}")
-    assert snap and len(snap.get("rounds") or []) >= 1, "no checkpoint survived the kill"
+    assert snap and len(snap.get("rounds") or []) >= 1, (
+        "no checkpoint survived the kill\n" + (out[-2000:] if out else "")
+    )
 
     req = _req(ws, "e2e-08", db=db, rid=req_id, agent_name="react_down", agent=ReactE2EAgent())
     req.message = "Create the marker entity. [TAG e2e-08]"
@@ -919,6 +944,7 @@ async def test_REACT_E2E_08_process_death_recovery(react_harness, tmp_path, monk
 async def test_REACT_E2E_01_http_full_path(client, monkeypatch, tmp_path):
     """REAL API REQUEST → auth → tenant/ws → router → loop → ReAct → response."""
     import httpx as _httpx_mod
+
     from api.services import llm_service as mod
 
     monkeypatch.setattr(settings, "agent_react_enabled", True)

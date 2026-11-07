@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os as _os
+import sys as _sys
 import time
 import uuid
 
@@ -17,16 +19,14 @@ from sqlalchemy import select
 
 from api.config import Settings, settings
 from api.models.schema import Document, Entity
-from api.orchestrator.loop import AgentRequest, _try_react_loop, run_agent_loop
+from api.orchestrator.loop import AgentRequest, run_agent_loop
 from api.services.llm_service import LLMService
 
-import os as _os
-import sys as _sys
 _sys.path.insert(0, _os.path.dirname(__file__))
 from test_muse_react_e2e import (
-    ReactE2EAgent,
     SCRIPTS,
     SEEN,
+    ReactE2EAgent,
     _FakeAsyncClient,
     _scripted_stream,
 )
@@ -48,6 +48,7 @@ class _SessionCtx:
 @pytest.fixture
 def adv_harness(monkeypatch, db_session, tmp_path):
     import httpx as _httpx_mod
+
     from api.services import llm_service as mod
 
     monkeypatch.setattr(settings, "agent_react_enabled", True)
@@ -154,7 +155,6 @@ async def test_adv_fake_tool_skipped(adv_harness):
 
 @pytest.mark.asyncio
 async def test_adv_infinite_loop_bounded(adv_harness):
-    from api.config import settings as _s
     db = adv_harness["db"]
     ws = str(uuid.uuid4())
     await db.execute(select(Entity).limit(1))  # session warmup
@@ -341,10 +341,11 @@ async def test_adv_metrics_separate_outcomes(adv_harness):
 
 # ── Configuration decision (§29) ──────────────────────────────────────
 
-def test_adv_react_default_off_deliberate():
-    """ReAct stays opt-in: the default is False in the Settings model, and the
-    loop degrades to static dispatch when off (no silent enablement)."""
-    assert Settings.model_fields["agent_react_enabled"].default is False
+def test_adv_react_default_on_deliberate():
+    """ReAct is live by default: the Settings model ships ``agent_react_enabled``
+    as True, and operators can still turn it off explicitly (the next test
+    proves the loop degrades to static dispatch when it is off)."""
+    assert Settings.model_fields["agent_react_enabled"].default is True
     assert Settings.model_fields["agent_max_react_rounds"].default == 5
 
 

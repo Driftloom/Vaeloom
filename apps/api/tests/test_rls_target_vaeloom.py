@@ -1,23 +1,77 @@
-import asyncio
+"""Live RLS proof for the ``vaeloom_app`` application role.
+
+Proves the deployed role, not a superuser, is the one that is confined:
+unset GUCs see zero rows, a workspace sees only its own rows, another
+workspace sees none of them, and a write with a mismatched workspace is
+refused by the WITH CHECK clause.
+
+Target: a DISPOSABLE PostgreSQL database, named like ``*_proof`` / ``*_test``:
+
+    $env:VAELOOM_TEST_PG_URL="postgresql://postgres:postgres@localhost:5432/vaeloom_rls_proof"
+
+The test creates the ``vaeloom_app`` role and grants on the target database,
+so it must never point at a shared or production database. It skips itself
+when no disposable target is configured, which is why the core CI suite (no
+PostgreSQL service) reports it as skipped rather than failing.
+"""
 import json
+import os
 import uuid
+from urllib.parse import urlsplit, urlunsplit
+
 import asyncpg
 import pytest
+
+PG_URL = os.environ.get("VAELOOM_TEST_PG_URL", "").replace(
+    "postgresql+asyncpg://", "postgresql://"
+)
+REQUIREMENT = "set VAELOOM_TEST_PG_URL to a disposable PG database (*_proof|*_test)"
+APP_USER = "vaeloom_app"
+APP_PASSWORD = "vaeloom_app_pw"
+
+
+def _target_db() -> str:
+    return PG_URL.rsplit("/", 1)[-1].split("?", 1)[0]
+
+
+def _app_url() -> str:
+    """Same target database, connected as the non-superuser application role.
+
+    Superusers bypass RLS entirely, so the proof traffic must NOT run as one.
+    """
+    parts = urlsplit(PG_URL)
+    netloc = f"{APP_USER}:{APP_PASSWORD}@{parts.hostname}"
+    if parts.port:
+        netloc += f":{parts.port}"
+    return urlunsplit((parts.scheme, netloc, parts.path, parts.query, ""))
+
+
+pytestmark = pytest.mark.skipif(
+    not PG_URL or not _target_db().endswith(("_proof", "_test")),
+    reason=REQUIREMENT,
+)
+
 
 @pytest.mark.asyncio
 async def test_target_vaeloom_rls_isolation():
     # 1. Setup as admin
-    admin_conn = await asyncpg.connect("postgresql://postgres:postgres@localhost:5432/vaeloom")
-    await admin_conn.execute("""
+    admin_conn = await asyncpg.connect(PG_URL)
+    has_schema = await admin_conn.fetchval(
+        "SELECT to_regclass('public.memories') IS NOT NULL"
+    )
+    if not has_schema:
+        await admin_conn.close()
+        pytest.skip("target DB has no schema; apply the base schema first")
+    await admin_conn.execute(f"""
         DO $$ BEGIN
-            IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'vaeloom_app') THEN
-                CREATE ROLE vaeloom_app LOGIN PASSWORD 'vaeloom_app_pw';
+            IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '{APP_USER}') THEN
+                CREATE ROLE {APP_USER} LOGIN PASSWORD '{APP_PASSWORD}';
             END IF;
         END $$;
-        ALTER ROLE vaeloom_app WITH PASSWORD 'vaeloom_app_pw';
-        GRANT CONNECT ON DATABASE vaeloom TO vaeloom_app;
-        GRANT USAGE ON SCHEMA public TO vaeloom_app;
-        GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO vaeloom_app;
+        ALTER ROLE {APP_USER} WITH PASSWORD '{APP_PASSWORD}';
+        GRANT CONNECT ON DATABASE "{_target_db()}" TO {APP_USER};
+        GRANT USAGE ON SCHEMA public TO {APP_USER};
+        GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO {APP_USER};
     """)
 
     tid = uuid.uuid4()
@@ -45,8 +99,8 @@ async def test_target_vaeloom_rls_isolation():
     await admin_conn.close()
 
     # 2. Test as application role (vaeloom_app) subject to RLS
-    app_conn = await asyncpg.connect("postgresql://vaeloom_app:vaeloom_app_pw@localhost:5432/vaeloom")
-    
+    app_conn = await asyncpg.connect(_app_url())
+
     # Fail-closed check: No GUCs set -> 0 rows visible
     count_noguc = await app_conn.fetchval("SELECT count(*) FROM memories;")
     assert count_noguc == 0, f"Expected 0 without GUCs, got {count_noguc}"

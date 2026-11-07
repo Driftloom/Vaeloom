@@ -381,7 +381,7 @@ class TestGenerateCompletion:
             post_return=_resp(500, {}, text="Internal error"),
         ))
 
-        with pytest.raises(LLMProviderError, match="OpenAI completion failed: 500"):
+        with pytest.raises(LLMProviderError, match="OpenAI transient error: 500"):
             await svc._openai_completion(
                 [{"role": "user", "content": "Hi"}], "gpt-4", 0.7, 4096,
             )
@@ -698,7 +698,7 @@ class TestGenerateCompletionWithTools:
             post_return=_resp(429, {}, text="Rate limited"),
         ))
 
-        with pytest.raises(LLMProviderError, match="Anthropic tool completion failed: 429"):
+        with pytest.raises(LLMProviderError, match="Anthropic transient tool error: 429"):
             await svc._anthropic_tool_completion(
                 [{"role": "user", "content": "Hi"}], [{}], "claude-3-5-sonnet-20241022", 0.7,
             )

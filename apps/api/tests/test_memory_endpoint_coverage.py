@@ -12,6 +12,10 @@ from datetime import datetime, timedelta
 
 import pytest
 from httpx import AsyncClient
+from sqlalchemy import update
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from api.models.schema import Memory
 
 pytestmark = pytest.mark.asyncio
 
@@ -34,6 +38,17 @@ async def _create_workspace(
     res = await client.post("/api/v1/workspaces", json={"name": name}, headers=headers)
     assert res.status_code == 201
     return res.json()["id"]
+
+
+async def _set_memory_timestamps(
+    db_session: AsyncSession, memory_id: str, when: datetime
+) -> None:
+    await db_session.execute(
+        update(Memory)
+        .where(Memory.id == uuid.UUID(memory_id))
+        .values(created_at=when, updated_at=when)
+    )
+    await db_session.commit()
 
 
 async def _create_memory(
@@ -98,7 +113,9 @@ class TestMemoryFeed:
         assert set(page1).isdisjoint(page2)
         assert set(page1) | set(page2) == created
 
-    async def test_feed_stats_count_the_corpus_not_the_page_slice(self, client: AsyncClient):
+    async def test_feed_stats_count_the_corpus_not_the_page_slice(
+        self, client: AsyncClient, db_session: AsyncSession
+    ):
         """F-slice-stats: the header stats describe the workspace, not the page.
 
         The two newest rows (the slice for ``page_size=2``) are both plain
@@ -109,7 +126,7 @@ class TestMemoryFeed:
         headers = await _signup(client)
         ws = await _create_workspace(client, headers)
         original_id = await _create_memory(client, headers, ws, title="Slice Stats Original")
-        await _create_memory(
+        agent_id = await _create_memory(
             client, headers, ws, title="Slice Stats Agent Note", source_type="agent"
         )
         filler_id = await _create_memory(client, headers, ws, title="Slice Stats Filler")
@@ -121,6 +138,16 @@ class TestMemoryFeed:
         )
         assert superseded.status_code == 201
         successor_id = superseded.json()["id"]
+
+        # SQLite stores whole-second timestamps, so four rows created in one
+        # test share a created_at value and the page-two selection is arbitrary.
+        # Pin distinct timestamps so the premise (the page holds the successor
+        # and filler) is deterministic rather than clock-dependent.
+        base = datetime(2026, 1, 1, 12, 0, 0)
+        await _set_memory_timestamps(db_session, original_id, base)
+        await _set_memory_timestamps(db_session, agent_id, base + timedelta(minutes=1))
+        await _set_memory_timestamps(db_session, filler_id, base + timedelta(minutes=2))
+        await _set_memory_timestamps(db_session, successor_id, base + timedelta(minutes=3))
 
         res = await client.get(
             f"/api/v1/memories/feed?workspace_id={ws}&page=1&page_size=2",

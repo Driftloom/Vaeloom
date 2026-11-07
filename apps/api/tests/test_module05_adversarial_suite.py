@@ -3,12 +3,13 @@ Verifies resilience against cross-workspace IDOR, malicious file uploads, path t
 and indirect prompt injection vectors.
 """
 import uuid
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 
 from api.main import app
-from api.services.file_security_service import file_security_service
 from api.middleware.prompt_injection import PromptInjectionMiddleware
+from api.services.file_security_service import file_security_service
 
 
 @pytest.mark.asyncio
@@ -29,6 +30,15 @@ async def test_adversarial_cross_workspace_idor():
         res = await ac.get(f"/api/v1/documents/{doc_id}/content?workspace_id={ws_victim}", headers=headers_attacker)
         # Must be rejected fail-closed (401 invalid token)
         assert res.status_code == 401
+
+        # The archive call is a mutation, and CSRF is enforced before auth, so
+        # a request without the double-submit token is refused with 403 before
+        # the credential is even examined. Fetch the token so the request
+        # reaches the auth boundary and is denied there with 401 -- that is the
+        # failure this test is about.
+        csrf_res = await ac.get("/csrf-token")
+        assert csrf_res.status_code == 200, csrf_res.text
+        headers_attacker["X-CSRF-Token"] = csrf_res.json()["csrf_token"]
 
         # Attacker tries to archive victim document
         archive_res = await ac.post(f"/api/v1/documents/{doc_id}/archive?workspace_id={ws_victim}", headers=headers_attacker)

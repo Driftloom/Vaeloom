@@ -192,8 +192,12 @@ async def test_catalog_precedence_fills_missing_config_fields(db_session: AsyncS
     assert len(skills) == 1
     assert skills[0].required_scope == "memory.read"
     assert skills[0].triggers == (
-        "career coaching", "career advice", "promotion readiness",
-        "career path", "skill gap analysis", "staff engineer path",
+        "career coaching",
+        "career advice",
+        "promotion readiness",
+        "career path",
+        "skill gap analysis",
+        "staff engineer path",
     )
     assert skills[0].tags == ("Career", "Coaching", "Strategy", "Mentorship")
     assert skills[0].trust_class == "core_trusted"

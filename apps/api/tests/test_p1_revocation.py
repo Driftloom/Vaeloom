@@ -143,7 +143,7 @@ class TestRevocationCrossWorker:
             monkeypatch.setattr(mod, "_redis_checked", False)
             monkeypatch.setattr(mod, "_redis_client", None)
 
-    async def test_concurrent_validation_consistent(self, client: AsyncClient, db_session):
+    async def test_concurrent_validation_consistent(self, client: AsyncClient, db_path: str):
         import asyncio
 
         from api.services import auth_service as mod
@@ -157,14 +157,24 @@ class TestRevocationCrossWorker:
         await client.post("/api/v1/auth/logout",
                           headers={"Authorization": f"Bearer {token}"})
 
-        async def check(_):
-            eng = create_async_engine("sqlite+aiosqlite:///:memory:")
-            await eng.dispose()
-            return await mod.auth_service.is_token_revoked_async(
-                jti=payload["jti"], user_id=payload["sub"], iat=float(payload["iat"]),
-                raw_token=token, db=db_session)
+        # Each concurrent check gets its OWN session against the shared test
+        # database file, mirroring production where every request opens its own
+        # connection. Handing the same AsyncSession to 16 concurrent tasks is
+        # not supported by SQLAlchemy and would test the driver, not the
+        # revocation contract.
+        eng = create_async_engine(f"sqlite+aiosqlite:///{db_path}", poolclass=NullPool)
+        maker = async_sessionmaker(eng, expire_on_commit=False)
 
-        results = await asyncio.gather(*[check(i) for i in range(16)])
+        async def check(_):
+            async with maker() as s:
+                return await mod.auth_service.is_token_revoked_async(
+                    jti=payload["jti"], user_id=payload["sub"], iat=float(payload["iat"]),
+                    raw_token=token, db=s)
+
+        try:
+            results = await asyncio.gather(*[check(i) for i in range(16)])
+        finally:
+            await eng.dispose()
         assert all(r[0] is True for r in results), results
 
     async def test_no_process_local_state(self):

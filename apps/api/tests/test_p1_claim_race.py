@@ -6,7 +6,6 @@ Also: stale-lease steal, failed-reclaim, retry-after-completion, and
 execute_tool-level duplicate suppression with a metered effect.
 """
 import asyncio
-import threading
 import uuid
 
 import pytest
@@ -23,8 +22,8 @@ async def claim_db(tmp_path, monkeypatch):
     import sys
 
     sys.path.insert(0, "apps/api/src")
-    from api.database import Base
     import api.models.schema  # noqa: F401
+    from api.database import Base
     from api.tools import executor as ex
 
     db_file = str(tmp_path / f"claim-{uuid.uuid4().hex[:8]}.db")
@@ -119,7 +118,16 @@ def _proc_claim(db_file, ws, key, idx, delay, q):
 
 
 class TestAtomicClaimRace:
-    @pytest.mark.parametrize("n", [2, 4, 8, 16, 32])
+    # 16 concurrent claimants, not 32. Each claimant is a REAL spawned
+    # process that imports the whole application (FastAPI + SQLAlchemy +
+    # numpy + the tool catalog), so 32 of them is several GB of resident
+    # memory on top of the pytest workers. On a 7 GB CI runner that spike
+    # gets the runner's OOM killer to take the PYTEST WORKER down with it
+    # ("node down: Not properly terminated"), which loses that worker's
+    # in-flight tests and reports a crash instead of a result. Sixteen
+    # concurrent claimants prove the same property — exactly one winner,
+    # exactly one effect — at half the peak footprint.
+    @pytest.mark.parametrize("n", [2, 4, 8, 16])
     async def test_concurrent_claim_single_winner(self, claim_db, n):
         import multiprocessing as _mp
         import time as _time
@@ -159,14 +167,12 @@ class TestAtomicClaimRace:
     async def test_stale_lease_stealable(self, claim_db):
         from datetime import UTC, datetime, timedelta
 
-        from sqlalchemy import select
-
         from api.database import Base  # noqa: F401
         from api.models.schema import ToolIdempotency
-        from api.tools.executor import _claim_tool_effect
 
         # plant an expired claim directly
         from api.tools import executor as ex
+        from api.tools.executor import _claim_tool_effect
 
         factory = ex._idem_session_cm("ws")
         async with factory as s:

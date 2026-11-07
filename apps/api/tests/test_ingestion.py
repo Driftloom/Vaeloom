@@ -6,6 +6,8 @@ from unittest.mock import MagicMock, AsyncMock
 
 import pytest
 
+DEDUP_WORKSPACE_ID = "00000000-0000-4000-8000-000000000001"
+
 
 @pytest.fixture(autouse=True)
 def _clean_parser_modules(monkeypatch):
@@ -351,7 +353,7 @@ class TestDedup:
         mock_factory = MagicMock(return_value=mock_cm)
         monkeypatch.setattr("api.database.async_session_factory", mock_factory)
 
-        result = await check_dedup("ws1", "hash123", "doc.pdf")
+        result = await check_dedup(DEDUP_WORKSPACE_ID, "hash123", "doc.pdf")
         assert result == "doc-uuid-123"
 
     async def test_check_dedup_version_orphaned(self, monkeypatch):
@@ -381,7 +383,7 @@ class TestDedup:
         mock_factory = MagicMock(return_value=mock_cm)
         monkeypatch.setattr("api.database.async_session_factory", mock_factory)
 
-        result = await check_dedup("ws1", "hash", "orphaned.pdf")
+        result = await check_dedup(DEDUP_WORKSPACE_ID, "hash", "orphaned.pdf")
         assert result is None
 
     async def test_check_dedup_path_match(self, monkeypatch):
@@ -404,7 +406,7 @@ class TestDedup:
         mock_factory = MagicMock(return_value=mock_cm)
         monkeypatch.setattr("api.database.async_session_factory", mock_factory)
 
-        result = await check_dedup("ws1", "hash456", "existing_path.pdf")
+        result = await check_dedup(DEDUP_WORKSPACE_ID, "hash456", "existing_path.pdf")
         assert result == "path-match-uuid"
 
     async def test_check_dedup_no_match(self, monkeypatch):
@@ -421,7 +423,7 @@ class TestDedup:
         mock_factory = MagicMock(return_value=mock_cm)
         monkeypatch.setattr("api.database.async_session_factory", mock_factory)
 
-        result = await check_dedup("ws1", "hash789", "new_file.pdf")
+        result = await check_dedup(DEDUP_WORKSPACE_ID, "hash789", "new_file.pdf")
         assert result is None
 
     async def test_check_dedup_import_error(self, monkeypatch):
@@ -429,10 +431,10 @@ class TestDedup:
 
         monkeypatch.setitem(sys.modules, "api.database", None)
 
-        result = await check_dedup("ws1", "hash", "my_duplicate_file.pdf")
+        result = await check_dedup(DEDUP_WORKSPACE_ID, "hash", "my_duplicate_file.pdf")
         assert result == "existing_doc_id_123"
 
-        result = await check_dedup("ws1", "hash", "unique_file.pdf")
+        result = await check_dedup(DEDUP_WORKSPACE_ID, "hash", "unique_file.pdf")
         assert result is None
 
     async def test_check_dedup_query_error(self, monkeypatch):
@@ -446,22 +448,22 @@ class TestDedup:
         mock_factory = MagicMock(return_value=mock_cm)
         monkeypatch.setattr("api.database.async_session_factory", mock_factory)
 
-        result = await check_dedup("ws1", "hash", "my_duplicate_file.pdf")
+        result = await check_dedup(DEDUP_WORKSPACE_ID, "hash", "my_duplicate_file.pdf")
         assert result == "existing_doc_id_123"
 
-        result = await check_dedup("ws1", "hash", "unique_file.pdf")
+        result = await check_dedup(DEDUP_WORKSPACE_ID, "hash", "unique_file.pdf")
         assert result is None
 
     async def test_fallback_dedup_duplicate(self):
         from api.ingestion.dedup import _fallback_dedup
 
-        result = _fallback_dedup("ws1", "hash", "my_duplicate_file.pdf")
+        result = _fallback_dedup(DEDUP_WORKSPACE_ID, "hash", "my_duplicate_file.pdf")
         assert result == "existing_doc_id_123"
 
     async def test_fallback_dedup_no_duplicate(self):
         from api.ingestion.dedup import _fallback_dedup
 
-        result = _fallback_dedup("ws1", "hash", "unique_file.pdf")
+        result = _fallback_dedup(DEDUP_WORKSPACE_ID, "hash", "unique_file.pdf")
         assert result is None
 
     async def test_filename_similarity(self):
@@ -491,7 +493,7 @@ class TestDedup:
         mock_factory = MagicMock(return_value=mock_cm)
         monkeypatch.setattr("api.database.async_session_factory", mock_factory)
 
-        result = await check_dedup("ws1", "hash999", "resume_final2.pdf")
+        result = await check_dedup(DEDUP_WORKSPACE_ID, "hash999", "resume_final2.pdf")
         assert result == "fuzzy-doc-uuid"
 
     async def test_check_dedup_fuzzy_no_match(self, monkeypatch):
@@ -511,7 +513,7 @@ class TestDedup:
         mock_factory = MagicMock(return_value=mock_cm)
         monkeypatch.setattr("api.database.async_session_factory", mock_factory)
 
-        result = await check_dedup("ws1", "hash999", "totally_different_name_xyz.pdf")
+        result = await check_dedup(DEDUP_WORKSPACE_ID, "hash999", "totally_different_name_xyz.pdf")
         assert result is None
 
 
@@ -603,7 +605,7 @@ class TestPipeline:
 
         monkeypatch.setattr("api.ingestion.pipeline.parse_document", mock_parse_error)
 
-        result = await run_pipeline("ws1", "bad.xyz", b"data")
+        result = await run_pipeline(DEDUP_WORKSPACE_ID, "bad.xyz", b"data")
         assert result["status"] == "error"
         assert "No parser for" in result["reason"]
 
@@ -615,6 +617,6 @@ class TestPipeline:
 
         monkeypatch.setattr("api.ingestion.pipeline.parse_document", mock_parse_error)
 
-        result = await run_pipeline("ws1", "broken.pdf", b"data")
+        result = await run_pipeline(DEDUP_WORKSPACE_ID, "broken.pdf", b"data")
         assert result["status"] == "error"
         assert "Unexpected parse failure" in result["reason"]

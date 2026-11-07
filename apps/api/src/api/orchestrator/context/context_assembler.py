@@ -26,6 +26,28 @@ def _sanitize_xml_content(text: str) -> str:
     return sanitized.strip()
 
 
+def _render_preference(pref: dict[str, Any]) -> str:
+    """Render one RAG preference as a human-readable line.
+
+    The RAG bundle built by ``orchestrator.loop`` emits preferences as
+    ``{"id", "name", "metadata"}`` (they are ``Entity`` rows of type
+    ``preference``), while older callers used ``{"key", "value"}``. Reading only
+    ``key``/``value`` rendered every live preference as the literal string
+    ``"None: None"``, silently dropping the user's stated preferences from the
+    prompt. Accept both shapes and never emit a placeholder.
+    """
+    name = pref.get("name") or pref.get("key") or pref.get("canonical_name")
+    value = pref.get("value")
+    if value is None:
+        meta = pref.get("metadata") or pref.get("metadata_") or {}
+        if isinstance(meta, dict):
+            value = meta.get("value") or meta.get("preferred_value")
+    label = str(name) if name else "preference"
+    if value in (None, ""):
+        return label
+    return f"{label}: {value}"
+
+
 class ContextAssembler:
     """Assembles quarantined prompt context blocks for agent inference."""
 
@@ -144,7 +166,7 @@ class ContextAssembler:
             })
         for pref in rag.get("preferences", []):
             memories.append({
-                "content": f"{pref.get('key')}: {pref.get('value')}",
+                "content": _render_preference(pref),
                 "provenance": "user_preferences",
                 "score": 1.0,
             })

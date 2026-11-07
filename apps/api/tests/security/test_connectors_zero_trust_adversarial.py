@@ -718,12 +718,12 @@ class TestComposioAndBuiltinMcp:
         assert "categories" in body
         assert len(body["categories"]) >= 5
 
-        # 2. Filter by category
+        # 2. Filter by category ("Sales" is an alias for "Startup & Business")
         res_cat = await client.get("/api/v1/connectors/composio/apps?category=Sales", headers=headers)
         assert res_cat.status_code == 200
         cat_body = res_cat.json()
         assert cat_body["total"] > 0
-        assert all(a["category"].lower() == "sales" for a in cat_body["apps"])
+        assert all(a["category"] == "Startup & Business" for a in cat_body["apps"])
 
         # 3. Search query
         res_search = await client.get("/api/v1/connectors/composio/apps?search=stripe", headers=headers)

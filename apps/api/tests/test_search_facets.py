@@ -171,14 +171,24 @@ class TestSearchAllWithFacets:
         rec_result.scalars.return_value.all.return_value = []
         ent_result = MagicMock()
         ent_result.scalars.return_value.all.return_value = []
-        results = [mem_result, rec_result, ent_result]
+        doc_result = MagicMock()
+        doc_result.scalars.return_value.all.return_value = []
+        results = [mem_result, rec_result, ent_result, doc_result]
         db = MagicMock()
 
         async def execute(stmt):
             return results.pop(0)
 
         db.execute = execute
-        result = await svc.search_all("hello", tenant_id=None, sources=None, limit=20, offset=0, db=db)
+        result = await svc.search_all(
+            "hello",
+            tenant_id=None,
+            sources=None,
+            limit=20,
+            offset=0,
+            db=db,
+            workspace_id="00000000-0000-4000-8000-000000000001",
+        )
         assert "facet_counts" in result
         assert result["facet_counts"]["types"] == {}
 
@@ -194,6 +204,15 @@ class TestSearchAllWithFacets:
             return results.pop(0)
 
         db.execute = execute
-        result = await svc.search_all("test", tenant_id=None, sources=["memory"], limit=20, offset=0, db=db, filters={"type": "entity"})
+        result = await svc.search_all(
+            "test",
+            tenant_id=None,
+            sources=["memory"],
+            limit=20,
+            offset=0,
+            db=db,
+            filters={"type": "entity"},
+            workspace_id="00000000-0000-4000-8000-000000000001",
+        )
         assert result["total"] >= 0
         assert "facet_counts" in result

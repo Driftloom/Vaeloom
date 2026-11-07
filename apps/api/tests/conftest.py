@@ -111,7 +111,12 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 import api.models  # noqa: F401 — register ORM models before create_all runs
 from api.database import Base, get_db
 from api.middleware.auth import AuthMiddleware
-from api.middleware.exception_handler import unified_exception_handler, generic_exception_handler, validation_exception_handler
+from api.middleware.exception_handler import (
+    generic_exception_handler,
+    llm_provider_exception_handler,
+    unified_exception_handler,
+    validation_exception_handler,
+)
 from fastapi.exceptions import RequestValidationError
 
 from api.services.memory_type_packs import CAREER_PACK_SLUG, CAREER_TYPES
@@ -157,6 +162,12 @@ def _build_test_app(db_session):
     test_app.add_exception_handler(StarletteHTTPException, unified_exception_handler)
     test_app.add_exception_handler(Exception, generic_exception_handler)
     test_app.add_exception_handler(RequestValidationError, validation_exception_handler)
+    # Mirror main.py: a provider outage is a 503, not a 500. The shared ``client``
+    # fixture builds this app, so a handler wired only into api.main would let the
+    # reported endpoint keep reporting a dependency outage as a server defect.
+    from api.services.llm_service import LLMProviderError
+
+    test_app.add_exception_handler(LLMProviderError, llm_provider_exception_handler)
 
     from api.infrastructure.metrics import MetricsMiddleware
     test_app.add_middleware(MetricsMiddleware)
@@ -310,9 +321,9 @@ async def db_session(db_path):
         )
 
     session_factory = async_sessionmaker(engine, expire_on_commit=False)
+    session = session_factory()
     try:
-        async with session_factory() as session:
-            yield session
+        yield session
     finally:
         # Drain pending audit and orchestrator background tasks before disposing engine
         try:
@@ -349,6 +360,12 @@ async def db_session(db_path):
                 for t in all_pending:
                     t.cancel()
                 await asyncio.gather(*all_pending, return_exceptions=True)
+        except Exception:
+            pass
+
+        # Teardown: close the fixture session before disposing the engine.
+        try:
+            await session.close()
         except Exception:
             pass
 
