@@ -10,11 +10,12 @@ from __future__ import annotations
 
 import re
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
-from api.services.trajectory_metrics import compute_tool_f1
 from api.services.trajectory_eval import evaluate_trajectory as evaluate_trajectory_state
+from api.services.trajectory_metrics import compute_tool_f1
 
 
 @dataclass

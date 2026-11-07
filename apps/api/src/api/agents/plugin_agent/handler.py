@@ -188,7 +188,6 @@ class PluginAgent(BaseAgent):
         **kwargs: Any,
     ) -> dict[str, Any]:
         logger.info("PluginAgent handling message: %s", message[:80])
-        clean_msg = message.strip()
         catalog = [
             {"name": "sentiment", "type": "official", "version": "1.2.0", "description": "Communication tone and sentiment analysis"},
             {"name": "summarizer", "type": "official", "version": "1.0.4", "description": "Long-form job posting and document summarizer"},

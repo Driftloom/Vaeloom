@@ -225,6 +225,25 @@ class JobSearchAgent(BaseAgent):
         except Exception as exc:
             logger.debug("PIOS opportunity matcher fallback: %s", exc)
 
+        return self._keyword_score_fit(job, user_skills, keywords)
+
+    def _keyword_score_fit(
+        self, job: dict[str, Any], user_skills: list[str], keywords: list[str]
+    ) -> tuple[float, str]:
+        required = {s.lower() for s in job.get("required_skills", [])}
+        user = {s.lower() for s in user_skills}
+        matched = required & user
+        missing = required - user
+
+        score = len(matched) / max(len(required), 1)
+
+        if score >= 0.8:
+            reason = f"Strong match: you have {len(matched)}/{len(required)} required skills ({', '.join(matched)})"
+        elif score >= 0.5:
+            reason = f"Partial match: {len(matched)}/{len(required)} skills. Missing: {', '.join(missing)}"
+        else:
+            reason = f"Weak match: only {len(matched)}/{len(required)} skills. Missing: {', '.join(missing)}"
+
         return round(score, 2), reason
 
     async def process(self, request_or_dict: Any, context: Any = None) -> dict[str, Any]:

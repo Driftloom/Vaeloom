@@ -186,7 +186,6 @@ class ConnectorAgent(BaseAgent):
         **kwargs: Any,
     ) -> dict[str, Any]:
         logger.info("ConnectorAgent handling message: %s", message[:80])
-        clean_msg = message.strip()
         available_connectors = [
             {"name": "Slack", "category": "Communication", "status": "Ready", "auth_type": "OAuth2 (Bot Token)"},
             {"name": "GitHub", "category": "Code & Portfolios", "status": "Connected", "auth_type": "Personal Access Token"},

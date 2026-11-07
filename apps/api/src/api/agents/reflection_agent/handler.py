@@ -186,7 +186,6 @@ class ReflectionAgent(BaseAgent):
         **kwargs: Any,
     ) -> dict[str, Any]:
         logger.info("ReflectionAgent handling message: %s", message[:80])
-        clean_msg = message.strip()
         reflection_data = {
             "cadence": "Weekly Executive Digest",
             "wins_and_breakthroughs": [

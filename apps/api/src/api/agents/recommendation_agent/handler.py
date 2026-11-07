@@ -188,7 +188,6 @@ class RecommendationAgent(BaseAgent):
         **kwargs: Any,
     ) -> dict[str, Any]:
         logger.info("RecommendationAgent handling message: %s", message[:80])
-        clean_msg = message.strip()
         recommendations = {
             "high_match_roles": [
                 {"title": "Staff Platform Engineer", "company": "Vercel", "match_score": 0.94, "affinity_factor": "Next.js & Edge Runtime mastery"},

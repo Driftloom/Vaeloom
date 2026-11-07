@@ -187,7 +187,6 @@ class AnalyticsAgent(BaseAgent):
         **kwargs: Any,
     ) -> dict[str, Any]:
         logger.info("AnalyticsAgent handling message: %s", message[:80])
-        clean_msg = message.strip()
         # Funnel metrics and performance analysis
         funnel_data = {
             "period": "Last 30 Days",

@@ -188,7 +188,6 @@ class OrganizationAgent(BaseAgent):
         **kwargs: Any,
     ) -> dict[str, Any]:
         logger.info("OrganizationAgent handling message: %s", message[:80])
-        clean_msg = message.strip()
         sample_docs = [
             {"id": "doc_1", "filename": "resume_software_engineer_v2_final.pdf"},
             {"id": "doc_2", "filename": "cover_letter_google_staff_role.docx"},
