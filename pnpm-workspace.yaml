@@ -7,8 +7,30 @@ packages:
   - 'scripts/*'
   - 'testing/*'
 
+# pnpm 11 reads overrides here; CI's pinned pnpm 9.12.0 reads pnpm.overrides
+# in the root package.json instead. Keep both lists identical.
 overrides:
-  eslint: ^8.57.0
+  body-parser: 1.20.9
+  dompurify: 3.4.17
+  fast-uri: 3.1.9
+  follow-redirects: 1.16.2
+  lodash: 4.18.1
+  multer: 2.5.0
+  postcss-selector-parser: 6.1.5
+  qs: 6.16.1
+  systeminformation: 5.33.16
+  zod: 4.6.7
+  postcss: 8.5.23
+  'ws@>=8': 8.21.1
+  'brace-expansion@<2': 1.1.21
+  'brace-expansion@>=2 <3': 2.1.7
+  '@grpc/grpc-js': 1.14.5
+  axios: 1.20.0
+  'js-yaml@<4': 3.15.2
+  'js-yaml@>=4': 4.3.2
+  browserslist: 4.28.7
+  'nanoid@<4': 3.3.18
+  baseline-browser-mapping: 2.11.0
 
 peerDependencyRules:
   allowedVersions:
