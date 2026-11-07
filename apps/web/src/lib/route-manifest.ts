@@ -92,6 +92,18 @@ export const WORKSPACE_ROUTES: readonly RouteDefinition[] = [
     description: 'Manage AI agents, tool permissions, and system connectors.',
   },
   {
+    id: 'capability-skill',
+    subpath: 'capabilities/skills/[skillId]',
+    label: 'Skill Detail',
+    section: 'Assist',
+    dataMode: 'live',
+    breadcrumbTitle: 'Skill Detail',
+    primaryAction: 'Open Playground',
+    mobilePattern: 'single-column',
+    description:
+      'Full-page workspace skill view: execution contract, telemetry, and diagnostic playground.',
+  },
+  {
     id: 'chat',
     subpath: 'chat',
     label: 'Chat',
@@ -445,6 +457,33 @@ export const WORKSPACE_ROUTES: readonly RouteDefinition[] = [
 ] as const;
 
 /**
+ * True when a subpath declares a dynamic `[param]` segment. Dynamic routes are
+ * resolvable (breadcrumbs, data-mode) but not directly navigable: static link
+ * surfaces — sidebar fallback, command palette, help guides, e2e sweeps — must
+ * skip them rather than build a literal bracket URL that lands on not-found.
+ */
+export function hasDynamicSegments(subpath: string): boolean {
+  return /\[[^\]]+\]/.test(subpath);
+}
+
+/**
+ * True when a concrete subroute matches a manifest subpath pattern, treating a
+ * `[param]` pattern segment as a single-segment wildcard. Equivalent to strict
+ * equality for bracket-free patterns.
+ */
+function matchesSubpath(pattern: string, subroute: string): boolean {
+  const patternParts = pattern.split('/');
+  const subParts = subroute.split('/');
+  if (patternParts.length !== subParts.length) return false;
+  return patternParts.every((segment, index) => {
+    const candidate = subParts[index] ?? '';
+    return segment.startsWith('[') && segment.endsWith(']')
+      ? candidate.length > 0
+      : segment === candidate;
+  });
+}
+
+/**
  * Resolve breadcrumbs from the current browser pathname.
  */
 export function resolveBreadcrumb(pathname: string): { section: string; title: string } {
@@ -455,9 +494,12 @@ export function resolveBreadcrumb(pathname: string): { section: string; title: s
 
   const subroute = parts.slice(2).join('/');
 
-  // Exact match
+  // Exact match, including dynamic patterns (capabilities/skills/[skillId])
   const exact = WORKSPACE_ROUTES.find(
-    (r) => r.subpath === subroute || r.aliases?.includes(subroute),
+    (r) =>
+      r.subpath === subroute ||
+      r.aliases?.includes(subroute) ||
+      matchesSubpath(r.subpath, subroute),
   );
   if (exact) {
     return { section: exact.section, title: exact.breadcrumbTitle };
@@ -488,7 +530,10 @@ export function resolveRoute(pathname: string): RouteDefinition | undefined {
   }
   const subroute = parts.slice(2).join('/');
   const exact = WORKSPACE_ROUTES.find(
-    (r) => r.subpath === subroute || r.aliases?.includes(subroute),
+    (r) =>
+      r.subpath === subroute ||
+      r.aliases?.includes(subroute) ||
+      matchesSubpath(r.subpath, subroute),
   );
   if (exact) return exact;
 
@@ -612,6 +657,8 @@ export function getNavigationGroups(
     const routes = WORKSPACE_ROUTES.filter((r) => {
       if (r.section !== sec) return false;
       if (r.enterprise && !enableEnterprise) return false;
+      // Dynamic detail routes have no literal URL to link to.
+      if (hasDynamicSegments(r.subpath)) return false;
       return true;
     });
 

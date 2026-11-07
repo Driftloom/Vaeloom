@@ -12,7 +12,12 @@ import {
   ParallelAgentStreamCard,
   type ParallelAgentStreamCardProps,
 } from '../ParallelAgentStreamCard';
-import { ChatMemoryDrawer, type ChatMemoryDrawerProps, type MemoryItem } from '../ChatMemoryDrawer';
+import {
+  ChatMemoryDrawer,
+  type ChatMemoryDrawerProps,
+  type MemoryDrawerPayload,
+  type MemoryItem,
+} from '../ChatMemoryDrawer';
 import {
   ChatSubpagesNav,
   AgentSquadsView,
@@ -32,7 +37,7 @@ jest.mock('react-markdown', () => {
 jest.mock('remark-gfm', () => () => {});
 
 // Mock SWR for ChatMemoryDrawer
-let mockSwrData: { memories?: MemoryItem[]; items?: MemoryItem[] } | undefined = undefined;
+let mockSwrData: MemoryDrawerPayload | undefined = undefined;
 let mockSwrLoading = false;
 
 jest.mock('swr', () => ({
@@ -410,6 +415,18 @@ describe('Chat Enterprise UI Components', () => {
       expect(screen.getByText('Memory & Vault Grounding')).toBeInTheDocument();
       expect(screen.getByText('VP of Engineering Target Criteria')).toBeInTheDocument();
       expect(screen.getByText('Core System Skills')).toBeInTheDocument();
+    });
+
+    it('renders memories from a bare-array API response (GET /memories contract)', () => {
+      mockSwrLoading = false;
+      // GET /workspaces/{id}/memories returns MemoryResponse[] with no wrapper.
+      mockSwrData = mockMemories;
+      render(<ChatMemoryDrawer isOpen={true} onClose={jest.fn()} workspaceId="ws-123" />);
+
+      expect(screen.getByTestId('memory-item-mem-1')).toBeInTheDocument();
+      expect(screen.getByTestId('memory-item-mem-2')).toBeInTheDocument();
+      expect(screen.getByText('VP of Engineering Target Criteria')).toBeInTheDocument();
+      expect(screen.queryByText('No memories found')).not.toBeInTheDocument();
     });
 
     it('triggers onClose when close button or backdrop is clicked', () => {

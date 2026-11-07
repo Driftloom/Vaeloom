@@ -194,6 +194,54 @@ describe('Tailwind class definitions', () => {
     expect(button).not.toMatch(/['"\s]focus:ring-/);
     expect(css).not.toMatch(/\.btn-[a-z]+[^}]*[^-\w]focus:ring-(?!offset)/);
   });
+
+  it('declares a backdropBlur row so v4-spelling blur classes cannot purge', () => {
+    // v4 spells the smallest blur `backdrop-blur-xs`; this project is v3.4, so
+    // that spelling purged silently and rendered nothing -- the shadow.xs
+    // dead zone again, so the extraction mirrors the boxShadow test above.
+    expect(config).toMatch(/backdropBlur:\s*\{/);
+    expect(config).toMatch(/^ {8}'?xs'?:/m);
+  });
+
+  it('uses no dead backdrop-blur class in the capabilities subtree', () => {
+    // The v4 spelling purges on v3, and the overlay refactor agrees no
+    // backdrop-filter belongs on a scrim, so the literal is banned from the
+    // whole capabilities subtree. Comments are stripped like the animation
+    // scans so an explanatory file never reports itself.
+    const CAPABILITIES = join(SRC, 'components', 'capabilities');
+    const offenders: string[] = [];
+    for (const f of walk(CAPABILITIES)) {
+      const text = readFileSync(f, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/\/\/[^\n]*/g, '');
+      if (text.includes('backdrop-blur-xs')) offenders.push(srcRel(f));
+    }
+    // McpConfigModal carried the same dead spelling and received the same
+    // one-line scrim fix in the commit that added this guard; the file is
+    // scheduled for outright deletion by a later phase, and the strict result
+    // below keeps the subtree permanently free of the purged literal.
+    expect(offenders).toEqual([]);
+  });
+
+  it('uses no danger-family classes in the capabilities subtree', () => {
+    // `danger` and `error` in tailwind.config.ts alias the SAME `--error`
+    // tokens, so this is a naming guard, not a color-difference guard: one
+    // family spelling must survive across the capabilities subtree, and the
+    // canonical one is `error` (the token family name). Comments are stripped
+    // like the backdrop scan above so an explanatory file never reports
+    // itself.
+    const CAPABILITIES = join(SRC, 'components', 'capabilities');
+    const DANGER_UTILITY = /(?:text|bg|border|ring|fill|stroke)-danger(?:\/\d+)?\b/g;
+    const offenders: string[] = [];
+    for (const f of walk(CAPABILITIES)) {
+      const text = readFileSync(f, 'utf8')
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .replace(/\/\/[^\n]*/g, '');
+      const hits = text.match(DANGER_UTILITY) ?? [];
+      if (hits.length) offenders.push(`${srcRel(f)}: ${hits.join(', ')}`);
+    }
+    expect(offenders).toEqual([]);
+  });
 });
 
 describe('Animation utilities resolve', () => {

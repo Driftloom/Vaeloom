@@ -306,4 +306,92 @@ describe('ChatWindow — Deep-link and Skills loading', () => {
     expect(screen.getByTestId('active-skill-chip')).toBeInTheDocument();
     expect(screen.getByTestId('active-skill-chip')).toHaveTextContent('/skill:ats-audit');
   });
+
+  it('selects the specialist agent mapped to the deep-linked skill', async () => {
+    mockSearchParams.set('skill', 'resume-quantifier');
+
+    render(<ChatWindow workspaceId="ws-test" />);
+
+    await waitFor(() => {
+      expect((screen.getByLabelText('Active agent') as HTMLSelectElement).value).toBe('resume');
+    });
+  });
+
+  it('keeps automatic agent selection for a deep-linked skill with no specialist mapping', async () => {
+    const unmapped = {
+      id: 'skill-sentiment',
+      name: 'sentiment',
+      slug: 'sentiment',
+      description: 'Sentiment analysis tool',
+      enabled: true,
+      installed: true,
+      category: 'skill',
+      version: '1.0.0',
+      status: 'ENABLED',
+      author: 'system',
+      type: 'bundled',
+      runtime: 'markdown',
+      config: {},
+      usageCount: 0,
+      lastUsedAt: null,
+    };
+    (workspaceHooks.useWorkspaceCapabilities as unknown as jest.Mock).mockReturnValueOnce({
+      skills: [...RAW_API_SKILLS, unmapped],
+      isLoading: false,
+      isError: null,
+      mutate: jest.fn(),
+    });
+    mockSearchParams.set('skill', 'sentiment');
+
+    render(<ChatWindow workspaceId="ws-test" />);
+
+    await waitFor(() => {
+      expect((screen.getByLabelText('Active agent') as HTMLSelectElement).value).toBe('auto');
+    });
+    expect(screen.getByTestId('active-skill-chip')).toHaveTextContent('/skill:sentiment');
+  });
+
+  it('asks before replacing an existing draft when a ?skill= deep-link arrives', async () => {
+    const { rerender } = render(<ChatWindow workspaceId="ws-test" />);
+    const textbox = () =>
+      screen.getByRole('combobox', { name: 'Chat message' }) as HTMLTextAreaElement;
+
+    fireEvent.change(textbox(), { target: { value: 'My half-written draft' } });
+    expect(textbox().value).toBe('My half-written draft');
+
+    mockSearchParams.set('skill', 'ats-audit');
+    rerender(<ChatWindow workspaceId="ws-test" />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: 'Replace your draft?' })).toBeInTheDocument();
+    });
+    expect(textbox().value).toBe('My half-written draft');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Replace draft' }));
+
+    await waitFor(() => {
+      expect(textbox().value).toBe('/skill:ats-audit ');
+    });
+    expect(screen.queryByRole('dialog', { name: 'Replace your draft?' })).not.toBeInTheDocument();
+  });
+
+  it('keeps the existing draft when the replacement is declined', async () => {
+    const { rerender } = render(<ChatWindow workspaceId="ws-test" />);
+    const textbox = () =>
+      screen.getByRole('combobox', { name: 'Chat message' }) as HTMLTextAreaElement;
+
+    fireEvent.change(textbox(), { target: { value: 'My half-written draft' } });
+
+    mockSearchParams.set('skill', 'ats-audit');
+    rerender(<ChatWindow workspaceId="ws-test" />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: 'Replace your draft?' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Keep draft' }));
+
+    expect(textbox().value).toBe('My half-written draft');
+    expect(screen.queryByRole('dialog', { name: 'Replace your draft?' })).not.toBeInTheDocument();
+  });
 });

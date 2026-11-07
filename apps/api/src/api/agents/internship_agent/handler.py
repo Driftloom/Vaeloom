@@ -118,7 +118,7 @@ class InternshipAgent(BaseAgent):
             f"({int(opportunities[0]['fit_score'] * 100)}% fit)."
         )
 
-        return {
+        res = {
             "agent_name": "internship",
             "action": "suggest",
             "confidence": 0.93,
@@ -129,8 +129,26 @@ class InternshipAgent(BaseAgent):
                 "questions": [
                     f"Would you like me to tailor your resume specifically for {opportunities[0]['company']}?"
                 ],
+                "action_chips": [
+                    "🎓 Tailor Resume for Top Internship",
+                    "📅 Add Deadline to Calendar",
+                    "🔍 Search Fall/Spring Co-ops",
+                ],
             },
         }
+        return res
+
+    async def handle(
+        self,
+        message: str,
+        workspace_id: str | None = None,
+        user_id: str | None = None,
+        tenant_id: str | None = None,
+        permissions: list[str] | None = None,
+        context: Any = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        return await self.process({"message": message, "workspace_id": workspace_id, "user_id": user_id, "tenant_id": tenant_id})
 
     async def execute(self, request: Any, context: Any = None) -> Any:
         return await self.process(request)

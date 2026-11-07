@@ -3,9 +3,15 @@ import asyncio
 import datetime
 import logging
 import uuid
+from contextlib import asynccontextmanager
 
 import pytest
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from api.models.schema import Workspace, WorkspaceCapability
+from api.services import capability_usage_service as capability_usage
+from api.tools import executor as tool_executor
 from api.tools.definitions import ToolDefinition
 from api.tools.executor import (
     CATEGORY_RETRIES,
@@ -1386,3 +1392,166 @@ async def test_unrecognized_tool_mcp_namespace_routing():
     assert result["diagnostics"]["error_type"] == "MCP_CONNECTOR_UNAVAILABLE"
     assert result["diagnostics"]["server_name"] == "slack"
     assert "Settings > Connectors > MCP" in result["setup_hint"]
+
+
+# ── 23. execution-path usage telemetry (workspace capability rows) ──
+
+@pytest.fixture(autouse=True)
+def _reset_usage_and_idem_state():
+    """The session-source overrides are module globals shared by every test
+    in this process; clear them before and after each test. Direct assignment
+    (not monkeypatch) so a leaked value from any earlier test is never
+    restored by a monkeypatch undo."""
+    capability_usage._USAGE_SESSION_FACTORY_OVERRIDE = None
+    tool_executor._IDEM_SESSION_FACTORY_OVERRIDE = None
+    yield
+    capability_usage._USAGE_SESSION_FACTORY_OVERRIDE = None
+    tool_executor._IDEM_SESSION_FACTORY_OVERRIDE = None
+
+
+@pytest.fixture
+async def telemetry_ws(db_session: AsyncSession, monkeypatch):
+    """A real workspace whose telemetry writers ride the test session.
+
+    The usage hook opens its own session through the service's
+    ``_usage_session_cm`` (production default); here the service test hook is
+    pointed at the test session, exactly as the agent-path tests do. The
+    enable gate reads an empty disabled-set — nothing here is disabled.
+    """
+    ws_id = str(uuid.uuid4())
+
+    async def _no_disabled(workspace_id: str):
+        return frozenset()
+
+    monkeypatch.setattr(tool_executor, "_query_disabled_tools", _no_disabled)
+
+    @asynccontextmanager
+    async def _session_of(workspace_id=None):
+        yield db_session
+
+    monkeypatch.setattr(
+        capability_usage, "_USAGE_SESSION_FACTORY_OVERRIDE", lambda wid: _session_of(wid)
+    )
+    monkeypatch.setattr(
+        tool_executor, "_IDEM_SESSION_FACTORY_OVERRIDE", lambda wid: _session_of(wid)
+    )
+
+    db_session.add(
+        Workspace(
+            id=uuid.UUID(ws_id),
+            user_id=uuid.uuid4(),
+            name=f"usage-telemetry-{uuid.uuid4().hex[:8]}",
+        )
+    )
+    await db_session.commit()
+
+    async def _tool_row(name: str, usage_count: int = 0) -> WorkspaceCapability:
+        row = WorkspaceCapability(
+            workspace_id=uuid.UUID(ws_id),
+            name=name,
+            category="tool",
+            description=f"{name} tool",
+            version="1.0.0",
+            enabled=True,
+            config={},
+            usage_count=usage_count,
+            last_used_at=None,
+        )
+        db_session.add(row)
+        await db_session.commit()
+        return row
+
+    async def _usage_of(name: str) -> WorkspaceCapability | None:
+        return (
+            await db_session.execute(
+                select(WorkspaceCapability).where(
+                    WorkspaceCapability.workspace_id == uuid.UUID(ws_id),
+                    WorkspaceCapability.name == name,
+                    WorkspaceCapability.category == "tool",
+                )
+            )
+        ).scalar_one_or_none()
+
+    return ws_id, _tool_row, _usage_of
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_enabled_tool_row_bumps_usage_exactly_once(
+    monkeypatch, telemetry_ws
+):
+    async def mock_check(*a): return True
+    monkeypatch.setattr("api.tools.executor.check_permission", mock_check)
+    monkeypatch.setattr("api.tools.executor._audit_log", lambda *a: None)
+
+    async def mock_handler(params, ws_id):
+        return {"status": "success", "tool": "usage_tool", "result": "ok"}
+
+    monkeypatch.setitem(TOOL_DISPATCH, "usage_tool", mock_handler)
+
+    ws_id, tool_row, usage_of = telemetry_ws
+    await tool_row("usage_tool", usage_count=5)
+
+    tool = ToolDefinition(
+        name="usage_tool", description="", input_schema={}, output_schema={},
+        required_scope="memory.read", category="memory_read",
+    )
+    result = await execute_tool(tool, {"query": "hi"}, "agent-1", ["memory.read"], ws_id)
+    assert result["status"] == "success"
+
+    row = await usage_of("usage_tool")
+    assert row is not None
+    assert int(row.usage_count) == 6, "exactly one execution bumps exactly +1"
+    assert row.last_used_at is not None
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_with_no_capability_row_records_nothing(
+    monkeypatch, telemetry_ws
+):
+    """A tool the workspace has no 'tool' row for is a silent no-op — no row
+    invention, no count anywhere."""
+    async def mock_check(*a): return True
+    monkeypatch.setattr("api.tools.executor.check_permission", mock_check)
+    monkeypatch.setattr("api.tools.executor._audit_log", lambda *a: None)
+
+    async def mock_handler(params, ws_id):
+        return {"status": "success", "tool": "untracked_tool", "result": "ok"}
+
+    monkeypatch.setitem(TOOL_DISPATCH, "untracked_tool", mock_handler)
+
+    ws_id, tool_row, usage_of = telemetry_ws
+
+    tool = ToolDefinition(
+        name="untracked_tool", description="", input_schema={}, output_schema={},
+        required_scope="memory.read", category="memory_read",
+    )
+    result = await execute_tool(tool, {"query": "hi"}, "agent-1", ["memory.read"], ws_id)
+    assert result["status"] == "success"
+
+    row = await usage_of("untracked_tool")
+    assert row is None
+
+
+@pytest.mark.asyncio
+async def test_execute_tool_permission_denied_bumps_nothing(
+    monkeypatch, telemetry_ws
+):
+    """A denied call never reaches the execution stage, so it never counts."""
+    async def mock_check(*a): return False
+    monkeypatch.setattr("api.tools.executor.check_permission", mock_check)
+    monkeypatch.setattr("api.tools.executor._audit_log", lambda *a: None)
+
+    ws_id, tool_row, usage_of = telemetry_ws
+    await tool_row("denied_tool", usage_count=9)
+
+    tool = ToolDefinition(
+        name="denied_tool", description="", input_schema={}, output_schema={},
+        required_scope="admin.access", category="memory_read",
+    )
+    with pytest.raises(PermissionDeniedError):
+        await execute_tool(tool, {"query": "hi"}, "agent-1", ["memory.read"], ws_id)
+
+    row = await usage_of("denied_tool")
+    assert row is not None
+    assert int(row.usage_count) == 9
+    assert row.last_used_at is None

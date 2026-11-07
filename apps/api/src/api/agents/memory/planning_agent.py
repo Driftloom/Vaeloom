@@ -96,3 +96,111 @@ class PlanningAgent(BaseAgent):
             "confidence": 0.8,
             "result": result,
         }
+
+    async def process(self, request: dict[str, Any] | Any, context: Any = None) -> dict[str, Any]:
+        msg = request.get("message", "") if isinstance(request, dict) else getattr(request, "message", str(request))
+        ws_id = request.get("workspace_id") if isinstance(request, dict) else getattr(request, "workspace_id", None)
+        return await self.handle(msg, workspace_id=ws_id, context=context)
+
+    async def execute(self, request: Any, context: Any = None) -> Any:
+        return await self.process(request, context)
+
+    async def handle(
+        self,
+        message: str,
+        workspace_id: str | None = None,
+        user_id: str | None = None,
+        tenant_id: str | None = None,
+        permissions: list[str] | None = None,
+        context: Any = None,
+    ) -> dict[str, Any]:
+        logger.info("PlanningAgent handling request: %s", message[:80])
+        clean_msg = message.strip()
+
+        # Determine target focus or domain from message
+        topic = "Executive Technical Leadership & AI Engineering"
+        for kw in ["ai", "machine learning", "backend", "cloud", "staff", "director", "manager", "data"]:
+            if kw in clean_msg.lower():
+                topic = f"Senior/Staff {kw.title()} Specialization"
+                break
+
+        # Generate structured 3-phase strategic roadmap
+        phases = [
+            {
+                "phase": 1,
+                "title": "Phase 1: Architecture Diagnostics & Skill Gap Elimination",
+                "duration": "Months 1-2",
+                "milestones": [
+                    "Benchmark current repository contributions against target Tier-1 engineering rubrics",
+                    "Complete deep dive into distributed consensus, high-throughput streaming, and fault domains",
+                    "Close identified high-priority technical gaps through focused system design exercises",
+                ],
+            },
+            {
+                "phase": 2,
+                "title": "Phase 2: High-Leverage Proof Projects & Authority Artifacts",
+                "duration": "Months 3-4",
+                "milestones": [
+                    "Deliver production-grade reference architecture with verifiable telemetry benchmarks",
+                    "Publish technical deep dive and architecture decision record (ADR) case studies",
+                    "Calibrate ATS-optimized master resume variant with quantifiable XYZ achievement bullets",
+                ],
+            },
+            {
+                "phase": 3,
+                "title": "Phase 3: Strategic Outreach, Execution & Compensation Negotiation",
+                "duration": "Months 5-6",
+                "milestones": [
+                    "Target 15 high-affinity enterprise engineering organizations with warm sponsor referrals",
+                    "Execute technical bar-raiser interviews and system design executive defense loops",
+                    "Model competing compensation offers and negotiate equity/bonus terms",
+                ],
+            },
+        ]
+
+        proposals = [
+            {
+                "type": "create_roadmap_milestone",
+                "title": "Adopt 6-Month Executive Engineering Roadmap",
+                "phases_count": len(phases),
+                "target_focus": topic,
+                "action": "commit_to_workspace",
+            },
+            {
+                "type": "delegate_agent_squad",
+                "title": "Trigger ATS Resume Audit & Skill Gap Diagnostic",
+                "target_agent": "ats",
+                "action": "run_parallel_audit",
+            },
+        ]
+
+        summary = (
+            f"Synthesized 3-phase executive career roadmap targeting {topic}. "
+            f"Mapped 9 verifiable milestones across a 6-month delivery trajectory."
+        )
+
+        details = (
+            f"Target Track: {topic}\n"
+            f"Execution Strategy: Phased milestone delivery with continuous ATS and portfolio telemetry feedback.\n"
+            + "\n".join(f"{p['title']} ({p['duration']}): {len(p['milestones'])} key checkpoints." for p in phases)
+        )
+
+        return {
+            "agent_name": "planning",
+            "action": "suggest",
+            "confidence": 0.94,
+            "result": {
+                "summary": summary,
+                "details": details,
+                "phases": phases,
+                "proposals": proposals,
+                "questions": [
+                    "Would you like to customize the 6-month delivery timeline or add specific target employers to Phase 3?"
+                ],
+                "action_chips": [
+                    "Adopt Full Roadmap",
+                    "Audit Resume for Target Track",
+                    "Schedule Phase 1 Check-ins",
+                ],
+            },
+        }

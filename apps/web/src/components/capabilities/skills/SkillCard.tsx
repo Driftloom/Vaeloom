@@ -13,7 +13,7 @@ export interface SkillRow {
   serverBacked: boolean;
 }
 
-export type SkillSaveOutcome = 'server' | 'local' | 'failed';
+export type SkillSaveOutcome = 'server' | 'failed';
 
 export interface SkillCardProps {
   row: SkillRow;
@@ -36,10 +36,8 @@ export const SkillCard: React.FC<SkillCardProps> = ({
 }) => {
   return (
     <div
-      className={`flex items-center gap-2 rounded-lg px-2 py-1.5 transition-colors ${
-        isSelected
-          ? 'bg-primary/10 border-l-2 border-primary text-primary'
-          : 'hover:bg-surface-hover border-l-2 border-transparent'
+      className={`flex items-center gap-2 rounded-card px-2 py-1.5 transition-colors ${
+        isSelected ? 'bg-surface-selected' : 'hover:bg-surface-hover'
       }`}
     >
       <button

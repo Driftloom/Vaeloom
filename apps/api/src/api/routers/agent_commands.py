@@ -46,6 +46,11 @@ AGENT_COLOR_PALETTE: dict[str, str] = {
     "conversation": "bg-gray-500",
     "self_improvement": "bg-emerald-600",
     "qa": "bg-emerald-700",
+    "slack": "bg-indigo-600",
+    "planning": "bg-teal-600",
+    "workspace": "bg-blue-600",
+    "connector": "bg-stone-600",
+    "plugin": "bg-amber-700",
 }
 
 # Default trigger aliases for core agents
@@ -61,6 +66,16 @@ CUSTOM_TRIGGERS: dict[str, str] = {
     "research": "/research",
     "analytics": "/analytics",
     "coding": "/code",
+    "planning": "/autoplan",
+    "slack": "/slack",
+    "ats": "/ats",
+    "calendar": "/calendar",
+    "workspace": "/workspace",
+    "pdf": "/pdf",
+    "document": "/document",
+    "internship": "/internship",
+    "security": "/security",
+    "self_improvement": "/self-improvement",
 }
 
 

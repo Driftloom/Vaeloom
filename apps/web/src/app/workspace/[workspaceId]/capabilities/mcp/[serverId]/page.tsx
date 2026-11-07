@@ -8,6 +8,7 @@ import {
   Button,
   EmptyState,
   FormField,
+  Select,
   Spinner,
   StatusDot,
   TabPanel,
@@ -375,17 +376,12 @@ export default function McpSubpage() {
               ) : (
                 <>
                   <FormField label="Target Tool Name">
-                    <select
+                    <Select
                       value={selectedToolName}
-                      onChange={(e) => setSelectedToolName(e.target.value)}
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-border bg-surface-elevated text-text font-mono focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
-                    >
-                      {tools.map((t) => (
-                        <option key={t.name} value={t.name}>
-                          {t.name}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(value: string) => setSelectedToolName(value)}
+                      options={tools.map((t) => ({ value: t.name, label: t.name }))}
+                      className="font-mono text-xs"
+                    />
                   </FormField>
 
                   <FormField label="JSON Arguments Payload">

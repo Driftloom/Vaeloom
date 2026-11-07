@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, waitFor, fireEvent } from '@testing-library/react';
+import { capabilitiesApi } from '@/lib/api-client';
 import SkillSubpage from './page';
 
 const mockPush = jest.fn();
@@ -71,6 +72,46 @@ describe('SkillSubpage', () => {
     expect(screen.getByText('Capabilities')).toBeInTheDocument();
     expect(screen.getByText('Back to Skills')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Open Playground' })).toBeInTheDocument();
+  });
+
+  it('shows a load error with retry when the list fails and no row resolves', async () => {
+    // A distinct workspace id keeps SWR's per-key cache from deduping the fetch
+    // away (the previous test already populated ['workspace-skills', ws-test-123]).
+    mockParams = { workspaceId: 'ws-error-test', skillId: 'non-existent-skill-xyz' };
+    (capabilitiesApi.listSkills as jest.Mock).mockRejectedValueOnce(new Error('Network down'));
+
+    render(<SkillSubpage />);
+
+    await waitFor(() => {
+      expect(screen.getByText("Couldn't load this skill")).toBeInTheDocument();
+    });
+    expect(screen.getByText('Network down')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try Again' }));
+    await waitFor(() => {
+      expect(capabilitiesApi.listSkills).toHaveBeenCalledTimes(2);
+    });
+  });
+
+  it('labels seeded rows as offline fallback when the skill list fails to load', async () => {
+    mockParams = { workspaceId: 'ws-fallback-test', skillId: 'ats-audit' };
+    (capabilitiesApi.listSkills as jest.Mock).mockRejectedValueOnce(new Error('Network down'));
+
+    render(<SkillSubpage />);
+
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent(/offline fallback data/i);
+    });
+    // The seed row still resolves, so the detail renders rather than an error page.
+    expect(screen.getByRole('heading', { level: 1, name: /ats-audit/i })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Retry' }));
+    await waitFor(() => {
+      expect(capabilitiesApi.listSkills).toHaveBeenCalledTimes(2);
+    });
+    await waitFor(() => {
+      expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    });
   });
 
   it('renders empty state when skill is not found', async () => {

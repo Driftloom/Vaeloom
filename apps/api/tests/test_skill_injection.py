@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from contextlib import asynccontextmanager
 from typing import Any
 
 import pytest
@@ -26,6 +27,7 @@ from api.services.skill_injection import (
     SKILL_DIRECTIVE_TOKEN_BUDGET,
     build_skill_directive,
     enabled_skills,
+    parse_skill_pin,
 )
 
 GRANTED = ["memory.read", "connector.gmail.write"]
@@ -81,6 +83,17 @@ async def _skill(
 
 def _skips(directive) -> dict[str, str]:
     return {s.name: s.reason for s in directive.skipped}
+
+
+def _pinned_config(**overrides: Any) -> dict[str, Any]:
+    """A skill whose trigger phrase can never appear — only a pin can inject it."""
+    config: dict[str, Any] = {
+        "markdown_doc": _doc("Pinned"),
+        "required_scope": "memory.read",
+        "triggers": ["phrase never present anywhere"],
+    }
+    config.update(overrides)
+    return config
 
 
 # ── 1. no-op guarantee ───────────────────────────────────────────────────
@@ -165,7 +178,12 @@ async def test_granted_scope_injects_markdown(db_session: AsyncSession):
 
 @pytest.mark.asyncio
 async def test_catalog_precedence_fills_missing_config_fields(db_session: AsyncSession):
-    """Same precedence as routers.agents:351-356 — config wins, catalog fills."""
+    """Same precedence as routers.agents:351-356 — config wins, catalog fills.
+
+    The row slug must be a LIVE catalog entry. The previous fixture used
+    ``check-work``, which the catalog curation (dff3d8f6) deliberately removed
+    as engineering-tooling; the test then asserted a fill that could not happen.
+    """
     ws = await _workspace(db_session)
     await _skill(db_session, ws, "career-coaching", config={})
 
@@ -191,9 +209,19 @@ async def test_catalog_precedence_fills_missing_config_fields(db_session: AsyncS
 async def test_catalog_entry_with_workspace_markdown_does_not_claim_core_trusted(
     db_session: AsyncSession,
 ):
-    """A workspace-authored document gets no catalog trust label: no field supports it."""
+    """A workspace-authored document gets no catalog trust label: no field supports it.
+
+    The slug must be a LIVE catalog entry (its trust_class is ``core_trusted``),
+    or the test would pass for the accidental reason that no catalog entry
+    exists — which is how it rotted when the curation (dff3d8f6) removed
+    ``system-design``.
+    """
+    from api.services.skill_catalog_service import get_catalog_entry
+
+    assert get_catalog_entry("resume-tailor") is not None
+
     ws = await _workspace(db_session)
-    await _skill(db_session, ws, "career-coaching", config={"markdown_doc": _doc("Homegrown")})
+    await _skill(db_session, ws, "resume-tailor", config={"markdown_doc": _doc("Homegrown")})
 
     skills = await enabled_skills(db_session, ws)
 
@@ -721,6 +749,28 @@ def _capture_loop(monkeypatch) -> list[list[dict[str, Any]]]:
     return captured
 
 
+def _use_test_db(monkeypatch, db_session: AsyncSession) -> list[dict[str, Any]]:
+    """Point the loop's skill lookup at this test's session.
+
+    The lookup opens its own short-lived ``api.database.scoped_session`` (the
+    request session can be already closed on the streaming route, and absent on
+    the buffered one). Without this patch it resolves the global factory above
+    the per-test engine and touches a stray ``./test_dev.db``. Returns the list
+    of kwargs each opened session was constructed with.
+    """
+    import api.database as database
+
+    calls: list[dict[str, Any]] = []
+
+    @asynccontextmanager
+    async def _session(**kwargs: Any):
+        calls.append(kwargs)
+        yield db_session
+
+    monkeypatch.setattr(database, "scoped_session", _session)
+    return calls
+
+
 def _system(captured: list[list[dict[str, Any]]], run: int = -1) -> str:
     assert len(captured) > 0, "no LLM round was captured"
     messages = captured[run]
@@ -738,14 +788,24 @@ def _user(captured: list[list[dict[str, Any]]], run: int = -1) -> str:
     return user[0]["content"]
 
 
-async def _run_loop(db_session: AsyncSession, workspace_id: str, message: str) -> dict[str, Any]:
+async def _run_loop(
+    monkeypatch,
+    db_session: AsyncSession,
+    workspace_id: str,
+    message: str,
+    *,
+    pinned_skill: str | None = None,
+) -> dict[str, Any]:
+    """Drive the real ``_try_react_loop`` with the buffered-route shape: no
+    request session is passed, so the skill lookup must open its own."""
+    _use_test_db(monkeypatch, db_session)
     result = await _try_react_loop(
         agent=_SkillAgent(),
         message=message,
         workspace_id=workspace_id,
         agent_name="dummy",
-        db=db_session,
         request_id=f"req-skill-{uuid.uuid4().hex[:8]}",
+        pinned_skill=pinned_skill,
     )
     assert result is not None, result
     return result
@@ -773,7 +833,7 @@ async def test_loop_assembly_point_delivers_a_matching_skill_as_untrusted(
         "markdown_doc": doc, "required_scope": "memory.read", "tags": ["QA"],
     })
 
-    result = await _run_loop(db_session, ws, "summarize my documents")
+    result = await _run_loop(monkeypatch, db_session, ws, "summarize my documents")
 
     system, user = _system(captured), _user(captured)
     assert "## Workspace skills" not in system
@@ -808,7 +868,7 @@ async def test_loop_system_content_is_byte_identical_when_no_skill_is_injectable
     captured = _capture_loop(monkeypatch)
 
     ws = await _workspace(db_session)
-    await _run_loop(db_session, ws, "summarize my documents")
+    await _run_loop(monkeypatch, db_session, ws, "summarize my documents")
     baseline = _system(captured, 0)
 
     assert "## Workspace skills" not in baseline
@@ -821,7 +881,7 @@ async def test_loop_system_content_is_byte_identical_when_no_skill_is_injectable
         "markdown_doc": _doc("Loopoff"), "required_scope": "memory.read",
     }, enabled=False)
 
-    await _run_loop(db_session, ws, "summarize my documents")
+    await _run_loop(monkeypatch, db_session, ws, "summarize my documents")
     after = _system(captured, 1)
 
     assert len(captured) == 2
@@ -845,7 +905,7 @@ async def test_loop_logs_injected_and_skipped_with_reason(monkeypatch, db_sessio
     })
 
     with caplog.at_level("INFO", logger="api.orchestrator.loop"):
-        await _run_loop(db_session, ws, "summarize my documents")
+        await _run_loop(monkeypatch, db_session, ws, "summarize my documents")
 
     text = caplog.text
     assert "kept-skill" in text
@@ -868,7 +928,7 @@ async def test_loop_survives_a_failing_skill_lookup(monkeypatch, db_session):
     monkeypatch.setattr(si, "build_skill_directive", boom)
 
     ws = await _workspace(db_session)
-    await _run_loop(db_session, ws, "summarize my documents")
+    await _run_loop(monkeypatch, db_session, ws, "summarize my documents")
 
     system = _system(captured)
     assert "## Workspace skills" not in system
@@ -879,28 +939,331 @@ async def test_loop_survives_a_failing_skill_lookup(monkeypatch, db_session):
 
 
 @pytest.mark.asyncio
-async def test_loop_without_a_db_session_never_calls_the_lookup(monkeypatch, db_session):
-    import api.services.skill_injection as si
+async def test_loop_without_a_db_session_still_resolves_skills(monkeypatch, db_session):
+    """F-0 contract change — this test previously asserted the OPPOSITE.
 
+    The buffered route (``router.handle``) never passes a request session into
+    the loop, so the lookup must open its own ``scoped_session``; a workspace
+    skill has to reach the prompt on the real route shape. Gating a
+    workspace-scoped read on the caller's session made the feature dead on both
+    routes (absent session; on the streaming route the session is committed
+    and closed before the loop runs).
+    """
     monkeypatch.setattr(settings, "agent_react_enabled", True)
     monkeypatch.setattr(settings, "llm_api_key", "mock-test-key")
     captured = _capture_loop(monkeypatch)
 
-    called: list[str] = []
-
-    async def spy(*args: Any, **kwargs: Any) -> Any:
-        called.append("called")
-        return await si.build_skill_directive(*args, **kwargs)
-
-    monkeypatch.setattr(si, "build_skill_directive", spy)
+    ws = await _workspace(db_session)
+    await _skill(db_session, ws, "no-db-skill", config={
+        "markdown_doc": _doc("Nodbskill"), "required_scope": "memory.read",
+    })
+    calls = _use_test_db(monkeypatch, db_session)
 
     result = await _try_react_loop(
         agent=_SkillAgent(),
         message="summarize my documents",
-        workspace_id=str(uuid.uuid4()),
+        workspace_id=ws,
+        agent_name="dummy",
+        request_id=f"req-skill-{uuid.uuid4().hex[:8]}",
+    )
+
+    assert result is not None
+    lookups = [c for c in calls if "user_id" in c]
+    assert len(lookups) == 1, calls
+    assert "### no-db-skill" in _user(captured)
+
+
+@pytest.mark.asyncio
+async def test_loop_without_a_workspace_id_never_calls_the_lookup(monkeypatch, db_session):
+    """No workspace ⇒ no lookup at all: not even a scoped session is opened."""
+    monkeypatch.setattr(settings, "agent_react_enabled", True)
+    monkeypatch.setattr(settings, "llm_api_key", "mock-test-key")
+    captured = _capture_loop(monkeypatch)
+
+    import api.database as database
+
+    @asynccontextmanager
+    async def _boom(**kwargs: Any):
+        raise AssertionError("skill lookup attempted without a workspace_id")
+        yield  # pragma: no cover
+
+    monkeypatch.setattr(database, "scoped_session", _boom)
+
+    result = await _try_react_loop(
+        agent=_SkillAgent(),
+        message="summarize my documents",
+        workspace_id="",
         agent_name="dummy",
     )
 
     assert result is not None
-    assert called == []
+    assert "## Workspace skills" not in _user(captured)
+
+
+@pytest.mark.asyncio
+async def test_loop_skill_lookup_carries_the_request_identity(monkeypatch, db_session):
+    """T-1: the lookup session must carry the request's identity — workspace,
+    tenant, user — and ``require=False``, the canonical executor shape. A bare
+    workspace id reads zero rows under RLS and raises nothing, so this is
+    asserted as an exact kwargs contract on the opened session."""
+    monkeypatch.setattr(settings, "agent_react_enabled", True)
+    monkeypatch.setattr(settings, "llm_api_key", "mock-test-key")
+    _capture_loop(monkeypatch)
+
+    ws = await _workspace(db_session)
+    calls = _use_test_db(monkeypatch, db_session)
+
+    result = await _try_react_loop(
+        agent=_SkillAgent(),
+        message="summarize my documents",
+        workspace_id=ws,
+        agent_name="dummy",
+        user_id="user-1",
+        tenant_id="tenant-1",
+        request_id=f"req-skill-{uuid.uuid4().hex[:8]}",
+    )
+
+    assert result is not None
+    lookups = [c for c in calls if "user_id" in c]
+    assert lookups == [{
+        "workspace_id": ws,
+        "tenant_id": "tenant-1",
+        "user_id": "user-1",
+        "require": False,
+    }]
+
+
+@pytest.mark.asyncio
+async def test_loop_ignores_a_closed_request_session(monkeypatch, db_session):
+    """The streaming route commits and closes its session before the loop —
+    the lookup must not depend on it."""
+    monkeypatch.setattr(settings, "agent_react_enabled", True)
+    monkeypatch.setattr(settings, "llm_api_key", "mock-test-key")
+    captured = _capture_loop(monkeypatch)
+
+    ws = await _workspace(db_session)
+    await _skill(db_session, ws, "closed-db-skill", config={
+        "markdown_doc": _doc("Closeddb"), "required_scope": "memory.read",
+    })
+    _use_test_db(monkeypatch, db_session)
+
+    from sqlalchemy.ext.asyncio import async_sessionmaker
+
+    maker = async_sessionmaker(db_session.bind, expire_on_commit=False)
+    closed = maker()
+    await closed.close()
+
+    result = await _try_react_loop(
+        agent=_SkillAgent(),
+        message="summarize my documents",
+        workspace_id=ws,
+        agent_name="dummy",
+        db=closed,
+        request_id=f"req-skill-{uuid.uuid4().hex[:8]}",
+    )
+
+    assert result is not None
+    assert "### closed-db-skill" in _user(captured)
+
+
+@pytest.mark.asyncio
+async def test_loop_delivers_a_pinned_skill_without_a_trigger(monkeypatch, db_session):
+    """End-to-end pin: a skill whose triggers never fire is still delivered
+    when the request names it with ``/skill:<slug>``."""
+    monkeypatch.setattr(settings, "agent_react_enabled", True)
+    monkeypatch.setattr(settings, "llm_api_key", "mock-test-key")
+    captured = _capture_loop(monkeypatch)
+
+    ws = await _workspace(db_session)
+    await _skill(db_session, ws, "loop-pin", config=_pinned_config())
+
+    await _run_loop(
+        monkeypatch, db_session, ws, "summarize my documents", pinned_skill="loop-pin"
+    )
+
+    assert "### loop-pin" in _user(captured)
     assert "## Workspace skills" not in _system(captured)
+
+
+# ── 9. `/skill:<slug>` pin — parser, gate semantics, budget ──────────────
+
+
+@pytest.mark.parametrize(
+    ("message", "expected"),
+    [
+        ("/skill:resume-tailor tighten this", ("tighten this", "resume-tailor", False)),
+        ("/skill:resume-tailor", ("", "resume-tailor", False)),
+        ("/skill:resume-tailor\ncheck my resume", ("check my resume", "resume-tailor", False)),
+        ("/skill:a.b_c-d2 fix it", ("fix it", "a.b_c-d2", False)),
+        ("/skill:resume-tailor  double  spaces", ("double  spaces", "resume-tailor", False)),
+        # No pin token at all → byte-identical passthrough.
+        ("tailor my resume", ("tailor my resume", None, False)),
+        ("", ("", None, False)),
+        ("skill:resume-tailor", ("skill:resume-tailor", None, False)),
+        ("/skills:resume", ("/skills:resume", None, False)),
+        ("please /skill", ("please /skill", None, False)),
+    ],
+)
+def test_parse_skill_pin_wellformed_and_passthrough(message, expected):
+    assert parse_skill_pin(message) == expected
+
+
+@pytest.mark.parametrize(
+    "message",
+    [
+        "/skill:",
+        "/skill: ",
+        "/skill:../escape",
+        "/skill:..",
+        "/skill:a..b",
+        "/skill:Upper",
+        "/skill:" + "a" * 65,
+        "//skill:x",
+        "/SKILL:x",
+        "hello /skill:x",
+        "/skill:x/../y",
+    ],
+)
+def test_parse_skill_pin_malformed_is_byte_identical_passthrough(message):
+    """A malformed pin is treated as plain text — discarded, never rewritten."""
+    residual, slug, malformed = parse_skill_pin(message)
+    assert residual == message
+    assert slug is None
+    assert malformed is True
+
+
+@pytest.mark.asyncio
+async def test_pin_bypasses_the_trigger_gate(db_session: AsyncSession):
+    ws = await _workspace(db_session)
+    await _skill(db_session, ws, "pinned-skill", config=_pinned_config())
+
+    directive = await build_skill_directive(
+        db_session, ws, agent_name="dummy", allowed_scopes=GRANTED,
+        user_message="summarize my documents", pinned_skill="pinned-skill",
+    )
+
+    assert "### pinned-skill" in directive.text
+    assert directive.injected == ("pinned-skill",)
+
+
+@pytest.mark.asyncio
+async def test_pin_without_a_match_is_reported_not_dropped(db_session: AsyncSession):
+    ws = await _workspace(db_session)
+    await _skill(db_session, ws, "other-skill", config={
+        "markdown_doc": _doc("Other"), "required_scope": "memory.write",
+    })
+
+    directive = await build_skill_directive(
+        db_session, ws, agent_name="dummy", allowed_scopes=GRANTED,
+        user_message="summarize my documents", pinned_skill="ghost-skill",
+    )
+
+    assert directive.text == ""
+    assert directive.injected == ()
+    assert _skips(directive)["ghost-skill"] == "pinned_unknown"
+    # The pin does not suppress the regular gates for other rows.
+    assert _skips(directive)["other-skill"] == "scope_not_granted"
+
+
+@pytest.mark.asyncio
+async def test_pin_does_not_bypass_scope_or_enabled(db_session: AsyncSession):
+    """A pin overrides the trigger gate ONLY."""
+    ws = await _workspace(db_session)
+    await _skill(db_session, ws, "pinned-out-of-scope", config=_pinned_config(required_scope="memory.write"))
+    await _skill(db_session, ws, "pinned-disabled", config=_pinned_config(), enabled=False)
+
+    out_of_scope = await build_skill_directive(
+        db_session, ws, agent_name="dummy", allowed_scopes=GRANTED,
+        user_message="summarize my documents", pinned_skill="pinned-out-of-scope",
+    )
+    assert out_of_scope.text == ""
+    assert _skips(out_of_scope)["pinned-out-of-scope"] == "scope_not_granted"
+
+    disabled = await build_skill_directive(
+        db_session, ws, agent_name="dummy", allowed_scopes=GRANTED,
+        user_message="summarize my documents", pinned_skill="pinned-disabled",
+    )
+    assert disabled.text == ""
+    assert _skips(disabled)["pinned-disabled"] == "disabled"
+
+
+@pytest.mark.asyncio
+async def test_pin_plus_a_matching_trigger_injects_once(db_session: AsyncSession):
+    ws = await _workspace(db_session)
+    await _skill(db_session, ws, "pinned-twice", config=_pinned_config(triggers=["summarize documents"]))
+
+    directive = await build_skill_directive(
+        db_session, ws, agent_name="dummy", allowed_scopes=GRANTED,
+        user_message="summarize my documents", pinned_skill="pinned-twice",
+    )
+
+    assert directive.injected == ("pinned-twice",)
+    assert directive.text.count("### pinned-twice") == 1
+
+
+@pytest.mark.asyncio
+async def test_pinned_skill_sorts_first_so_it_wins_a_contested_budget(db_session: AsyncSession):
+    """Both skills are eligible; alphabetically ``aaa`` outranks ``zebra`` in
+    the default order — the pin must move it to the front regardless."""
+    ws = await _workspace(db_session)
+    await _skill(db_session, ws, "aaa-skill", config={
+        "markdown_doc": _doc("Aaa"), "required_scope": "memory.read",
+    })
+    await _skill(db_session, ws, "zebra-skill", config={
+        "markdown_doc": _doc("Zebra"), "required_scope": "memory.read",
+    })
+
+    unpinned = await build_skill_directive(
+        db_session, ws, agent_name="dummy", allowed_scopes=GRANTED,
+        user_message="summarize my documents",
+    )
+    assert unpinned.injected == ("aaa-skill", "zebra-skill")
+
+    pinned = await build_skill_directive(
+        db_session, ws, agent_name="dummy", allowed_scopes=GRANTED,
+        user_message="summarize my documents", pinned_skill="zebra-skill",
+    )
+    assert pinned.injected == ("zebra-skill", "aaa-skill")
+
+
+@pytest.mark.asyncio
+async def test_pin_dropped_by_budget_is_named(db_session: AsyncSession):
+    ws = await _workspace(db_session)
+    await _skill(db_session, ws, "pinned-skill", config=_pinned_config())
+
+    directive = await build_skill_directive(
+        db_session, ws, agent_name="dummy", allowed_scopes=GRANTED,
+        user_message="summarize my documents", pinned_skill="pinned-skill",
+        token_budget=0,
+    )
+
+    assert directive.text == ""
+    assert directive.injected == ()
+    assert _skips(directive)["pinned-skill"] == "token_budget_exceeded"
+
+
+@pytest.mark.asyncio
+async def test_probe_render_matches_the_delivered_text(db_session: AsyncSession):
+    """The pure probe (evaluate + render, no recording) must produce the exact
+    bytes the wrapper delivers — usage previews depend on that equivalence."""
+    from api.services.skill_injection import (
+        _skill_rows,
+        evaluate_skill_gates,
+        render_skill_directive,
+    )
+
+    ws = await _workspace(db_session)
+    await _skill(db_session, ws, "probe-skill", config=_pinned_config())
+
+    rows = await _skill_rows(db_session, ws)
+    injected, _skipped = evaluate_skill_gates(
+        rows, {"memory.read"}, "summarize my documents", pinned="probe-skill"
+    )
+    probe = render_skill_directive(injected)
+
+    assert probe != ""
+    delivered = await build_skill_directive(
+        db_session, ws, agent_name="dummy", allowed_scopes=GRANTED,
+        user_message="summarize my documents", pinned_skill="probe-skill",
+    )
+    assert probe == delivered.text

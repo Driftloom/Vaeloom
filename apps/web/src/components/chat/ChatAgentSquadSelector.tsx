@@ -52,6 +52,24 @@ export const SPECIALIST_AGENTS: SpecialistAgentDef[] = [
     badgeClass: 'bg-pink-500/10 text-pink-400 border-pink-500/30',
     description: 'Tailors cover letters, prepares portfolio briefs, and drafts recruiter messages.',
   },
+  {
+    id: 'slack',
+    name: 'Slack Coordinator',
+    role: 'Team Communication',
+    color: '#6366F1',
+    badgeClass: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/30',
+    description:
+      'Coordinates channel updates, interview broadcasts, and team status notifications.',
+  },
+  {
+    id: 'planning',
+    name: 'Planning Agent',
+    role: 'Roadmaps & Milestones',
+    color: '#0D9488',
+    badgeClass: 'bg-teal-500/10 text-teal-400 border-teal-500/30',
+    description:
+      'Synthesizes structured career roadmaps, milestones, and strategic learning goals.',
+  },
 ];
 
 export interface ChatAgentSquadSelectorProps {

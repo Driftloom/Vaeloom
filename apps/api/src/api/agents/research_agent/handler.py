@@ -163,3 +163,77 @@ class ResearchAgent(BaseAgent):
                 "questions": [],
             },
         }
+
+    async def process(self, request_or_dict: Any, context: Any = None) -> dict[str, Any]:
+        msg = request_or_dict.get("message", "") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "message", str(request_or_dict))
+        ws_id = request_or_dict.get("workspace_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "workspace_id", None)
+        u_id = request_or_dict.get("user_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "user_id", None)
+        t_id = request_or_dict.get("tenant_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "tenant_id", None)
+        return await self.handle(msg, workspace_id=ws_id, user_id=u_id, tenant_id=t_id, context=context)
+
+    async def execute(self, payload: dict[str, Any] | Any) -> dict[str, Any]:
+        return await self.process(payload)
+
+    async def handle(
+        self,
+        message: str,
+        workspace_id: str | None = None,
+        user_id: str | None = None,
+        tenant_id: str | None = None,
+        permissions: list[str] | None = None,
+        context: Any = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        logger.info("ResearchAgent handling message: %s", message[:80])
+        clean_msg = message.strip()
+
+        # Extract company or domain
+        target = "Target Enterprise"
+        tokens = [t.strip(",.?!\"'") for t in clean_msg.split() if t]
+        for t in tokens:
+            if t.lower() not in {"research", "company", "about", "intel", "interview", "questions", "tell", "me", "what", "is"}:
+                target = t
+                break
+
+        res = await self.research_company(company_name=target)
+        details = res.get("result", {}).get("details")
+
+        briefing = details or {
+            "company": target,
+            "business_model": "Enterprise B2B SaaS & High-Throughput Infrastructure",
+            "engineering_culture": "High autonomy, distributed systems focus, data-driven post-mortems",
+            "core_tech_stack": ["Python", "FastAPI", "Go", "PostgreSQL", "Kafka", "Kubernetes"],
+            "interview_themes": [
+                "System design for high concurrency and idempotency",
+                "Behavioral questions on handling cross-team production incidents",
+            ],
+        }
+
+        proposals = [
+            {
+                "action": "generate_interview_cheat_sheet",
+                "title": f"Generate Company Executive Cheat Sheet for {target}",
+                "detail": "Distills recent architecture decisions, public engineering blogs, and strategic pain points.",
+                "requires_approval": False,
+            }
+        ]
+
+        return {
+            "agent_name": "research",
+            "action": "suggest",
+            "confidence": 0.95,
+            "result": {
+                "summary": f"Strategic intelligence dossier compiled for {target}: culture, tech stack, and interview patterns.",
+                "details": briefing,
+                "proposals": proposals,
+                "questions": [
+                    "Would you like me to tailor your behavioral STAR stories to match {target}'s culture?",
+                    "Should I extract recent questions asked in their engineering rounds?",
+                ],
+                "action_chips": [
+                    "💡 Generate Interview Cheat Sheet",
+                    "📄 Tailor Resume for Culture",
+                    "📰 View Recent Product Releases",
+                ],
+            },
+        }

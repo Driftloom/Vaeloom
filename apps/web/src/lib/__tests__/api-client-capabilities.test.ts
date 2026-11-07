@@ -9,14 +9,16 @@
  * build failure rather than a runtime surprise.
  */
 
-import { transformKeys } from '@/lib/api';
+import { api, transformKeys } from '@/lib/api';
 import {
   capabilityConfigReactRounds,
+  capabilitiesApi,
   MAX_REACT_ROUNDS,
   MIN_REACT_ROUNDS,
   reactRoundsAcceptance,
   type CapabilityDraftStatus,
   type CapabilityDraftValidationResponse,
+  type GitHubSkillSyncResultRecord,
   type McpToolCallResult,
   type TestCapabilityByIdResponse,
   type TestCapabilityStatus,
@@ -275,5 +277,140 @@ describe('react rounds contract', () => {
       state: 'honoured',
       rounds: 8,
     });
+  });
+});
+
+// ─── GitHub skills sync ──────────────────────────────────────────────────────
+
+describe('capabilitiesApi.syncGithub contract', () => {
+  /**
+   * What `POST /capabilities/sync-github` puts on the wire, before the response
+   * transform (`transformKeys` inside `api.request`) camelCases it. `persisted`
+   * is always false: the endpoint fetches and validates SKILL.md files and
+   * reports; it never installs, compiles or executes anything.
+   */
+  function syncWire() {
+    return {
+      repository: 'vaeloom/skills-community',
+      ref: 'master',
+      skills_discovered: 3,
+      skills_valid: 2,
+      skills_rejected: 1,
+      skills: [
+        {
+          slug: 'contract-review',
+          name: 'contract-review',
+          description: 'Review contracts for risk.',
+          tags: ['legal'],
+          required_scope: 'memory.read',
+          autonomy: 'suggest',
+          trust_class: 'community',
+          triggers: ['/review'],
+          version: '1.0.0',
+          author: 'GitHub Community',
+          markdown_doc: '# contract-review',
+          valid: true,
+          validation_status: 'success',
+          violations: [],
+        },
+        {
+          slug: 'bad-actor',
+          name: 'bad-actor',
+          description: 'Overreaches its declared scope.',
+          tags: [],
+          required_scope: 'system.execute',
+          autonomy: 'autonomous',
+          trust_class: 'root',
+          triggers: [],
+          version: '0.0.1',
+          author: 'GitHub Community',
+          markdown_doc: '# bad-actor',
+          valid: false,
+          validation_status: 'rejected',
+          violations: ["trust_class 'root' is not one of ['community', 'core_trusted']"],
+        },
+        {
+          slug: 'plain-helper',
+          name: 'plain-helper',
+          description: 'A second valid skill.',
+          tags: [],
+          required_scope: 'memory.write',
+          autonomy: 'suggest',
+          trust_class: 'community',
+          triggers: [],
+          version: '1.0.0',
+          author: 'GitHub Community',
+          markdown_doc: '# plain-helper',
+          valid: true,
+          validation_status: 'success',
+          violations: [],
+        },
+      ],
+      errors: [],
+      persisted: false,
+      skills_truncated: false,
+    };
+  }
+
+  /**
+   * The file's existing transport approach: there is no network mock — the stub
+   * replaces `api.request` (the one call `ApiClient` delegates through) and
+   * applies the same `transformKeys` the real transport applies to a 200 body,
+   * so the mapping asserted is the production one.
+   */
+  function stubTransport(wire: unknown) {
+    const spy = jest.spyOn(api, 'request');
+    spy.mockImplementation(
+      async () => transformKeys(JSON.parse(JSON.stringify(wire))) as GitHubSkillSyncResultRecord,
+    );
+    return spy;
+  }
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('POSTs /capabilities/sync-github with { repository } and never a workspace_id', async () => {
+    const spy = stubTransport(syncWire());
+
+    await capabilitiesApi.syncGithub('vaeloom/skills-community');
+
+    expect(spy).toHaveBeenCalledTimes(1);
+    const [path, init] = spy.mock.calls[0];
+    expect(path).toBe('/capabilities/sync-github');
+    expect(init?.method).toBe('POST');
+    const body = JSON.parse(String(init?.body));
+    expect(body).toEqual({ repository: 'vaeloom/skills-community' });
+    // `SyncGitHubSkillsRequest` sets extra="forbid": any extra body field, e.g. a
+    // workspace id, is a hard 422. The workspace rides the request scope.
+    expect(body).not.toHaveProperty('workspace_id');
+  });
+
+  it('carries ref in the body only when one was asked for', async () => {
+    const spy = stubTransport(syncWire());
+
+    await capabilitiesApi.syncGithub('vaeloom/skills-community', 'main');
+
+    const body = JSON.parse(String(spy.mock.calls[0][1]?.body));
+    expect(body).toEqual({ repository: 'vaeloom/skills-community', ref: 'main' });
+  });
+
+  it('delivers the result camelCased, which is what the result type declares', async () => {
+    stubTransport(syncWire());
+
+    const result = await capabilitiesApi.syncGithub('vaeloom/skills-community');
+
+    expect(result.repository).toBe('vaeloom/skills-community');
+    expect(result.ref).toBe('master');
+    expect(result.skillsDiscovered).toBe(3);
+    expect(result.skillsValid).toBe(2);
+    expect(result.skillsRejected).toBe(1);
+    expect(result.skills[0].requiredScope).toBe('memory.read');
+    expect(result.skills[1].trustClass).toBe('root');
+    expect(result.skills[1].violations).toEqual([
+      "trust_class 'root' is not one of ['community', 'core_trusted']",
+    ]);
+    expect(result.persisted).toBe(false);
+    expect(result.skillsTruncated).toBe(false);
   });
 });

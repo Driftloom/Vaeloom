@@ -1,0 +1,29 @@
+# Accepted Trivy findings for the pnpm dependency tree.
+#
+# Every entry here is a transitive dependency whose only patched release is a
+# major upgrade of the package that pulls it in. The npm advisory gate
+# (security-audit.config.js) tracks the same risks; this file covers the NVD
+# CVEs that Trivy reports under different IDs.
+#
+# Removal conditions are recorded per entry. Do not add an ID without one.
+
+# @opentelemetry/propagator-jaeger 1.28.0, pulled in by
+# @opentelemetry/sdk-node 0.55.0 (packages/observability). Patched only in
+# propagator-jaeger 2.9.0, which ships with the 2.x SDK line. Remove after the
+# observability package moves off sdk-node 0.55.
+CVE-2026-59892
+
+# @opentelemetry/core 1.28.0, same sdk-node 0.55.0 chain. Patched only in
+# core 2.8.0. Remove with the sdk-node upgrade above.
+CVE-2026-54285
+
+# file-type 20.4.1, pulled in by @nestjs/common 10.4.22 (observability and
+# service-auth packages). Patched only in file-type 21.x, which ships with
+# Nest 11. Remove after the Nest 10 -> 11 upgrade.
+CVE-2026-32630
+CVE-2026-31808
+
+# minimatch 3.1.5 / 9.0.3 / 9.0.9, reached only through build tooling
+# (eslint 8, nx 20, Jest glob chains) with repo-authored patterns. Patched
+# only in minimatch 11, a major bump for those tools. Remove with that upgrade.
+CVE-2026-118764

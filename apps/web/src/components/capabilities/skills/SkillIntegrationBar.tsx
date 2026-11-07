@@ -2,10 +2,20 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Badge, Button, Tooltip } from '@vaeloom/ui-kit';
+import {
+  BrainIcon,
+  Button,
+  CpuIcon,
+  FileTextIcon,
+  MessageIcon,
+  MIN_TOUCH_TARGET,
+} from '@vaeloom/ui-kit';
+import { useSafeRouter } from '@/hooks/useSafeRouter';
 import type { SkillRow } from './SkillCard';
-import { SPECIALIST_AGENTS } from '@/components/chat/ChatAgentSquadSelector';
+import {
+  SPECIALIST_AGENTS,
+  type SpecialistAgentDef,
+} from '@/components/chat/ChatAgentSquadSelector';
 
 interface SkillIntegrationBarProps {
   row: SkillRow;
@@ -14,27 +24,27 @@ interface SkillIntegrationBarProps {
 
 /**
  * Maps a skill slug or name to its primary Specialist Agent.
+ *
+ * Returns `undefined` when no specialist pattern matches: callers must then
+ * omit the `agent` deep-link param and let the chat's automatic selection
+ * pick the executor. Never invent an agent id the chat catalog may not have.
  */
-export function getAgentForSkill(skillName: string): {
-  id: string;
-  name: string;
-  role: string;
-  badgeClass: string;
-} {
+export function getAgentForSkill(
+  skillName: string,
+): Pick<SpecialistAgentDef, 'id' | 'name' | 'role' | 'badgeClass'> | undefined {
   const name = (skillName || '').toLowerCase();
+  const find = (id: string) => SPECIALIST_AGENTS.find((agent) => agent.id === id);
 
   if (
     name.includes('ats-audit') ||
     name.includes('ats-optimizer') ||
     name.includes('semantic-ats')
   ) {
-    const a = SPECIALIST_AGENTS.find((agent) => agent.id === 'ats')!;
-    return { id: a.id, name: a.name, role: a.role, badgeClass: a.badgeClass };
+    return find('ats');
   }
 
   if (name.includes('job-discovery') || name.includes('job-description')) {
-    const a = SPECIALIST_AGENTS.find((agent) => agent.id === 'job_search')!;
-    return { id: a.id, name: a.name, role: a.role, badgeClass: a.badgeClass };
+    return find('job_search');
   }
 
   if (
@@ -42,8 +52,7 @@ export function getAgentForSkill(skillName: string): {
     name.includes('cold-email') ||
     name.includes('cover-letter')
   ) {
-    const a = SPECIALIST_AGENTS.find((agent) => agent.id === 'application')!;
-    return { id: a.id, name: a.name, role: a.role, badgeClass: a.badgeClass };
+    return find('application');
   }
 
   if (
@@ -56,33 +65,14 @@ export function getAgentForSkill(skillName: string): {
     name.includes('star-interview') ||
     name.includes('linkedin')
   ) {
-    const a = SPECIALIST_AGENTS.find((agent) => agent.id === 'career')!;
-    return { id: a.id, name: a.name, role: a.role, badgeClass: a.badgeClass };
+    return find('career');
   }
 
   if (name.includes('resume') || name.includes('cv')) {
-    const a = SPECIALIST_AGENTS.find((agent) => agent.id === 'resume')!;
-    return { id: a.id, name: a.name, role: a.role, badgeClass: a.badgeClass };
+    return find('resume');
   }
 
-  return {
-    id: 'general',
-    name: 'Autonomous Agent Orchestrator',
-    role: 'Full Lifecycle',
-    badgeClass: 'bg-primary/10 text-primary border-primary/30',
-  };
-}
-
-function useSafeRouter() {
-  try {
-    return useRouter();
-  } catch {
-    return {
-      push: (_url: string) => {},
-      replace: (_url: string) => {},
-      prefetch: (_url: string) => {},
-    };
-  }
+  return undefined;
 }
 
 export const SkillIntegrationBar: React.FC<SkillIntegrationBarProps> = ({ row, workspaceId }) => {
@@ -100,27 +90,33 @@ export const SkillIntegrationBar: React.FC<SkillIntegrationBarProps> = ({ row, w
       : `Execute ${row.item.name} for my current project.`;
 
   const handleLaunchChat = () => {
-    const query = new URLSearchParams({
-      agent: agent.id,
-      prompt: defaultPrompt,
-    });
+    const query = new URLSearchParams({ prompt: defaultPrompt });
+    if (agent) query.set('agent', agent.id);
+    query.set('skill', row.slug || row.item.name);
     router.push(`/workspace/${workspaceId}/chat?${query.toString()}`);
   };
 
   return (
-    <div className="rounded-xl border border-border-subtle bg-surface-hover/20 p-3 sm:p-4 space-y-3">
+    <div className="rounded-container border border-border-subtle bg-surface-elevated p-3 sm:p-4 space-y-3">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-2xs font-semibold uppercase tracking-wider text-text-muted">
             Cross-Page Agent Wiring:
           </span>
-          <span
-            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-2xs font-medium border ${agent.badgeClass}`}
-          >
-            <span>🤖</span>
-            <span>{agent.name}</span>
-            <span className="opacity-70 font-mono">({agent.role})</span>
-          </span>
+          {agent ? (
+            <span
+              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-pill text-2xs font-medium border ${agent.badgeClass}`}
+            >
+              <CpuIcon size={12} className="shrink-0" />
+              <span>{agent.name}</span>
+              <span className="opacity-70 font-mono">({agent.role})</span>
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-pill text-2xs font-medium border bg-surface text-text-muted border-border">
+              <CpuIcon size={12} className="shrink-0" />
+              <span>Auto agent selection</span>
+            </span>
+          )}
         </div>
 
         {/* Integration Actions */}
@@ -131,32 +127,43 @@ export const SkillIntegrationBar: React.FC<SkillIntegrationBarProps> = ({ row, w
             onClick={handleLaunchChat}
             className="text-xs h-7 px-3 flex items-center gap-1"
           >
-            <span>💬 Launch in Chat</span>
+            <MessageIcon size={12} className="shrink-0" />
+            <span>Launch in Chat</span>
           </Button>
 
           {requiresMemory && (
             <Link
               href={`/workspace/${workspaceId}/memory`}
-              className="inline-flex items-center gap-1 text-2xs font-medium text-text-secondary hover:text-primary px-2.5 py-1 rounded-md border border-border hover:border-primary/40 bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+              className={`inline-flex items-center gap-1 text-2xs font-medium text-text-secondary hover:text-primary px-2.5 py-1 rounded-control border border-border hover:border-primary/40 bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${MIN_TOUCH_TARGET}`}
             >
-              <span>🧠 Vault Grounding</span>
+              <BrainIcon size={12} className="shrink-0" />
+              <span>Vault Grounding</span>
             </Link>
           )}
 
           {isDocumentSkill && (
             <Link
               href={`/workspace/${workspaceId}/files`}
-              className="inline-flex items-center gap-1 text-2xs font-medium text-text-secondary hover:text-primary px-2.5 py-1 rounded-md border border-border hover:border-primary/40 bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+              className={`inline-flex items-center gap-1 text-2xs font-medium text-text-secondary hover:text-primary px-2.5 py-1 rounded-control border border-border hover:border-primary/40 bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${MIN_TOUCH_TARGET}`}
             >
-              <span>📄 Documents Hub</span>
+              <FileTextIcon size={12} className="shrink-0" />
+              <span>Documents Hub</span>
             </Link>
           )}
         </div>
       </div>
 
-      <div className="flex items-center justify-between text-2xs text-text-muted pt-1 border-t border-border/40 font-mono">
+      <div className="flex items-center justify-between text-2xs text-text-muted pt-1 border-t border-border-subtle font-mono">
         <span className="truncate">
-          Triggers routed via: <strong className="text-text">{agent.name}</strong>
+          {agent ? (
+            <>
+              Triggers routed via: <strong className="text-text">{agent.name}</strong>
+            </>
+          ) : (
+            <>
+              Agent selection: <strong className="text-text">automatic</strong>
+            </>
+          )}
         </span>
         <span className="shrink-0 text-text-secondary">
           Scope: <code className="text-primary font-bold">{row.item.requiredScope || 'none'}</code>

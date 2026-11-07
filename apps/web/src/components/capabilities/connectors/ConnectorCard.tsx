@@ -134,9 +134,12 @@ export interface InstalledCardProps {
   item: ConfiguredItem;
   isSyncing: boolean;
   isTesting: boolean;
+  isComposio?: boolean;
+  isRefreshing?: boolean;
   onSync: () => void;
   onTest: () => void;
   onInspectTools?: () => void;
+  onRefresh?: () => void;
   onDisconnect: () => void;
 }
 
@@ -144,9 +147,12 @@ export function InstalledConnectorCard({
   item,
   isSyncing,
   isTesting,
+  isComposio = false,
+  isRefreshing = false,
   onSync,
   onTest,
   onInspectTools,
+  onRefresh,
   onDisconnect,
 }: InstalledCardProps) {
   const displayName = item.name?.trim() || item.provider?.toUpperCase() || 'Custom Connector';
@@ -199,9 +205,23 @@ export function InstalledConnectorCard({
           <Button variant="outline" size="sm" loading={isSyncing} onClick={onSync}>
             Sync Now
           </Button>
-          <Button variant="outline" size="sm" loading={isTesting} onClick={onTest}>
-            Ping
-          </Button>
+          {isComposio ? (
+            <Tooltip content="Re-verify the Composio connection. If credentials expired, this opens the provider consent screen.">
+              <Button
+                variant="outline"
+                size="sm"
+                loading={isRefreshing}
+                aria-label={`Refresh ${displayName}`}
+                onClick={onRefresh}
+              >
+                Refresh
+              </Button>
+            </Tooltip>
+          ) : (
+            <Button variant="outline" size="sm" loading={isTesting} onClick={onTest}>
+              Ping
+            </Button>
+          )}
           {item.type.includes('MCP') && onInspectTools && (
             <Button variant="outline" size="sm" onClick={onInspectTools}>
               Tools
@@ -211,7 +231,7 @@ export function InstalledConnectorCard({
         <Button
           variant="ghost"
           size="sm"
-          className="text-danger hover:text-danger/80"
+          className="text-error hover:text-error/80"
           onClick={onDisconnect}
         >
           Disconnect

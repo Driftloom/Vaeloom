@@ -1,8 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Badge, ButtonGroup, Button, Select } from '@vaeloom/ui-kit';
+import { ButtonGroup, Button, Select, MIN_TOUCH_TARGET } from '@vaeloom/ui-kit';
 import type { SkillSort, SkillTab } from '../SkillsView';
+import { VALID_TRUST_CLASSES } from './skill-row-helpers';
 
 export type SkillCategoryFilter = 'all' | 'career' | 'agent' | 'engineering';
 
@@ -30,10 +31,22 @@ const SORT_OPTIONS = [
   { value: 'recent', label: 'Recently used' },
 ];
 
+const TRUST_LABELS: Record<string, string> = {
+  core_trusted: 'Core Trusted',
+  first_party: 'First Party',
+  community: 'Community',
+  'mcp.read': 'MCP Read',
+  'mcp.workspace.write': 'MCP Workspace Write',
+  'mcp.external.write': 'MCP External Write',
+  untrusted: 'Untrusted',
+};
+
 const TRUST_OPTIONS = [
   { value: 'all', label: 'All trust levels' },
-  { value: 'core_trusted', label: 'Core Trusted' },
-  { value: 'community', label: 'Community' },
+  ...Array.from(VALID_TRUST_CLASSES).map((value) => ({
+    value,
+    label: TRUST_LABELS[value] ?? value,
+  })),
 ];
 
 export const SkillFilterBar: React.FC<SkillFilterBarProps> = ({
@@ -93,10 +106,11 @@ export const SkillFilterBar: React.FC<SkillFilterBarProps> = ({
       <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none text-2xs">
         <button
           type="button"
+          aria-pressed={categoryFilter === 'all'}
           onClick={() => onCategoryFilterChange('all')}
-          className={`px-2.5 py-1 rounded-full font-medium transition-colors border cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
+          className={`px-2.5 py-1 rounded-pill font-medium transition-colors border cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${MIN_TOUCH_TARGET} ${
             categoryFilter === 'all'
-              ? 'bg-action text-action-fg border-action shadow-xs font-semibold'
+              ? 'bg-action text-action-fg border-action shadow-elevation-raised font-semibold'
               : 'bg-surface-elevated text-text-secondary border-border hover:text-text hover:bg-surface-hover'
           }`}
         >
@@ -104,10 +118,11 @@ export const SkillFilterBar: React.FC<SkillFilterBarProps> = ({
         </button>
         <button
           type="button"
+          aria-pressed={categoryFilter === 'career'}
           onClick={() => onCategoryFilterChange('career')}
-          className={`px-2.5 py-1 rounded-full font-medium transition-colors border flex items-center gap-1 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
+          className={`px-2.5 py-1 rounded-pill font-medium transition-colors border flex items-center gap-1 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${MIN_TOUCH_TARGET} ${
             categoryFilter === 'career'
-              ? 'bg-action text-action-fg border-action shadow-xs font-semibold'
+              ? 'bg-action text-action-fg border-action shadow-elevation-raised font-semibold'
               : 'bg-surface-elevated text-text-secondary border-border hover:text-text hover:bg-surface-hover'
           }`}
         >
@@ -116,10 +131,11 @@ export const SkillFilterBar: React.FC<SkillFilterBarProps> = ({
         </button>
         <button
           type="button"
+          aria-pressed={categoryFilter === 'agent'}
           onClick={() => onCategoryFilterChange('agent')}
-          className={`px-2.5 py-1 rounded-full font-medium transition-colors border flex items-center gap-1 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
+          className={`px-2.5 py-1 rounded-pill font-medium transition-colors border flex items-center gap-1 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${MIN_TOUCH_TARGET} ${
             categoryFilter === 'agent'
-              ? 'bg-action text-action-fg border-action shadow-xs font-semibold'
+              ? 'bg-action text-action-fg border-action shadow-elevation-raised font-semibold'
               : 'bg-surface-elevated text-text-secondary border-border hover:text-text hover:bg-surface-hover'
           }`}
         >
@@ -128,10 +144,11 @@ export const SkillFilterBar: React.FC<SkillFilterBarProps> = ({
         </button>
         <button
           type="button"
+          aria-pressed={categoryFilter === 'engineering'}
           onClick={() => onCategoryFilterChange('engineering')}
-          className={`px-2.5 py-1 rounded-full font-medium transition-colors border flex items-center gap-1 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
+          className={`px-2.5 py-1 rounded-pill font-medium transition-colors border flex items-center gap-1 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${MIN_TOUCH_TARGET} ${
             categoryFilter === 'engineering'
-              ? 'bg-action text-action-fg border-action shadow-xs font-semibold'
+              ? 'bg-action text-action-fg border-action shadow-elevation-raised font-semibold'
               : 'bg-surface-elevated text-text-secondary border-border hover:text-text hover:bg-surface-hover'
           }`}
         >
@@ -153,7 +170,7 @@ export const SkillFilterBar: React.FC<SkillFilterBarProps> = ({
           size="sm"
           variant="outline"
           onClick={onOpenTriggerSimulator}
-          className="text-2xs h-7 px-2.5 font-mono"
+          className="text-2xs h-7 px-2.5 font-mono whitespace-nowrap shrink-0"
         >
           Trigger Simulator
         </Button>

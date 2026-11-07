@@ -91,6 +91,7 @@ export function useConnectorsState({
     id: string;
     name: string;
     isWorkspaceIntegration: boolean;
+    composioApp?: string;
   } | null>(null);
 
   const [toolsModalTarget, setToolsModalTarget] = useState<{ id: string; name: string } | null>(
@@ -380,6 +381,50 @@ export function useConnectorsState({
       }
     },
     [loadDynamicData, toast, workspaceId],
+  );
+
+  const handleComposioRefresh = useCallback(
+    async (item: ConfiguredItem) => {
+      const appName = item.config?.['app'];
+      if (typeof appName !== 'string' || !appName) {
+        toast({
+          tone: 'error',
+          title: 'No app id from the catalog',
+          detail: `${item.name} carries no Composio app id, so the connection cannot be re-verified.`,
+        });
+        return;
+      }
+      setBusyAction(`composio-refresh-${item.id}`);
+      try {
+        const res = await connectorsApi.composio.refresh(appName, workspaceId);
+        if (res.connected) {
+          toast({ tone: 'success', title: 'Composio connection verified' });
+        } else if (res.authUrl) {
+          window.open(res.authUrl, '_blank', 'noopener,noreferrer');
+          toast({
+            tone: 'info',
+            title: 'Reconnection required',
+            detail:
+              res.message ?? `Complete the OAuth consent screen for ${appName} to refresh access.`,
+          });
+        } else {
+          toast({
+            tone: 'error',
+            title: 'Connection could not be verified',
+            detail: res.message ?? 'The backend returned no consent screen to reopen.',
+          });
+        }
+      } catch (err) {
+        toast({
+          tone: 'error',
+          title: 'Refresh Failed',
+          detail: errorText(err, 'The Composio connection could not be re-verified.'),
+        });
+      } finally {
+        setBusyAction(null);
+      }
+    },
+    [toast, workspaceId],
   );
 
   const handleAttachAtsMcp = useCallback(async () => {
@@ -677,14 +722,42 @@ export function useConnectorsState({
     const target = pendingDisconnect;
     setBusyAction(`disconnect-${target.id}`);
     try {
-      if (target.isWorkspaceIntegration) {
-        await api.integrations.delete(target.id);
+      if (target.composioApp) {
+        const res = await connectorsApi.composio.disconnect(target.composioApp, workspaceId);
+        if (res.status === 'error') {
+          toast({
+            tone: 'error',
+            title: 'Disconnect Failed',
+            detail: res.message ?? 'The connector was not removed.',
+          });
+          return;
+        }
+        const failureCount = res.revocationErrors?.length ?? 0;
+        toast({
+          tone: 'success',
+          title: 'Disconnected',
+          detail:
+            res.revoked.length > 0
+              ? `${res.revoked.length} connected account(s) revoked${
+                  failureCount > 0 ? `; ${failureCount} account(s) failed to revoke` : ''
+                }`
+              : (res.detail ??
+                (failureCount > 0
+                  ? `${failureCount} account(s) failed to revoke`
+                  : `${target.name} was unlinked.`)),
+        });
         await invalidateCapabilities(workspaceId, 'connectors');
-      } else {
-        await connectorsApi.delete(target.id);
         void loadDynamicData();
+      } else {
+        if (target.isWorkspaceIntegration) {
+          await api.integrations.delete(target.id);
+          await invalidateCapabilities(workspaceId, 'connectors');
+        } else {
+          await connectorsApi.delete(target.id);
+          void loadDynamicData();
+        }
+        toast({ tone: 'success', title: 'Disconnected', detail: `${target.name} was unlinked.` });
       }
-      toast({ tone: 'success', title: 'Disconnected', detail: `${target.name} was unlinked.` });
       setPendingDisconnect(null);
       setSelectedItemDetails(null);
     } catch (err) {
@@ -923,6 +996,7 @@ export function useConnectorsState({
     handleSyncWorkspace,
     handleDynamicSync,
     handleTestConnection,
+    handleComposioRefresh,
     handleOpenHealthModal,
     handleInspectTools,
     confirmDisconnect,

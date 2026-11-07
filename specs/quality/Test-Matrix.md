@@ -1,6 +1,6 @@
 # Vaeloom Test Matrix (WS-E closeout)
 
-> **Owner:** WS-E (Testing/Product/Phases) · **Verified:** 2026-09-15
+> **Owner:** WS-E (Testing/Product/Phases) · **Verified:** 2026-09-15 (e2e/test inventory re-measured 2026-10-23)
 > **Sources:** `docs/phases/mvp-p13/09-gate-report.md`,
 > `docs/phases/mvp-p14/{03-workstreams,05-test-results,06-security-privacy-a11y,07-evidence,08-registers,09-gate-report}.md`,
 > `docs/phases/mvp-p15/05-test-results.md`, `testing/smoke/README.md`,
@@ -13,8 +13,8 @@
 | Backend pytest      | 265 `.py` files (excl. `__pycache__`); collect 2731 (was 2555 at `ea329dd`, 2572/2557 earlier)                                                                           | `apps/api/tests/`, `mvp-p14/05-test-results.md`              |
 | Runner (finding-39) | Default xdist hangs; reliable: per-file, `-o addopts="-n auto --dist loadfile"` (~2-3min, 32GB), serial `-o addopts=""` (~8-10min)                                       | `.agents/findings/39`, `MASTER-CHECKLIST` GAP-P1-01          |
 | Env                 | SQLite `tmp_path` per-test DB via `NullPool`; `mock_llm` + `mock_connector_test` autouse                                                                                 | `apps/api/tests/conftest.py`, `mvp-p14/05-test-results.md:5` |
-| Frontend jest       | 11 `*.spec.*` (6 Playwright e2e + 5 `*.spec.tsx`) + 3 `*.test.*` = 14 frontend test files (vs 34 claimed — recount)                                                      | `apps/web/e2e/`, `apps/web/src/**`                           |
-| E2E Playwright      | 9 specs: `apps/web/e2e/*.spec.ts` 6 + `testing/e2e/tests/flows/*.spec.ts` 3 (vs 60 claimed = 24 gating+36 visual — honest gap, OPEN)                                     | `E2E-Testing.md` recount section                             |
+| Frontend jest       | 98 tracked spec/test files: 12 Playwright e2e + 15 unit/component `*.spec.*` + 71 `*.test.*` (2026-10-23 `git ls-files`; was 14 at the 2026-09-15 recount)                                                      | `apps/web/e2e/`, `apps/web/src/**`                           |
+| E2E Playwright      | 12 specs: `apps/web/e2e/*.spec.ts` 12 (6 at the 2026-09-15 recount; legacy `testing/e2e/tests/flows` 3 deleted 2026-10-23) (vs 60 claimed = 24 gating+36 visual — honest gap, OPEN)                                     | `E2E-Testing.md` recount section                             |
 | Smoke               | 5 suites / 12 cases (health 2, auth 3, workspace 2, memory 3, agent 2)                                                                                                   | `testing/smoke/README.md`                                    |
 | Negative            | CSRF 15, tenant-isolation 6, privacy-flows 11, prompt-injection 29, GDPR export/delete 2 PASS                                                                            | `mvp-p14/05-test-results.md`, `06-security-privacy-a11y.md`  |
 | Security            | 404 collected (2026-10-03; was 233 / 170 unique per F-02 � de-dup note holds, count does not); JWT 32+ 0 warnings; RLS 44 audited tables; GDPR 31; DPIA v1.2 All Regions | `mvp-p13/09-gate-report.md` (95.4 APPROVED)                  |

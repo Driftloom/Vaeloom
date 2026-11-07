@@ -71,8 +71,10 @@ from api.database import Base, get_db
 from api.middleware.auth import AuthMiddleware
 from api.middleware.exception_handler import (
     generic_exception_handler,
+    llm_provider_exception_handler,
     unified_exception_handler,
 )
+from api.services.llm_service import LLMProviderError
 from api.services.memory_type_packs import CAREER_TYPES
 
 
@@ -118,6 +120,8 @@ def _build_test_app(db_session):
                             session_factory=async_sessionmaker(db_session.bind, expire_on_commit=False))
     test_app.add_exception_handler(StarletteHTTPException, unified_exception_handler)
     test_app.add_exception_handler(Exception, generic_exception_handler)
+    # Mirrors main.py: a provider outage is 503, not 500.
+    test_app.add_exception_handler(LLMProviderError, llm_provider_exception_handler)
 
     from api.infrastructure.metrics import MetricsMiddleware
     test_app.add_middleware(MetricsMiddleware)

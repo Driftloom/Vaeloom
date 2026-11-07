@@ -32,7 +32,13 @@ jobs:
         with:
           node-version: '20'
       - uses: pnpm/action-setup@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
       - run: pnpm install
+      - name: Verify generated design tokens
+        working-directory: ${{ github.workspace }}
+        run: python scripts/gen_tokens.py --check
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm build

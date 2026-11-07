@@ -14,7 +14,8 @@
 
 import { mutate } from 'swr';
 
-export type CapabilityCacheScope = 'list' | 'skills' | 'agent-catalog' | 'plugin-registry';
+export type CapabilityCacheScope =
+  'list' | 'skills' | 'agent-catalog' | 'plugin-registry' | 'mcp-servers';
 
 export type CapabilityInvalidateScope = CapabilityCacheScope | 'connectors' | 'all';
 
@@ -46,6 +47,7 @@ export const capabilityKeys = {
   skills: (wsId: string): CapabilityArrayKey => canonicalKey(wsId, 'skills'),
   agentCatalog: (wsId: string): CapabilityArrayKey => canonicalKey(wsId, 'agent-catalog'),
   pluginRegistry: (wsId: string): CapabilityArrayKey => canonicalKey(wsId, 'plugin-registry'),
+  mcpServers: (wsId: string): CapabilityArrayKey => canonicalKey(wsId, 'mcp-servers'),
 };
 
 export const connectorsKey = (wsId: string): string => `/connectors?workspace_id=${wsId}`;
@@ -55,6 +57,7 @@ const ALL_SCOPES: readonly CapabilityCacheScope[] = [
   'skills',
   'agent-catalog',
   'plugin-registry',
+  'mcp-servers',
 ];
 
 /**

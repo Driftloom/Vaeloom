@@ -7,6 +7,7 @@ the same security boundary.
 Kept for backward compat; new clients should use POST /api/v1/agents/chat.
 """
 import contextlib
+import logging
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -18,6 +19,9 @@ from ..dependencies import get_current_user
 from ..orchestrator.router import UserRequest
 from ..orchestrator.router import handle as orchestrator_handle
 from ..services.memory_service import retrieve_memory_and_vault_context
+from ..services.skill_injection import parse_skill_pin
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
@@ -63,9 +67,16 @@ async def send_chat_message(
 ):
     if not current_user:
         raise HTTPException(status_code=401, detail="Not authenticated")
+    # C2: strip an explicit `/skill:<slug>` pin before ANY consumer — retrieval
+    # included — sees the message; only the residual is user text. A malformed
+    # pin is treated as plain text (never silently rewritten), logged once
+    # without echoing the message (it may contain PII).
+    residual, pinned_skill, pin_malformed = parse_skill_pin(dto.message)
+    if pin_malformed:
+        logger.warning("SKILL_PIN malformed pin ignored; message treated as plain text")
     try:
         await _verify_workspace_access(workspace_id, current_user, db)
-        bg_context = await retrieve_memory_and_vault_context(workspace_id, dto.message, db)
+        bg_context = await retrieve_memory_and_vault_context(workspace_id, residual, db)
     finally:
         # Crucial P0 Fix: Release DB connection immediately before awaiting long-running orchestrator loop
         with contextlib.suppress(Exception):
@@ -77,10 +88,10 @@ async def send_chat_message(
     from .agents import SLASH_COMMAND_AGENT_MAP
 
     preferred = dto.agent_name.strip().lower() if dto.agent_name else None
-    if not preferred and dto.message.strip().startswith("/"):
-        first_token = dto.message.strip().split()[0].lower()
+    if not preferred and residual.strip().startswith("/"):
+        first_token = residual.strip().split()[0].lower()
         preferred = SLASH_COMMAND_AGENT_MAP.get(first_token)
-    full_message = f"{dto.message}\n\n{bg_context}" if bg_context else dto.message
+    full_message = f"{residual}\n\n{bg_context}" if bg_context else residual
 
     req = UserRequest(
         request_id=str(uuid.uuid4()),
@@ -89,6 +100,7 @@ async def send_chat_message(
         preferred_agent=preferred,
         user_id=str(user_id) if user_id else None,
         tenant_id=str(tenant_id) if tenant_id else None,
+        pinned_skill=pinned_skill,
     )
     result = await orchestrator_handle(req)
     # Preserve legacy shape: {"reply": str} while returning full orchestrator result for callers that need it

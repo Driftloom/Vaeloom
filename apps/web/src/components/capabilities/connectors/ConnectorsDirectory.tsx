@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Badge, Button, EmptyState, ErrorState, SearchField } from '@vaeloom/ui-kit';
+import { Badge, Button, EmptyState, ErrorState, SearchField, Select } from '@vaeloom/ui-kit';
 import {
   CATEGORY_FILTERS,
   type ConnectorCategory,
@@ -90,28 +90,16 @@ export function ConnectorsDirectory({
             <label htmlFor="connector-category" className="sr-only">
               Filter connectors by sector
             </label>
-            <select
+            <Select
               id="connector-category"
               value={selectedFilter}
-              onChange={(event) => onFilterChange(event.target.value as ConnectorCategory)}
-              className="appearance-none bg-surface-elevated border border-border rounded-lg pl-3 pr-8 py-1.5 text-xs text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 cursor-pointer font-sans"
-            >
-              {CATEGORY_FILTERS.map((filter) => (
-                <option key={filter.id} value={filter.id}>
-                  {filter.label}
-                </option>
-              ))}
-            </select>
-            <svg
-              aria-hidden="true"
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-text-muted pointer-events-none"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path d="M6 9l6 6 6-6" />
-            </svg>
+              onChange={(value: string) => onFilterChange(value as ConnectorCategory)}
+              options={CATEGORY_FILTERS.map((filter) => ({
+                value: filter.id,
+                label: filter.label,
+              }))}
+              className="text-xs py-1.5 cursor-pointer font-sans"
+            />
           </div>
         </div>
       </div>

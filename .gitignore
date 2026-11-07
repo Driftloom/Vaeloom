@@ -186,6 +186,7 @@ test-results/
 playwright-report/
 blob-report/
 .playwright/
+.playwright-mcp/
 **/test-results/
 **/playwright-report/
 # E2E runner artifact (regenerated every run — never commit)

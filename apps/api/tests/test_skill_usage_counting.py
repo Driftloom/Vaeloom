@@ -325,16 +325,17 @@ async def test_dedupe_cache_is_bounded(db_session: AsyncSession, writes_to):
 async def test_without_a_run_id_every_injection_counts_and_it_says_so(
     db_session: AsyncSession, writes_to, caplog
 ):
-    """The honest current state, asserted rather than hidden.
+    """The honest fallback, asserted rather than hidden.
 
-    No run identifier reaches ``build_skill_directive`` today, so a run that
-    assembles its prompt more than once (QA-rejected retry, or a resume from the
-    checkpoint) counts the same skill more than once. This pins that behaviour
-    and requires the WARNING, so the over-count is visible in production logs
-    rather than discovered later in a "why is my usage 400" ticket.
+    The orchestrator loop supplies ``usage_run_id`` (``loop.py:1556``); this
+    pins the defensive path for callers that omit it. Without a run id, a prompt
+    assembly that happens more than once (QA-rejected retry, or a resume from
+    the checkpoint) counts the same skill more than once. This pins that
+    behaviour and requires the WARNING, so the over-count is visible in
+    production logs rather than discovered later in a "why is my usage 400"
+    ticket.
 
-    Passing ``usage_run_id`` is the fix; the one-line change lives at
-    ``loop.py:1331``, owned by another agent.
+    ``test_a_run_id_suppresses_the_warning`` covers the loop's actual path.
     """
     ws = await _workspace(db_session)
     await _skill(db_session, ws, "keyless-skill", config={
@@ -699,13 +700,30 @@ def _capture_loop(monkeypatch) -> list[list[dict[str, Any]]]:
     return captured
 
 
-async def _run_loop(db_session: AsyncSession, workspace_id: str, message: str) -> None:
+def _use_test_db(monkeypatch, db_session: AsyncSession) -> None:
+    """Point the loop's skill lookup at this test's session.
+
+    The lookup opens its own short-lived ``api.database.scoped_session`` (the
+    request session is absent on the buffered route and already closed on the
+    streaming one). Without this patch it resolves the global factory and
+    touches a stray ``./test_dev.db``.
+    """
+    import api.database as database
+
+    @asynccontextmanager
+    async def _session(**kwargs: Any):
+        yield db_session
+
+    monkeypatch.setattr(database, "scoped_session", _session)
+
+
+async def _run_loop(monkeypatch, db_session: AsyncSession, workspace_id: str, message: str) -> None:
+    _use_test_db(monkeypatch, db_session)
     result = await _try_react_loop(
         agent=_UsageAgent(),
         message=message,
         workspace_id=workspace_id,
         agent_name="dummy",
-        db=db_session,
         request_id=f"req-usage-{uuid.uuid4().hex[:8]}",
     )
     assert result is not None, result
@@ -727,7 +745,7 @@ async def test_the_real_agent_path_counts_a_skill_it_injected(
     }, usage_count=11)
 
     with caplog.at_level("INFO", logger=si.__name__):
-        await _run_loop(db_session, ws, "summarize my documents")
+        await _run_loop(monkeypatch, db_session, ws, "summarize my documents")
 
     assert (await _usage(db_session, ws, "loop-used-skill"))[0] == 12
     assert "SKILL_USAGE" in caplog.text
@@ -747,7 +765,7 @@ async def test_the_real_agent_path_leaves_a_gated_skill_uncounted(
         "markdown_doc": _doc("LoopGated"), "required_scope": "memory.write",
     })
 
-    await _run_loop(db_session, ws, "summarize my documents")
+    await _run_loop(monkeypatch, db_session, ws, "summarize my documents")
 
     assert (await _usage(db_session, ws, "loop-gated-skill")) == (0, None)
 
@@ -770,6 +788,7 @@ async def test_the_real_agent_path_survives_a_dead_telemetry_store(
         "markdown_doc": _doc("LoopSurvivor"), "required_scope": "memory.read",
     })
 
+    _use_test_db(monkeypatch, db_session)
     result = await _try_react_loop(
         agent=_UsageAgent(),
         message="summarize my documents",
@@ -787,17 +806,20 @@ async def test_the_real_agent_path_survives_a_dead_telemetry_store(
 
 
 @pytest.mark.asyncio
-async def test_agent_path_without_a_db_session_counts_nothing(
+async def test_agent_path_without_a_request_session_still_counts_the_skill(
     monkeypatch, db_session: AsyncSession, writes_to
 ):
-    """No session means no lookup at all, so there is no row to count."""
+    """The lookup no longer rides the caller's session. A run with no request
+    session (the buffered route) still resolves and counts the skill it
+    delivered — the old "no db means no lookup" premise was the bug."""
     monkeypatch.setattr(settings, "agent_react_enabled", True)
     monkeypatch.setattr(settings, "llm_api_key", "mock-test-key")
     captured = _capture_loop(monkeypatch)
+    _use_test_db(monkeypatch, db_session)
 
     ws = await _workspace(db_session, "loopnodb")
-    await _skill(db_session, ws, "never-counted-skill", config={
-        "markdown_doc": _doc("NeverCounted"), "required_scope": "memory.read",
+    await _skill(db_session, ws, "no-db-counted-skill", config={
+        "markdown_doc": _doc("NoDbCounted"), "required_scope": "memory.read",
     })
 
     result = await _try_react_loop(
@@ -808,5 +830,8 @@ async def test_agent_path_without_a_db_session_counts_nothing(
     )
 
     assert result is not None
-    assert "## Workspace skills" not in [m for m in captured[0] if m["role"] == "system"][0]["content"]
-    assert (await _usage(db_session, ws, "never-counted-skill"))[0] == 0
+    user = [m for m in captured[0] if m["role"] == "user"][0]["content"]
+    system = [m for m in captured[0] if m["role"] == "system"][0]["content"]
+    assert "### no-db-counted-skill" in user
+    assert "### no-db-counted-skill" not in system
+    assert (await _usage(db_session, ws, "no-db-counted-skill"))[0] == 1

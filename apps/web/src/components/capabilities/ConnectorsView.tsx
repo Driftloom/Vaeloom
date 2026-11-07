@@ -98,6 +98,7 @@ export function ConnectorsView({
     handleSyncWorkspace,
     handleDynamicSync,
     handleTestConnection,
+    handleComposioRefresh,
     handleOpenHealthModal,
     handleInspectTools,
     confirmDisconnect,
@@ -136,76 +137,87 @@ export function ConnectorsView({
         className="flex-1 overflow-y-auto overscroll-y-contain px-4 sm:px-6 lg:px-8 py-5 pb-16 min-h-0 min-w-0 bg-background"
       >
         {activeSubTab === 'discover' ? (
-          <ConnectorsDirectory
-            fullCatalogList={fullCatalogList}
-            filteredCatalog={filteredCatalog}
-            topConnectors={topConnectors}
-            otherConnectors={otherConnectors}
-            activeCategoryFilter={activeCategoryFilter}
-            internalSearch={internalSearch}
-            onSearchChange={setInternalSearch}
-            selectedFilter={selectedFilter}
-            onFilterChange={setSelectedFilter}
-            showAllConnectors={showAllConnectors}
-            onShowAllConnectorsChange={setShowAllConnectors}
-            onResetFilters={() => {
-              setShowAllConnectors(false);
-              setInternalSearch('');
-              setSelectedFilter('All');
-            }}
-            effectiveQuery={effectiveQuery}
-            composioEnabled={composioEnabled}
-            composioAppsError={composioAppsError}
-            onRetryLoad={() => void loadDynamicData()}
-            isRowConnected={isRowConnected}
-            busyAction={busyAction}
-            onSelectRow={setSelectedItemDetails}
-            onConnectRow={handleInitiateConnect}
-          />
+          <div
+            role="tabpanel"
+            id="connector-panel-discover"
+            aria-labelledby="connector-tab-discover"
+          >
+            <ConnectorsDirectory
+              fullCatalogList={fullCatalogList}
+              filteredCatalog={filteredCatalog}
+              topConnectors={topConnectors}
+              otherConnectors={otherConnectors}
+              activeCategoryFilter={activeCategoryFilter}
+              internalSearch={internalSearch}
+              onSearchChange={setInternalSearch}
+              selectedFilter={selectedFilter}
+              onFilterChange={setSelectedFilter}
+              showAllConnectors={showAllConnectors}
+              onShowAllConnectorsChange={setShowAllConnectors}
+              onResetFilters={() => {
+                setShowAllConnectors(false);
+                setInternalSearch('');
+                setSelectedFilter('All');
+              }}
+              effectiveQuery={effectiveQuery}
+              composioEnabled={composioEnabled}
+              composioAppsError={composioAppsError}
+              onRetryLoad={() => void loadDynamicData()}
+              isRowConnected={isRowConnected}
+              busyAction={busyAction}
+              onSelectRow={setSelectedItemDetails}
+              onConnectRow={handleInitiateConnect}
+            />
+          </div>
         ) : activeSubTab === 'studio' ? (
-          <CustomProtocolsTab
-            customConnectors={customConnectors}
-            builtinServers={builtinServers}
-            builtinError={builtinError}
-            dynamicError={dynamicError}
-            busyAction={busyAction}
-            healthLoading={healthLoading}
-            onRetryLoad={() => void loadDynamicData()}
-            onOpenAddCustom={(type) => {
-              if (type) setCustomType(type);
-              setIsAddModalOpen(true);
-            }}
-            onConfigureBuiltin={(server) => {
-              setBusyAction(`composio-${server.id}`);
-              setCustomType('mcp');
-              setCustomName(server.name);
-              setCustomMcpTransport('stdio');
-              setCustomCommand(String(server.config?.['command'] ?? ''));
-              setCustomArgs(
-                Array.isArray(server.config?.['args'])
-                  ? server.config['args'].map((arg) => String(arg)).join(' ')
-                  : '',
-              );
-              setIsAddModalOpen(true);
-              setBusyAction(null);
-            }}
-            onTestConnection={(id) => void handleTestConnection(id)}
-            onOpenHealthModal={(id) => void handleOpenHealthModal(id)}
-            onInspectTools={(id, name) => void handleInspectTools(id, name)}
-            onPendingDisconnect={setPendingDisconnect}
-          />
+          <div role="tabpanel" id="connector-panel-studio" aria-labelledby="connector-tab-studio">
+            <CustomProtocolsTab
+              customConnectors={customConnectors}
+              builtinServers={builtinServers}
+              builtinError={builtinError}
+              dynamicError={dynamicError}
+              busyAction={busyAction}
+              healthLoading={healthLoading}
+              onRetryLoad={() => void loadDynamicData()}
+              onOpenAddCustom={(type) => {
+                if (type) setCustomType(type);
+                setIsAddModalOpen(true);
+              }}
+              onConfigureBuiltin={(server) => {
+                setBusyAction(`composio-${server.id}`);
+                setCustomType('mcp');
+                setCustomName(server.name);
+                setCustomMcpTransport('stdio');
+                setCustomCommand(String(server.config?.['command'] ?? ''));
+                setCustomArgs(
+                  Array.isArray(server.config?.['args'])
+                    ? server.config['args'].map((arg) => String(arg)).join(' ')
+                    : '',
+                );
+                setIsAddModalOpen(true);
+                setBusyAction(null);
+              }}
+              onTestConnection={(id) => void handleTestConnection(id)}
+              onOpenHealthModal={(id) => void handleOpenHealthModal(id)}
+              onInspectTools={(id, name) => void handleInspectTools(id, name)}
+              onPendingDisconnect={setPendingDisconnect}
+            />
+          </div>
         ) : (
-          <InstalledConnectorsTab
-            configuredItems={configuredItems}
-            onBrowseDirectory={() => setActiveSubTab('discover')}
-            syncBusyId={syncBusyId}
-            busyAction={busyAction}
-            onSyncWorkspace={(conn) => void handleSyncWorkspace(conn)}
-            onDynamicSync={(id) => void handleDynamicSync(id)}
-            onTestConnection={(id) => void handleTestConnection(id)}
-            onInspectTools={(id, name) => void handleInspectTools(id, name)}
-            onPendingDisconnect={setPendingDisconnect}
-          />
+          <div role="tabpanel" id="connector-panel-yours" aria-labelledby="connector-tab-yours">
+            <InstalledConnectorsTab
+              configuredItems={configuredItems}
+              onBrowseDirectory={() => setActiveSubTab('discover')}
+              syncBusyId={syncBusyId}
+              busyAction={busyAction}
+              onSyncWorkspace={(conn) => void handleSyncWorkspace(conn)}
+              onDynamicSync={(id) => void handleDynamicSync(id)}
+              onTestConnection={(id) => void handleTestConnection(id)}
+              onInspectTools={(id, name) => void handleInspectTools(id, name)}
+              onRefresh={(item) => void handleComposioRefresh(item)}
+              onPendingDisconnect={setPendingDisconnect}
+            />
+          </div>
         )}
       </div>
 
@@ -244,11 +256,19 @@ export function ConnectorsView({
           }}
           onDisconnect={() => {
             const current = selectedItemDetails;
+            const rawApp = dynamicConnectors.find(
+              (c) =>
+                (c.name && c.name.toLowerCase() === rowName(current).toLowerCase()) ||
+                (c.config?.['app'] &&
+                  String(c.config['app']).toLowerCase() ===
+                    (rowComposioApp(current) || '').toLowerCase()),
+            )?.config?.['app'];
             setSelectedItemDetails(null);
             setPendingDisconnect({
               id: rowId(current),
               name: rowName(current),
               isWorkspaceIntegration: false,
+              composioApp: typeof rawApp === 'string' && rawApp !== '' ? rawApp : undefined,
             });
           }}
           connectBusy={busyAction === `composio-${rowComposioApp(selectedItemDetails) ?? ''}`}

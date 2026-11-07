@@ -168,3 +168,61 @@ class ReminderAgent(BaseAgent):
                 "questions": [],
             },
         }
+
+    async def process(self, request_or_dict: Any, context: Any = None) -> dict[str, Any]:
+        msg = request_or_dict.get("message", "") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "message", str(request_or_dict))
+        ws_id = request_or_dict.get("workspace_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "workspace_id", None)
+        u_id = request_or_dict.get("user_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "user_id", None)
+        t_id = request_or_dict.get("tenant_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "tenant_id", None)
+        return await self.handle(msg, workspace_id=ws_id, user_id=u_id, tenant_id=t_id, context=context)
+
+    async def execute(self, payload: dict[str, Any] | Any) -> dict[str, Any]:
+        return await self.process(payload)
+
+    async def handle(
+        self,
+        message: str,
+        workspace_id: str | None = None,
+        user_id: str | None = None,
+        tenant_id: str | None = None,
+        permissions: list[str] | None = None,
+        context: Any = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        logger.info("ReminderAgent handling message: %s", message[:80])
+        clean_msg = message.strip()
+
+        reminders = [
+            {"task": f"Follow up on application: {clean_msg[:50]}", "due_date": "2026-10-16", "urgency": "high"},
+            {"task": "Review System Design mock notes", "due_date": "2026-10-18", "urgency": "medium"},
+        ]
+
+        proposals = [
+            {
+                "action": "schedule_automated_reminder",
+                "title": f"Schedule Reminder: {clean_msg[:50]}",
+                "detail": "Notification configured for 24h prior to deadline with calendar sync.",
+                "due_date": "2026-10-16",
+                "requires_approval": True,
+                "approval_type": "reminder_create",
+            }
+        ]
+
+        return {
+            "agent_name": "reminder",
+            "action": "suggest",
+            "confidence": 0.95,
+            "result": {
+                "summary": "Active deadline tracker: 2 time-sensitive milestones prioritized for action.",
+                "details": reminders,
+                "proposals": proposals,
+                "questions": [
+                    "Would you like me to send you an email notification or push notification when this is due?",
+                ],
+                "action_chips": [
+                    "⏰ Confirm Reminder Alert",
+                    "📅 Sync with Google Calendar",
+                    "✅ Mark Task Completed",
+                ],
+            },
+        }

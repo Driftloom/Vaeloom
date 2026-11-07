@@ -104,6 +104,13 @@ test.describe('chat', () => {
       timeout: 30_000,
     });
 
+    // Chat history is server-side, so a retry (or a rerun on the same workspace)
+    // restores the previous conversation as active. Sending without starting a
+    // new chat appends to that thread, whose title stays the old prompt's - and
+    // the rail assertion below then looks for a title that was never rendered.
+    // Create the thread explicitly so each run owns exactly one conversation.
+    await page.getByRole('button', { name: 'New chat' }).click();
+
     const prompt = `Hello from Playwright ${Date.now()}`;
     const composer = page.getByLabel('Chat message');
     await expect(composer).toBeVisible();

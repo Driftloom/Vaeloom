@@ -425,12 +425,17 @@ test.describe('document flow', () => {
 
 | Claim                          | Actual (recounted)                                                                                                                                                                               | Evidence                          |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------- |
-| 60 e2e (24 gating + 36 visual) | **9 Playwright specs**: `apps/web/e2e/*.spec.ts` **6** (auth, files-chat, landing, mutations, profile, quality) + `testing/e2e/tests/flows/*.spec.ts` **3** (connector, login, workspace)        | `Get-ChildItem` 2026-09-15        |
+| 60 e2e (24 gating + 36 visual) | **9 Playwright specs at the 2026-09-15 recount**: `apps/web/e2e/*.spec.ts` **6** (auth, files-chat, landing, mutations, profile, quality) + `testing/e2e/tests/flows/*.spec.ts` **3** (connector, login, workspace). **Current (2026-10-23): 12 specs** — `apps/web/e2e` has 12; the legacy 3 were deleted (dead suite: rotted selectors, no CI workflow).        | `Get-ChildItem` 2026-09-15        |
 | 34 jest                        | **11 `*.spec.*` files** (6 e2e above + 5 `*.spec.tsx`: connectors page, Sidebar, ApprovalCard, Modal, Toast) **+ 3 `*.test.*`** (useWorkspace, a11y, landing) = **14 frontend test files total** | `apps/web/src` recount 2026-09-15 |
-| 20+ flows full suite           | 8 critical flows documented above; 9 specs on disk — gap vs 20/60 claimed is OPEN                                                                                                                | This doc Scope vs recount         |
+| 20+ flows full suite           | 8 critical flows documented above; 9 specs on disk at the 2026-09-15 recount, 12 now (legacy `testing/e2e` 3 deleted 2026-10-23) — gap vs 20/60 claimed is OPEN                                                                                                                | This doc Scope vs recount         |
 
 > Visual snapshots (`*.png` under `apps/web/e2e/**/*.snapshots/`) are baselines,
 > not the "36 visual" suite — no separate 36-spec visual suite found on disk.
+
+> **2026-10-23 recount:** `apps/web/e2e` has **12 tracked specs**; the dead
+> `testing/e2e/tests/flows` 3 were deleted. Frontend spec/test files total
+> **98** tracked (`git ls-files apps/web`), so the 2026-09-15 rows above are
+> historical.
 
 ## Related Documents
 

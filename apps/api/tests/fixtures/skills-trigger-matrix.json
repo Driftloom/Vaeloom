@@ -1,0 +1,125 @@
+{
+  "$comment": "Shared trigger-matching matrix. The frontend matcher (apps/web/src/components/capabilities/skills/trigger-matcher.ts) and the backend matcher (apps/api/src/api/services/skill_injection.py _trigger_hits) must return identical hits for every case. Consumed by apps/web/src/components/capabilities/skills/__tests__/trigger-matcher.test.ts and apps/api/tests/test_skill_trigger_matching.py. Rule: a declared trigger matches when every token of the phrase appears somewhere in the message; order and adjacency do not matter; token equality does (parse does not match parser).",
+  "cases": [
+    {
+      "name": "filler words between trigger tokens still match",
+      "triggers": ["tailor resume"],
+      "message": "please tailor my resume for acme",
+      "expectedHits": ["tailor resume"]
+    },
+    {
+      "name": "leading and trailing filler words do not block",
+      "triggers": ["tailor resume"],
+      "message": "can you tailor the resume please",
+      "expectedHits": ["tailor resume"]
+    },
+    {
+      "name": "repeated whitespace is irrelevant",
+      "triggers": ["tailor resume"],
+      "message": "tailor    my     resume",
+      "expectedHits": ["tailor resume"]
+    },
+    {
+      "name": "case is irrelevant and the declared casing is echoed",
+      "triggers": ["Tailor Resume"],
+      "message": "TAILOR   MY   RESUME",
+      "expectedHits": ["Tailor Resume"]
+    },
+    {
+      "name": "punctuation does not block a match",
+      "triggers": ["tailor resume"],
+      "message": "Please tailor my resume, then send it.",
+      "expectedHits": ["tailor resume"]
+    },
+    {
+      "name": "token equality: parse does not match parser",
+      "triggers": ["parse test"],
+      "message": "my parser was misbehaving while testing",
+      "expectedHits": []
+    },
+    {
+      "name": "token equality: exact tokens match",
+      "triggers": ["parse test"],
+      "message": "run a parse test",
+      "expectedHits": ["parse test"]
+    },
+    {
+      "name": "every token of the phrase is required",
+      "triggers": ["resume tailoring"],
+      "message": "please review my resume",
+      "expectedHits": []
+    },
+    {
+      "name": "order and adjacency do not matter",
+      "triggers": ["review criteria"],
+      "message": "please review the final criteria",
+      "expectedHits": ["review criteria"]
+    },
+    {
+      "name": "unrelated message activates nothing",
+      "triggers": ["tailor resume"],
+      "message": "what is the weather in oslo",
+      "expectedHits": []
+    },
+    {
+      "name": "empty message matches nothing",
+      "triggers": ["tailor resume"],
+      "message": "",
+      "expectedHits": []
+    },
+    {
+      "name": "whitespace-only message matches nothing",
+      "triggers": ["tailor resume"],
+      "message": "   ",
+      "expectedHits": []
+    },
+    {
+      "name": "punctuation-only message matches nothing",
+      "triggers": ["tailor resume"],
+      "message": "!!! ???",
+      "expectedHits": []
+    },
+    {
+      "name": "OR semantics across declared phrases",
+      "triggers": ["tailor resume", "cover letter"],
+      "message": "I need a cover letter for this role",
+      "expectedHits": ["cover letter"]
+    },
+    {
+      "name": "multiple phrases can hit at once in declared order",
+      "triggers": ["tailor resume", "resume tailoring"],
+      "message": "please tailor my resume with resume tailoring ideas",
+      "expectedHits": ["tailor resume", "resume tailoring"]
+    },
+    {
+      "name": "numbers split into tokens",
+      "triggers": ["wcag 2.1"],
+      "message": "check WCAG 2.1 conformance",
+      "expectedHits": ["wcag 2.1"]
+    },
+    {
+      "name": "underscore is a word character",
+      "triggers": ["parse_test"],
+      "message": "run the parse_test now",
+      "expectedHits": ["parse_test"]
+    },
+    {
+      "name": "unicode letters match case-insensitively",
+      "triggers": ["résumé audit"],
+      "message": "RÉSUMÉ AUDIT s'il vous plaît",
+      "expectedHits": ["résumé audit"]
+    },
+    {
+      "name": "a punctuation-only trigger can never match",
+      "triggers": ["!!!"],
+      "message": "!!! ready",
+      "expectedHits": []
+    },
+    {
+      "name": "no triggers declared yields no hits (eligibility is the caller's concern)",
+      "triggers": [],
+      "message": "anything at all",
+      "expectedHits": []
+    }
+  ]
+}

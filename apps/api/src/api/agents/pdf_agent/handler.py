@@ -96,8 +96,25 @@ class PDFAgent(BaseAgent):
                 "questions": [
                     "Would you like me to render and download the completed PDF?"
                 ],
+                "action_chips": [
+                    "📄 Compile PDF Resume",
+                    "📝 Fill Form Fields",
+                    "🔍 Validate PDF Typography",
+                ],
             },
         }
+
+    async def handle(
+        self,
+        message: str,
+        workspace_id: str | None = None,
+        user_id: str | None = None,
+        tenant_id: str | None = None,
+        permissions: list[str] | None = None,
+        context: Any = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        return await self.process({"message": message, "workspace_id": workspace_id, "user_id": user_id, "tenant_id": tenant_id})
 
     async def execute(self, request: Any, context: Any = None) -> Any:
         return await self.process(request)

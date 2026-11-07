@@ -25,11 +25,11 @@ export function DataModeBanner({ mode, className = '', message }: DataModeBanner
       <div
         role="status"
         aria-live="polite"
-        className={`mb-6 flex items-center gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-xs text-amber-200 ${className}`}
+        className={`mb-6 flex items-center gap-3 rounded-lg border border-warning/30 bg-warning/10 px-4 py-3 text-xs text-warning ${className}`}
       >
-        <AlertCircleIcon size={16} className="text-amber-400 shrink-0" />
+        <AlertCircleIcon size={16} className="text-warning shrink-0" />
         <div className="flex-1">
-          <span className="font-semibold uppercase tracking-wider text-amber-300 mr-2">
+          <span className="font-semibold uppercase tracking-wider text-warning mr-2">
             PREVIEW MODE
           </span>
           <span>
@@ -46,11 +46,11 @@ export function DataModeBanner({ mode, className = '', message }: DataModeBanner
       <div
         role="status"
         aria-live="polite"
-        className={`mb-6 flex items-center gap-3 rounded-lg border border-rose-500/30 bg-rose-500/10 px-4 py-3 text-xs text-rose-200 ${className}`}
+        className={`mb-6 flex items-center gap-3 rounded-lg border border-error/30 bg-error/10 px-4 py-3 text-xs text-error ${className}`}
       >
-        <AlertCircleIcon size={16} className="text-rose-400 shrink-0" />
+        <AlertCircleIcon size={16} className="text-error shrink-0" />
         <div className="flex-1">
-          <span className="font-semibold uppercase tracking-wider text-rose-300 mr-2">
+          <span className="font-semibold uppercase tracking-wider text-error mr-2">
             UNCONNECTED ROUTE
           </span>
           <span>

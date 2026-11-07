@@ -247,6 +247,8 @@ class TestSkillDocumentViolations:
         assert body["violations"][0]["severity"] == "hard"
         assert "system.observe" in body["violations"][0]["message"]
         assert "tool scope vocabulary" in body["violations"][0]["message"]
+        assert "memory.read" in body["violations"][0]["message"]
+        assert "GET /api/v1/capabilities/tools/definitions" in body["violations"][0]["message"]
 
     async def test_exact_violation_list_for_a_known_bad_skill_draft(
         self, client: AsyncClient

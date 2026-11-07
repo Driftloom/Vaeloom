@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Button } from '@vaeloom/ui-kit';
+import { Button, Textarea } from '@vaeloom/ui-kit';
 import { useToast } from '@/components/shared/Toast';
 import { type ManifestOmission } from './mcpManifest';
 
@@ -61,12 +61,12 @@ export const McpManifestTab: React.FC<McpManifestTabProps> = ({
           ))}
         </div>
 
-        <textarea
+        <Textarea
           aria-label="mcp.json manifest"
           value={configText}
           onChange={(event) => onChangeText(event.target.value)}
           spellCheck={false}
-          className="flex-1 min-h-0 p-3 bg-transparent text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent resize-none leading-5 overflow-auto overscroll-contain selection:bg-primary/20"
+          className="h-full min-h-[0px] rounded-[0px] border-[0px] bg-[transparent] px-[12px] py-[12px] leading-5 resize-none overflow-auto overscroll-contain selection:bg-primary/20 text-text font-mono text-xs"
         />
       </div>
     </div>

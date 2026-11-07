@@ -110,7 +110,8 @@ _CATEGORY_ANCHORS: dict[str, tuple[str, ...]] = {
 class UserRequest:
     def __init__(self, request_id: str, message: str, workspace_id: str, preferred_agent: str | None = None,
                  user_id: str | None = None, tenant_id: str | None = None, correlation_id: str | None = None,
-                 model: str | None = None, temperature: float | None = 0.7, agent_names: list[str] | None = None):
+                 model: str | None = None, temperature: float | None = 0.7, agent_names: list[str] | None = None,
+                 pinned_skill: str | None = None):
         self.id = request_id
         self.message = message
         self.workspace_id = workspace_id
@@ -123,6 +124,10 @@ class UserRequest:
         self.model = model
         self.temperature = temperature
         self.agent_names = agent_names
+        # C2: `/skill:<slug>` pin parsed off the raw user message at the API
+        # route — `message` carries only the residual. Threaded to AgentRequest
+        # and consumed by the ReAct skill seam; None when nothing was pinned.
+        self.pinned_skill = pinned_skill
 
 
 # ── Muse §7 capability-aware selection ─────────────────────────────
@@ -525,7 +530,7 @@ async def classify_intent(message: str, workspace_id: str | None = None) -> tupl
 # extras that must not run in MVP builds (CF-05, R5/R6).
 
 MVP_CANONICAL_AGENTS = frozenset({
-    "conversation", "organization", "memory", "resume", "ats", "job_search",
+    "organization", "memory", "resume", "ats", "job_search",
     "application", "gmail", "scheduler", "planning", "research",
 })
 
@@ -668,7 +673,7 @@ async def handle(request: UserRequest) -> dict[str, Any]:
         logger.info(f"Classified: agent={agent_name}, confidence={confidence}")
 
     # ── 1b. MVP scope lock ─────────────────────────────────────────
-    if settings.mvp_scope_enforced and agent_name not in MVP_CANONICAL_AGENTS:
+    if settings.mvp_scope_enforced and not getattr(settings, "enterprise_routes_enabled", False) and agent_name not in MVP_CANONICAL_AGENTS:
         return _handle_out_of_scope(agent_name, confidence)
 
     # ── 2. Low confidence → ask clarification ──────────────────────
@@ -822,6 +827,7 @@ async def handle(request: UserRequest) -> dict[str, Any]:
         correlation_id=getattr(request, "correlation_id", None) or request.id,
         model=getattr(request, "model", None),
         temperature=getattr(request, "temperature", 0.7) or 0.7,
+        pinned_skill=getattr(request, "pinned_skill", None),
     )
     loop_start = time.monotonic()
     # P1c: OTel span per orchestrator dispatch
