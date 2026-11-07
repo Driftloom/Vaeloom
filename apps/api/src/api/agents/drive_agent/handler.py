@@ -167,3 +167,25 @@ class DriveAgent(BaseAgent):
         except Exception as e:
             logger.warning(f"Ingestion failed for {file_meta.get('name', '?')}: {e}")
             return None
+
+    async def handle(
+        self,
+        message: str,
+        workspace_id: str | None = None,
+        user_id: str | None = None,
+        tenant_id: str | None = None,
+        permissions: list[str] | None = None,
+        context: Any = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        res = await self.process({"message": message, "workspace_id": workspace_id, "user_id": user_id, "tenant_id": tenant_id})
+        if isinstance(res, dict) and "result" in res and isinstance(res["result"], dict):
+            res["result"]["action_chips"] = [
+                "📂 Sync Google Drive",
+                "☁️ Sync OneDrive",
+                "📥 Ingest Recent Documents",
+            ]
+        return res
+
+    async def execute(self, payload: dict[str, Any] | Any) -> dict[str, Any]:
+        return await self.process(payload)

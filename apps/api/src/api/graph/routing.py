@@ -71,7 +71,7 @@ async def route_classify_structured(task: str) -> dict[str, Any]:
         from ..config import settings as _s  # type: ignore
         from ..orchestrator.router import MVP_CANONICAL_AGENTS  # type: ignore
 
-        if _s.mvp_scope_enforced and agent not in MVP_CANONICAL_AGENTS:
+        if _s.mvp_scope_enforced and not getattr(_s, "enterprise_routes_enabled", False) and agent not in MVP_CANONICAL_AGENTS:
             policy_filtered = [agent]
             agent = "memory"
             conf = 0.55

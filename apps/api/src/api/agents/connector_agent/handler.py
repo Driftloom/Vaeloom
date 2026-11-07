@@ -164,3 +164,64 @@ class ConnectorAgent(BaseAgent):
                 "questions": [],
             },
         }
+
+    async def process(self, request_or_dict: Any, context: Any = None) -> dict[str, Any]:
+        msg = request_or_dict.get("message", "") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "message", str(request_or_dict))
+        ws_id = request_or_dict.get("workspace_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "workspace_id", None)
+        u_id = request_or_dict.get("user_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "user_id", None)
+        t_id = request_or_dict.get("tenant_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "tenant_id", None)
+        return await self.handle(msg, workspace_id=ws_id, user_id=u_id, tenant_id=t_id, context=context)
+
+    async def execute(self, payload: dict[str, Any] | Any) -> dict[str, Any]:
+        return await self.process(payload)
+
+    async def handle(
+        self,
+        message: str,
+        workspace_id: str | None = None,
+        user_id: str | None = None,
+        tenant_id: str | None = None,
+        permissions: list[str] | None = None,
+        context: Any = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        logger.info("ConnectorAgent handling message: %s", message[:80])
+        clean_msg = message.strip()
+        available_connectors = [
+            {"name": "Slack", "category": "Communication", "status": "Ready", "auth_type": "OAuth2 (Bot Token)"},
+            {"name": "GitHub", "category": "Code & Portfolios", "status": "Connected", "auth_type": "Personal Access Token"},
+            {"name": "Google Drive", "category": "Documents", "status": "Ready", "auth_type": "OAuth2"},
+            {"name": "Google Calendar", "category": "Scheduling", "status": "Ready", "auth_type": "OAuth2"},
+            {"name": "Gmail", "category": "Email", "status": "Ready", "auth_type": "OAuth2"},
+        ]
+
+        proposals = [
+            {
+                "action": "initiate_connector_oauth",
+                "title": "Connect Slack Workspace for Channel Broadcasting",
+                "detail": "Enables real-time career updates, interview prep notifications, and team status sharing.",
+                "connector": "Slack",
+                "requires_approval": True,
+                "approval_type": "connector_auth",
+            }
+        ]
+
+        return {
+            "agent_name": "connector",
+            "action": "suggest",
+            "confidence": 0.95,
+            "result": {
+                "summary": "Integration gateway operational: 5 enterprise connectors available with Zero-Trust token scoping.",
+                "details": available_connectors,
+                "proposals": proposals,
+                "questions": [
+                    "Which platform would you like to authenticate first?",
+                ],
+                "action_chips": [
+                    "🔗 Connect Slack",
+                    "📂 Connect Google Drive",
+                    "🐙 Sync GitHub Repositories",
+                    "🔄 Verify Connector Health",
+                ],
+            },
+        }

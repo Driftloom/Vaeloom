@@ -744,6 +744,27 @@ CANONICAL_CAPABILITIES: list[AgentCapabilityManifest] = [
         requires_approval_above=AutonomyLevel.READ,
         tier_requirement="enterprise",
     ),
+    # 35. Slack Channel Communication & Alerting
+    AgentCapabilityManifest(
+        capability_id="communication.slack.notify",
+        agent_id="slack",
+        display_name="Slack Channel Communication & Alerts",
+        description="Draft and dispatch Slack channel updates, team announcements, and career milestone notifications. Outbound messages require human approval.",
+        semantic_exemplars=[
+            "post an update to slack",
+            "send slack notification to #career-updates",
+            "notify team on slack about interview offer",
+            "announce job offer on slack",
+            "post milestone to slack channel",
+        ],
+        required_tools=["send_slack_message"],
+        optional_tools=["search_documents"],
+        supported_memory_scopes=["communication", "profile"],
+        risk_class=RiskClass.HIGH,
+        default_autonomy=AutonomyLevel.DRAFT,
+        requires_approval_above=AutonomyLevel.DRAFT,
+        tier_requirement="enterprise",
+    ),
 ]
 
 

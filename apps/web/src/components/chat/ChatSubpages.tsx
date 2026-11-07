@@ -64,7 +64,7 @@ export const SQUAD_PRESETS: SquadPreset[] = [
     description:
       'Executive resume framing, leadership narrative, and Bar Raiser interview strategy.',
     badge: 'Executive',
-    agentIds: ['career_coach', 'resume_agent'],
+    agentIds: ['career', 'resume'],
   },
   {
     id: 'ats_screener',
@@ -72,7 +72,7 @@ export const SQUAD_PRESETS: SquadPreset[] = [
     description:
       'Parseability audit, semantic keyword density optimization, and technical qualification alignment.',
     badge: 'Technical & ATS',
-    agentIds: ['ats_audit', 'resume_agent'],
+    agentIds: ['ats', 'resume'],
   },
   {
     id: 'career_transition',
@@ -80,7 +80,15 @@ export const SQUAD_PRESETS: SquadPreset[] = [
     description:
       'Identify transferable strengths, monitor verified company hiring portals, and draft recruiter outreach.',
     badge: 'Market & Sourcing',
-    agentIds: ['job_scout', 'career_coach', 'app_agent'],
+    agentIds: ['job_search', 'career', 'application'],
+  },
+  {
+    id: 'enterprise_squad',
+    name: 'Autonomous Multi-Agent Squad',
+    description:
+      'Full parallel execution: roadmap synthesis, job discovery, resume optimization, ATS scoring, and Slack broadcast.',
+    badge: 'Enterprise Parallel',
+    agentIds: ['planning', 'job_search', 'resume', 'ats', 'slack'],
   },
 ];
 

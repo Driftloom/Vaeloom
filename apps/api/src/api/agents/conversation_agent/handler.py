@@ -228,7 +228,6 @@ class ConversationAgent(BaseAgent):
             except Exception as e:
                 logger.warning(f"ConversationAgent LLM completion failed, falling back to deterministic: {e}")
 
-        # ── 4. Deterministic Consultative Fallback ───────────────────────────
         return {
             "agent_name": "conversation",
             "action": "suggest",
@@ -244,3 +243,28 @@ class ConversationAgent(BaseAgent):
                 "action_chips": dynamic_chips,
             },
         }
+
+    async def process(self, request_or_dict: Any, context: Any = None) -> dict[str, Any]:
+        msg = request_or_dict.get("message", "") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "message", str(request_or_dict))
+        ws_id = request_or_dict.get("workspace_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "workspace_id", None)
+        u_id = request_or_dict.get("user_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "user_id", None)
+        t_id = request_or_dict.get("tenant_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "tenant_id", None)
+        return await self.handle(msg, workspace_id=ws_id, user_id=u_id, tenant_id=t_id, context=context)
+
+    async def handle(
+        self,
+        message: str,
+        workspace_id: str | None = None,
+        user_id: str | None = None,
+        tenant_id: str | None = None,
+        permissions: list[str] | None = None,
+        context: Any = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        return await self.execute(
+            content=message,
+            workspace_id=workspace_id,
+            user_id=user_id,
+            tenant_id=tenant_id,
+            **kwargs,
+        )

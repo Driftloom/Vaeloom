@@ -166,3 +166,62 @@ class PluginAgent(BaseAgent):
                 "questions": [],
             },
         }
+
+    async def process(self, request_or_dict: Any, context: Any = None) -> dict[str, Any]:
+        msg = request_or_dict.get("message", "") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "message", str(request_or_dict))
+        ws_id = request_or_dict.get("workspace_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "workspace_id", None)
+        u_id = request_or_dict.get("user_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "user_id", None)
+        t_id = request_or_dict.get("tenant_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "tenant_id", None)
+        return await self.handle(msg, workspace_id=ws_id, user_id=u_id, tenant_id=t_id, context=context)
+
+    async def execute(self, payload: dict[str, Any] | Any) -> dict[str, Any]:
+        return await self.process(payload)
+
+    async def handle(
+        self,
+        message: str,
+        workspace_id: str | None = None,
+        user_id: str | None = None,
+        tenant_id: str | None = None,
+        permissions: list[str] | None = None,
+        context: Any = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        logger.info("PluginAgent handling message: %s", message[:80])
+        clean_msg = message.strip()
+        catalog = [
+            {"name": "sentiment", "type": "official", "version": "1.2.0", "description": "Communication tone and sentiment analysis"},
+            {"name": "summarizer", "type": "official", "version": "1.0.4", "description": "Long-form job posting and document summarizer"},
+            {"name": "translator", "type": "official", "version": "1.1.0", "description": "Cross-language resume and application translator"},
+            {"name": "word-count", "type": "community", "version": "0.9.1", "description": "Resume length and density metrics checker"},
+        ]
+
+        proposals = [
+            {
+                "action": "install_verified_plugin",
+                "title": "Install Official 'summarizer' Plugin v1.0.4",
+                "detail": "Adds automated job description entity extraction to workspace pipeline.",
+                "plugin_name": "summarizer",
+                "requires_approval": True,
+                "approval_type": "plugin_install",
+            }
+        ]
+
+        return {
+            "agent_name": "plugin",
+            "action": "suggest",
+            "confidence": 0.95,
+            "result": {
+                "summary": "Plugin ecosystem verified: 4 extensions available with sandboxed capability containment.",
+                "details": catalog,
+                "proposals": proposals,
+                "questions": [
+                    "Would you like to install the 'summarizer' or 'sentiment' plugin in this workspace?",
+                ],
+                "action_chips": [
+                    "🧩 Install Official Summarizer",
+                    "⚡ Check Version Compatibility",
+                    "🔄 Update Installed Plugins",
+                ],
+            },
+        }

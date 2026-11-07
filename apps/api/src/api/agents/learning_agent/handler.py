@@ -166,3 +166,76 @@ class LearningAgent(BaseAgent):
                 "questions": [],
             },
         }
+
+    async def process(self, request_or_dict: Any, context: Any = None) -> dict[str, Any]:
+        msg = request_or_dict.get("message", "") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "message", str(request_or_dict))
+        ws_id = request_or_dict.get("workspace_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "workspace_id", None)
+        u_id = request_or_dict.get("user_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "user_id", None)
+        t_id = request_or_dict.get("tenant_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "tenant_id", None)
+        return await self.handle(msg, workspace_id=ws_id, user_id=u_id, tenant_id=t_id, context=context)
+
+    async def execute(self, payload: dict[str, Any] | Any) -> dict[str, Any]:
+        return await self.process(payload)
+
+    async def handle(
+        self,
+        message: str,
+        workspace_id: str | None = None,
+        user_id: str | None = None,
+        tenant_id: str | None = None,
+        permissions: list[str] | None = None,
+        context: Any = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        logger.info("LearningAgent handling message: %s", message[:80])
+        clean_msg = message.strip()
+
+        # Extract learning subject or skill
+        topic = clean_msg[:60]
+        for term in ["learn", "course", "study", "training", "certification", "skill"]:
+            if term in clean_msg.lower():
+                import re
+                topic = re.sub(rf"(?i)\b{term}\b", "", clean_msg).strip()
+        if not topic or len(topic) < 3:
+            topic = "Distributed Systems & Cloud Architecture"
+
+        curriculum = {
+            "topic": topic,
+            "estimated_duration": "4 Weeks (5-8 hrs/week)",
+            "modules": [
+                {"week": 1, "focus": "Foundations & Core Principles", "resource": "Official Architecture Docs & Deep Dives"},
+                {"week": 2, "focus": "Hands-On Implementation & Patterns", "resource": "Production Reference Repositories"},
+                {"week": 3, "focus": "System Design Trade-offs & Scalability", "resource": "High-Throughput Case Studies"},
+                {"week": 4, "focus": "Interview Scenarios & Portfolio Capstone", "resource": "Mock Assessment & Verifiable Project"},
+            ],
+            "certifications_recommended": ["AWS Certified Solutions Architect", "CKA: Certified Kubernetes Administrator"],
+        }
+
+        proposals = [
+            {
+                "action": "enroll_in_learning_sprint",
+                "title": f"Activate 4-Week Learning Sprint for {topic}",
+                "detail": "Adds weekly milestones and calendar study blocks to maintain momentum.",
+                "requires_approval": False,
+            }
+        ]
+
+        return {
+            "agent_name": "learning",
+            "action": "suggest",
+            "confidence": 0.95,
+            "result": {
+                "summary": f"Targeted 4-week learning curriculum designed for {topic} with verifiable milestones and project receipts.",
+                "details": curriculum,
+                "proposals": proposals,
+                "questions": [
+                    "How many hours per week would you like to dedicate to this study plan?",
+                    "Should I schedule 45-minute focus blocks on your calendar for this curriculum?",
+                ],
+                "action_chips": [
+                    "📅 Add Study Blocks to Calendar",
+                    "🎓 Explore Recommended Certifications",
+                    "📝 Take Diagnostic Skill Quiz",
+                ],
+            },
+        }

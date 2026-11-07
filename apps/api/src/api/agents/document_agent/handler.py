@@ -461,8 +461,25 @@ class DocumentAgent(BaseAgent):
                 "questions": [] if real_docs else [
                     "Would you like to upload documents to this workspace first?",
                 ],
+                "action_chips": [
+                    "📄 Upload New Document",
+                    "🔍 Search Citations",
+                    "🧠 Synthesize Vault Notes",
+                ],
             },
         }
+
+    async def handle(
+        self,
+        message: str,
+        workspace_id: str | None = None,
+        user_id: str | None = None,
+        tenant_id: str | None = None,
+        permissions: list[str] | None = None,
+        context: Any = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        return await self.process({"message": message, "workspace_id": workspace_id, "user_id": user_id, "tenant_id": tenant_id}, context=context)
 
     async def execute(self, request: Any, context: Any = None) -> Any:
         return await self.process(request, context)

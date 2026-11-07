@@ -164,7 +164,7 @@ class SubAgentManager:
                 if inspect.isawaitable(sub_agent):
                     sub_agent = await sub_agent
 
-                # Check for standard handle / run method
+                # Check for standard handle / process / run / execute method
                 if hasattr(sub_agent, "handle") and callable(sub_agent.handle):
                     try:
                         res = await sub_agent.handle(
@@ -176,11 +176,26 @@ class SubAgentManager:
                         )
                     except TypeError:
                         res = await sub_agent.handle(task_instruction)
+                elif hasattr(sub_agent, "process") and callable(sub_agent.process):
+                    res = await sub_agent.process({
+                        "message": task_instruction,
+                        "workspace_id": workspace_id,
+                        "user_id": user_id,
+                        "tenant_id": tenant_id,
+                        "permissions": effective_permissions,
+                        "context": context or {},
+                    })
                 elif hasattr(sub_agent, "run") and callable(sub_agent.run):
                     res = await sub_agent.run(
                         instruction=task_instruction,
                         context=context or {},
                     )
+                elif hasattr(sub_agent, "execute") and callable(sub_agent.execute):
+                    res = await sub_agent.execute(
+                        {"message": task_instruction, "workspace_id": workspace_id, "user_id": user_id},
+                    )
+                elif hasattr(sub_agent, "fallback") and callable(sub_agent.fallback):
+                    res = await sub_agent.fallback()
                 else:
                     res = {"result": f"Executed sub-task with {sub_agent_name}"}
 

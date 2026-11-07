@@ -34,7 +34,7 @@ class MemoryAgentHandler(BaseAgent):
         Tool(name="create_entity", description="Create knowledge graph entity"),
         Tool(name="merge_entities", description="Merge duplicate entities"),
         Tool(name="query_graph", description="Query knowledge graph"),
-        Tool(name="sync_vault", description="Trigger 2-way Git pull/rebase and commit/push for workspace Obsidian vault"),
+        Tool(name="sync_vault", description="Record a manual vault sync request for the workspace; the desktop vaultsync client performs the git pull/rebase/commit/push (no server-side sync engine)"),
         Tool(name="ingest_vault_notes", description="Ingest and index Markdown notes from vault into documents, memory, and knowledge graph"),
         Tool(name="search_memories", description="Search across memory items by query and category"),
         Tool(name="create_memory", description="Store explicit learned fact or memory item"),
@@ -206,5 +206,84 @@ class MemoryAgentHandler(BaseAgent):
                 },
                 "proposals": [],
                 "questions": [],
+            },
+        }
+
+    async def process(self, request_or_dict: Any, context: Any = None) -> dict[str, Any]:
+        msg = request_or_dict.get("message", "") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "message", str(request_or_dict))
+        ws_id = request_or_dict.get("workspace_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "workspace_id", "00000000-0000-0000-0000-000000000000")
+        u_id = request_or_dict.get("user_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "user_id", None)
+        t_id = request_or_dict.get("tenant_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "tenant_id", None)
+        return await self.handle(msg, workspace_id=ws_id, user_id=u_id, tenant_id=t_id, context=context)
+
+    async def handle(
+        self,
+        message: str,
+        workspace_id: str | None = None,
+        user_id: str | None = None,
+        tenant_id: str | None = None,
+        permissions: list[str] | None = None,
+        context: Any = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        logger.info("MemoryAgentHandler handling message: %s", message[:80])
+        clean_msg = message.strip()
+        ws_id = workspace_id or "00000000-0000-0000-0000-000000000000"
+
+        # Check if greeting
+        greetings = {"hi", "hello", "hey", "help", "who are you"}
+        if clean_msg.lower().rstrip("!.,") in greetings:
+            return {
+                "agent_name": "memory",
+                "action": "suggest",
+                "confidence": 0.95,
+                "result": {
+                    "summary": "Hello! 👋 I'm your Memory Agent. I continuously capture structured career facts, skills, and entities into your persistent knowledge graph and sync with your Obsidian vault.",
+                    "details": None,
+                    "proposals": [],
+                    "questions": ["What documents or career milestones would you like me to index into your memory?"],
+                    "action_chips": [
+                        "🧠 View Knowledge Graph",
+                        "🔍 Search Memory Records",
+                        "🔄 Sync Obsidian Vault",
+                    ],
+                },
+            }
+
+        exec_res = await self.execute(
+            content=clean_msg,
+            source_type="user_input",
+            source_id=f"input_{abs(hash(clean_msg)) % 100000}",
+            workspace_id=ws_id,
+        )
+
+        res_data = exec_res.get("result", {})
+        details = res_data.get("details", {})
+
+        proposals = [
+            {
+                "action": "sync_knowledge_graph",
+                "title": "Index extracted entities to long-term career knowledge graph",
+                "detail": f"Stores {len(details.get('entities', []))} entities and {len(details.get('relationships', []))} relational edges.",
+                "requires_approval": False,
+            }
+        ]
+
+        return {
+            "agent_name": "memory",
+            "action": "suggest",
+            "confidence": 0.95,
+            "result": {
+                "summary": res_data.get("summary") or "Extracted entities and persistent career relationships updated in knowledge graph.",
+                "details": details,
+                "proposals": proposals,
+                "questions": [
+                    "Would you like me to link these newly learned skills to your master resume?",
+                ],
+                "action_chips": [
+                    "🧠 View Knowledge Graph",
+                    "🔍 Search Memory Records",
+                    "📄 Update Master Resume",
+                ],
             },
         }

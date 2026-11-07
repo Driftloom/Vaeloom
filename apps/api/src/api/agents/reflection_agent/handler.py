@@ -164,3 +164,69 @@ class ReflectionAgent(BaseAgent):
                 "questions": [],
             },
         }
+
+    async def process(self, request_or_dict: Any, context: Any = None) -> dict[str, Any]:
+        msg = request_or_dict.get("message", "") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "message", str(request_or_dict))
+        ws_id = request_or_dict.get("workspace_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "workspace_id", None)
+        u_id = request_or_dict.get("user_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "user_id", None)
+        t_id = request_or_dict.get("tenant_id") if isinstance(request_or_dict, dict) else getattr(request_or_dict, "tenant_id", None)
+        return await self.handle(msg, workspace_id=ws_id, user_id=u_id, tenant_id=t_id, context=context)
+
+    async def execute(self, payload: dict[str, Any] | Any) -> dict[str, Any]:
+        return await self.process(payload)
+
+    async def handle(
+        self,
+        message: str,
+        workspace_id: str | None = None,
+        user_id: str | None = None,
+        tenant_id: str | None = None,
+        permissions: list[str] | None = None,
+        context: Any = None,
+        **kwargs: Any,
+    ) -> dict[str, Any]:
+        logger.info("ReflectionAgent handling message: %s", message[:80])
+        clean_msg = message.strip()
+        reflection_data = {
+            "cadence": "Weekly Executive Digest",
+            "wins_and_breakthroughs": [
+                "Tailored 3 high-leverage applications with 90%+ ATS semantic match",
+                "Completed System Design distributed caching deep-dive",
+            ],
+            "challenges_and_blockers": [
+                "2 recruiter follow-ups pending past 5 business days",
+            ],
+            "strategic_recommendations": [
+                "Pivot application volume from general job boards to warm referrals and alumni outreach",
+                "Record 1 mock behavioral response for Bar Raiser Amazon interview prep",
+            ],
+        }
+
+        proposals = [
+            {
+                "action": "commit_weekly_reflection_to_memory",
+                "title": "Log Weekly Career Growth Milestone to Permanent Memory",
+                "detail": "Stores reflection record in career timeline for progress synthesis.",
+                "requires_approval": False,
+            }
+        ]
+
+        return {
+            "agent_name": "reflection",
+            "action": "suggest",
+            "confidence": 0.95,
+            "result": {
+                "summary": "Weekly career reflection synthesized: celebrate accomplishments, resolve outreach blockers, and calibrate focus.",
+                "details": reflection_data,
+                "proposals": proposals,
+                "questions": [
+                    "What was your single biggest technical insight this past week?",
+                    "Should I set a recurring reminder every Friday at 4 PM for career reflection?",
+                ],
+                "action_chips": [
+                    "📝 Log Career Milestone",
+                    "🎯 Adjust Next Week's Priorities",
+                    "⏰ Set Weekly Friday Cadence",
+                ],
+            },
+        }

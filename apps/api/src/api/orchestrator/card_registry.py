@@ -352,6 +352,44 @@ CONVERSATION_CARD = AgentCard(
 )
 
 
+SLACK_CARD = AgentCard(
+    name="slack",
+    version="1.0.0",
+    description="Coordinate Slack notifications, channel announcements, and team communication. Approval-gated for external message delivery.",
+    tools=[
+        "send_slack_message",
+        "search_documents",
+    ],
+    output_schema={
+        "type": "object",
+        "properties": {
+            "summary": {"type": "string"},
+            "details": {"type": ["string", "null"]},
+            "proposals": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "title": {"type": "string"},
+                        "description": {"type": "string"},
+                        "channel": {"type": "string"},
+                        "text": {"type": "string"},
+                        "requires_approval": {"type": "boolean"},
+                    },
+                    "required": ["title", "channel", "text"],
+                },
+            },
+            "questions": {"type": "array", "items": {"type": "string"}},
+        },
+        "required": ["summary", "proposals", "questions"],
+    },
+    safety_guidelines=[
+        "All outgoing Slack broadcasts require explicit human confirmation.",
+        "Never send confidential credentials or PII across public channels.",
+    ],
+)
+
+
 # ── Canonical Registry Dict (All 29 Specialist Agents) ────────────
 
 _CANONICAL_CARDS: dict[str, AgentCard] = {
@@ -367,6 +405,7 @@ _CANONICAL_CARDS: dict[str, AgentCard] = {
     "memory": MEMORY_CARD,
     "drive": DRIVE_CARD,
     "github": GITHUB_CARD,
+    "slack": SLACK_CARD,
 }
 
 # Auto-seed the remaining specialist agents from Capability Manifests

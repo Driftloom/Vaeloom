@@ -53,6 +53,7 @@ AGENT_MODULE_MAP: dict[str, tuple[str, str]] = {
 AUXILIARY_AGENT_MAP: dict[str, tuple[str, str]] = {
     "conversation": ("api.agents.conversation_agent.handler", "ConversationAgent"),
     "qa": ("api.agents.qa_agent.handler", "QAAgent"),
+    "slack": ("api.agents.slack_agent.handler", "SlackAgent"),
     "interview": ("api.agents.career_agent.handler", "CareerAgent"),
     "market_intelligence": ("api.agents.career_agent.handler", "CareerAgent"),
     "network": ("api.agents.career_agent.handler", "CareerAgent"),
