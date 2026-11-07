@@ -603,6 +603,37 @@ describe('useChatStore', () => {
     });
   });
 
+  describe('a new thread takes its title from the first prompt', () => {
+    it('renames the placeholder row instead of letting the list merge revert it', async () => {
+      // `newThread` creates the row up front, so it starts as "New conversation".
+      // The first send derives the title from the prompt locally; without a
+      // rename, the conversation-list merge (where server metadata wins) puts
+      // the placeholder back in the rail and the thread is never identifiable.
+      const { result } = await renderStore();
+
+      act(() => {
+        result.current.newThread();
+      });
+      await settleFlush();
+
+      const serverId = result.current.activeId as string;
+      expect(server.get(serverId)?.title).toBe('New conversation');
+
+      act(() => {
+        result.current.setInput('Plan my week');
+      });
+      await act(async () => {
+        await result.current.send();
+      });
+      await settleFlush();
+
+      expect(convRename).toHaveBeenCalledTimes(1);
+      expect(convRename.mock.calls[0]?.[1]).toBe(serverId);
+      expect(server.get(serverId)?.title).toBe('Plan my week');
+      expect(result.current.threads.find((t) => t.id === serverId)?.title).toBe('Plan my week');
+    });
+  });
+
   describe('optimistic writes and reconciliation', () => {
     it('persists the user turn and the settled agent turn, then clears the outbox', async () => {
       const { result } = await renderStore();
