@@ -224,7 +224,8 @@ services:
 
 > _WS-E verified 2026-09-15 — current actuals: backend 265 `.py` test files,
 > smoke `testing/smoke/README.md` 5 suites/12 cases, security 233/170, coverage
-> 94.2% (retained, re-measure TODO EXC-P14-01), Playwright 9 specs (6
-> `apps/web/e2e` + 3 `testing/e2e/flows`) vs 60 claimed (honest gap), chaos/fuzz
+> 94.2% (retained, re-measure TODO EXC-P14-01), Playwright 12 specs (12
+> `apps/web/e2e`; the 3 legacy `testing/e2e/flows` specs were deleted
+> 2026-10-23) vs 60 claimed (honest gap), chaos/fuzz
 > spec dirs empty → TODO, WCAG/k6 EXC-P14-02/03 open. Start at
 > [Test-Matrix.md](./Test-Matrix.md)._

@@ -1082,15 +1082,16 @@ The harness is good. The assertions are not. Fix assertions, not infrastructure.
       the names, add `snapshotPathTemplate`, compare (not refresh) in CI, and
       baseline at 375 + 1440 + one dark + one high-contrast.
 - [ ] **W6.9 Add `forbidOnly: !!process.env.CI`** to
-      `apps/web/playwright.config.ts` (the dead
-      `testing/e2e/playwright.config.ts:6` has it). A stray `test.only`
+      `apps/web/playwright.config.ts` (the now-deleted
+      `testing/e2e/playwright.config.ts:6` had it). A stray `test.only`
       currently skips 75 of 76 tests and CI goes green. Also set `retries` and
       remove `reuseExistingServer: true` from CI paths.
-- [ ] **W6.10 Delete the dead `testing/e2e` suite** — 13 tests, selectors that
+- [x] **W6.10 Delete the dead `testing/e2e` suite** — 13 tests, selectors that
       no longer exist (`data-testid="sidebar"`, `"login-error"`,
       `"connectors-page"`, `"connect-button"`), no workflow references it, and
-      its `mobile-chrome` Pixel 5 project never runs. Delete
-      `testing/accessibility/` after porting the axe thresholds.
+      its `mobile-chrome` Pixel 5 project never ran. Deleted 2026-10-23.
+      Remaining follow-up: delete `testing/accessibility/` after porting the axe
+      thresholds.
 - [ ] **W6.11 Verify the action refs.** `actions/checkout@v7` in **11 of 12**
       workflows, `upload-artifact@v7`, `cache@v6`. Latest published majors are
       `checkout@v4/v5`, `upload-artifact@v4`, `cache@v4`. If these are wrong,

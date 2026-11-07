@@ -132,7 +132,7 @@ export function TwoFactorAuthCard({
           <div
             className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border ${
               enabled
-                ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                ? 'bg-success/10 border-success/30 text-success'
                 : 'bg-surface-hover border-border text-text-muted'
             }`}
           >
@@ -151,8 +151,8 @@ export function TwoFactorAuthCard({
               <span
                 className={`inline-flex items-center px-2 py-0.5 text-xs font-semibold rounded-full border ${
                   enabled
-                    ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                    : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                    ? 'bg-success/15 text-success border-success/30'
+                    : 'bg-warning/15 text-warning border-warning/30'
                 }`}
               >
                 {enabled ? 'Active' : 'Disabled'}
@@ -177,7 +177,7 @@ export function TwoFactorAuthCard({
               {loading ? 'Preparing...' : 'Set Up Two-Factor'}
             </button>
           ) : (
-            <div className="flex items-center gap-2 text-xs font-mono text-emerald-400">
+            <div className="flex items-center gap-2 text-xs font-mono text-success">
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path
                   fillRule="evenodd"
@@ -280,7 +280,7 @@ export function TwoFactorAuthCard({
                     placeholder="000000"
                     className="w-full text-center text-2xl tracking-[0.4em] font-mono py-3 rounded-lg border border-border bg-background text-text focus:border-action focus:outline-none"
                   />
-                  {error && <p className="text-xs text-red-500 mt-2">{error}</p>}
+                  {error && <p className="text-xs text-error mt-2">{error}</p>}
                 </div>
 
                 <div className="flex justify-between items-center pt-3 border-t border-border">
@@ -304,7 +304,7 @@ export function TwoFactorAuthCard({
 
             {step === 'recovery' && (
               <div className="space-y-4">
-                <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs text-amber-300">
+                <div className="p-3 rounded-lg bg-warning/10 border border-warning/20 text-xs text-warning">
                   ⚠️ Save these single-use recovery codes. If you lose access to your device, they
                   are the ONLY way to access your account.
                 </div>
