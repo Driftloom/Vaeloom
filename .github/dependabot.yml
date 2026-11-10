@@ -14,8 +14,54 @@ updates:
           - 'react'
           - 'react-dom'
           - '@types/react*'
-      dev-deps:
+      # Development dependencies are split by toolchain so each PR is one
+      # upgrade that can be reviewed, validated and reverted on its own. The
+      # previous catch-all group produced a 24-package bundle spanning five
+      # majors (TypeScript 5->7, Jest 29->30, ESLint 8->10, Tailwind 3->4,
+      # Nx 20->24), which could not be validated as a single change.
+      dev-lint:
         dependency-type: 'development'
+        patterns:
+          - 'eslint'
+          - 'eslint-*'
+          - '@eslint/*'
+          - '@typescript-eslint/*'
+          - 'prettier'
+          - 'prettier-*'
+          - 'lint-staged'
+          - 'stylelint'
+          - 'stylelint-*'
+      dev-test:
+        dependency-type: 'development'
+        patterns:
+          - 'jest'
+          - 'jest-*'
+          - '@jest/*'
+          - '@testing-library/*'
+          - '@playwright/test'
+          - '@axe-core/*'
+          - 'ts-jest'
+      dev-types:
+        dependency-type: 'development'
+        patterns:
+          - '@types/*'
+      dev-typescript:
+        dependency-type: 'development'
+        patterns:
+          - 'typescript'
+      dev-tailwind:
+        dependency-type: 'development'
+        patterns:
+          - 'tailwindcss'
+          - 'postcss'
+          - 'autoprefixer'
+      dev-babel:
+        dependency-type: 'development'
+        patterns:
+          - 'babel-*'
+          - '@babel/*'
+          - '@swc/*'
+          - 'swc*'
 
   - package-ecosystem: 'docker'
     directory: '/'
