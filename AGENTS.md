@@ -341,8 +341,9 @@ Enforced here, not aspirational.
 - **~25 tables carry `USING (true)` service policies** covering `vaeloom_app`
   (migration 0047). For the app role those rely on app-layer scoping only — see
   `docs/security/RLS-SERVICE-POLICY-EXPOSURE.md`.
-- **`pfi 7.1.0` + FastAPI `0.141.1` requires a shim** until upgrade — see
-  `.agents/findings/archive/37-pfi-fastapi-every-request-500.md`.
+- **`prometheus-fastapi-instrumentator` is gone.** Metrics are recorded by the
+  hand-rolled `MetricsMiddleware` in
+  `apps/api/src/api/infrastructure/metrics.py`; do not re-add pfi.
 
 ---
 

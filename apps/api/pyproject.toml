@@ -9,7 +9,7 @@ description = "Vaeloom Unified API - API Gateway + AI Service"
 requires-python = ">=3.12"
 license = {text = "MIT"}
 dependencies = [
-    "fastapi==0.141.1",
+    "fastapi==0.162.0",
     "uvicorn[standard]>=0.29.0",
     # vault_sync imports yaml for note frontmatter. It resolves transitively via
     # langchain-core today, which means the whole router fails to import - and
@@ -48,7 +48,7 @@ dependencies = [
     "google-auth-oauthlib>=1.2.0",
     "signxml>=4.0.4",
     "croniter>=3.0.0",
-    "starlette==0.50.0",
+    "starlette==1.10.0",
     "jinja2>=3.1.0",
     "playwright>=1.45.0",
     "mcp>=2.0.0",
