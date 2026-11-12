@@ -24,10 +24,10 @@
     "prepare": "husky"
   },
   "devDependencies": {
-    "@axe-core/playwright": "^4.13.0",
+    "@axe-core/playwright": "^4.14.0",
     "@commitlint/cli": "^21.2.1",
     "@commitlint/config-conventional": "^21.2.0",
-    "@playwright/test": "^1.51.1",
+    "@playwright/test": "^1.65.0",
     "eslint": "^8.57.0",
     "husky": "^9.0.0",
     "lint-staged": "^17.3.0",
