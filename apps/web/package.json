@@ -59,7 +59,7 @@
     "@vaeloom/eslint-config": "workspace:*",
     "@vaeloom/tsconfig": "workspace:*",
     "autoprefixer": "^10.4.0",
-    "eslint-config-next": "^15.5.28",
+    "eslint-config-next": "^16.4.5",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^30.4.1",
     "postcss": "^8.4.0",
