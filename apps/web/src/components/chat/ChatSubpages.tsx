@@ -9,7 +9,10 @@ export interface ChatSubpagesNavProps {
   onTabChange: (tab: ChatTab) => void;
 }
 
-export function ChatSubpagesNav({ activeTab, onTabChange }: ChatSubpagesNavProps): JSX.Element {
+export function ChatSubpagesNav({
+  activeTab,
+  onTabChange,
+}: ChatSubpagesNavProps): React.JSX.Element {
   const tabs: Array<{ id: ChatTab; label: string; icon: string }> = [
     { id: 'stream', label: 'Chat Stream', icon: '💬' },
     { id: 'squads', label: 'Agent Squads', icon: '👥' },
@@ -104,7 +107,7 @@ export function AgentSquadsView({
   onToggleAgent,
   onSelectSquad,
   onActivateSquad,
-}: AgentSquadsViewProps): JSX.Element {
+}: AgentSquadsViewProps): React.JSX.Element {
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 max-w-5xl mx-auto w-full">
       <div className="border-b border-border/50 pb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -264,7 +267,7 @@ export function ModelMatrixView({
   temperature,
   onTemperatureChange,
   onSelectAndReturn,
-}: ModelMatrixViewProps): JSX.Element {
+}: ModelMatrixViewProps): React.JSX.Element {
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 max-w-5xl mx-auto w-full">
       <div className="border-b border-border/50 pb-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">

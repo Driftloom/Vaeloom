@@ -82,7 +82,7 @@ export function ChatAgentSquadSelector({
   selectedSquad,
   onToggleAgent,
   onSelectSquad,
-}: ChatAgentSquadSelectorProps): JSX.Element {
+}: ChatAgentSquadSelectorProps): React.JSX.Element {
   const isMultiAgent = selectedSquad.length > 1;
 
   const presets = [

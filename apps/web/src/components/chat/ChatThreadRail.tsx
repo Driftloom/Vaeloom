@@ -89,7 +89,7 @@ export function ChatThreadRail({
   onClear,
   agentCount,
   commandsAvailable,
-}: ChatThreadRailProps): JSX.Element {
+}: ChatThreadRailProps): React.JSX.Element {
   const railRef = useRef<HTMLElement | null>(null);
   const openRowRef = useRef<HTMLLIElement | null>(null);
 

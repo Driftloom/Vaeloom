@@ -192,7 +192,7 @@ N/A — The UI layer does not directly access any database. All data consumed by
 | Concern | Budget | Measurement | Optimization |
 |---------|--------|-------------|--------------|
 | Bundle splitting per page via dynamic imports | 250KB per route | @next/bundle-analyzer | Use `next/dynamic` with `ssr: false` for heavy components (knowledge graph, file viewer) |
-| SSR streaming with Suspense | Layout shell render < 200ms | Server timings | Use React 18 streaming SSR to send HTML progressively — Sidebar and TopNav render before slower content sections |
+| SSR streaming with Suspense | Layout shell render < 200ms | Server timings | Use React 19 streaming SSR to send HTML progressively — Sidebar and TopNav render before slower content sections |
 | Hydration overhead | TTI < 3s (SSR), < 5s (CSR) | Web Vitals | Track TTI per page; consider selective hydration or islands architecture for heavy CSR pages |
 | Lazy-loaded component activation | < 200ms from interaction | Dynamic import timing | Preload chunks on hover; use IntersectionObserver for viewport-based loading |
 
@@ -351,7 +351,7 @@ function StatusBadge({ status, label }: StatusBadgeProps) {
 | Storybook component library with visual regression tests | Medium | Medium | Q3 2026 |
 | Mobile-specific layout shell with responsive breakpoints | Medium | Medium | Q4 2026 |
 | WebAssembly memory graph renderer for 60 FPS | Low | High | Q2 2027 |
-| Component-level error boundaries for async failures (React 19) | High | Low | Q3 2026 (React 19 upgrade) |
+| Component-level error boundaries for async failures (React 19) | High | Low | Available now that React 19 is the runtime |
 | Drag-and-drop layout customization per user | Low | High | Q1 2027 |
 
 ## Related Documents

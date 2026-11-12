@@ -32,7 +32,7 @@ export function ChatMemoryDrawer({
   onClose,
   workspaceId,
   onRecallContext,
-}: ChatMemoryDrawerProps): JSX.Element | null {
+}: ChatMemoryDrawerProps): React.JSX.Element | null {
   const [search, setSearch] = useState('');
 
   // Close on Escape key

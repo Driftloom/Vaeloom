@@ -35,7 +35,7 @@ export function ParallelAgentStreamCard({
   synthesisText,
   isStreaming = false,
   onSelectAgent,
-}: ParallelAgentStreamCardProps): JSX.Element | null {
+}: ParallelAgentStreamCardProps): React.JSX.Element | null {
   const agentEntries = Object.entries(parallelOutputs || {});
   const [mobileActiveAgent, setMobileActiveAgent] = useState<string>(agentEntries[0]?.[0] ?? '');
 

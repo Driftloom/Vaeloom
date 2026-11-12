@@ -44,7 +44,7 @@ export function ChatMessageList({
   onScroll,
   showNewMessages = false,
   scrollToNewest,
-}: ChatMessageListProps): JSX.Element {
+}: ChatMessageListProps): React.JSX.Element {
   if (messages.length === 0) {
     return <div role="status">{emptyState}</div>;
   }

@@ -17,7 +17,7 @@ export interface UseFolderUploadParams {
 
 export interface UseFolderUploadResult {
   /** Attach to the hidden `<input webkitdirectory>`. */
-  inputRef: React.RefObject<HTMLInputElement>;
+  inputRef: React.RefObject<HTMLInputElement | null>;
   /** Opens the directory picker. */
   open: () => void;
   /** Attach to that input's `onChange`. */

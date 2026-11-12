@@ -119,7 +119,7 @@ export function usePageScrollSubscribe(cb: () => void): void {
  *   p = 1  →  the element's bottom edge is `viewTrail` above the viewport top
  */
 export function useSectionProgress(
-  ref: RefObject<HTMLElement>,
+  ref: RefObject<HTMLElement | null>,
   opts: { viewLead?: number; viewTrail?: number } = {},
 ): RefObject<number> {
   const { viewLead = 0.5, viewTrail = 0.5 } = opts;

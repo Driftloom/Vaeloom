@@ -66,7 +66,7 @@ export function ChatEmptyState({
   onPickCommand,
   onSend,
   activeAgent,
-}: ChatEmptyStateProps): JSX.Element {
+}: ChatEmptyStateProps): React.JSX.Element {
   const [activeCategory, setActiveCategory] = React.useState<'all' | 'career' | 'vault' | 'docs'>(
     'all',
   );

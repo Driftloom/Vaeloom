@@ -41,7 +41,7 @@ export function ChatModelSelector({
   isLoading = false,
   temperature,
   onTemperatureChange,
-}: ChatModelSelectorProps): JSX.Element {
+}: ChatModelSelectorProps): React.JSX.Element {
   const [isOpen, setIsOpen] = useState(false);
   const [filterTier, setFilterTier] = useState<ModelTier | 'all'>('all');
   const containerRef = useRef<HTMLDivElement>(null);
