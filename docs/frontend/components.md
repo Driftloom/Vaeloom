@@ -2,7 +2,7 @@
 
 **Package:** `@vaeloom/ui-kit` & `apps/web/src/components/shared`  
 **Standard:** Enterprise Zero-Trust Reusable Component Architecture  
-**Target:** Production Web Application (Next.js 15 App Router, React 18,
+**Target:** Production Web Application (Next.js 15 App Router, React 19,
 Tailwind CSS)
 
 ---

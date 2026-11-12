@@ -59,7 +59,9 @@
       "js-yaml@>=4": "4.3.2",
       "browserslist": "4.28.7",
       "nanoid@<4": "3.3.18",
-      "baseline-browser-mapping": "2.11.0"
+      "baseline-browser-mapping": "2.11.0",
+      "react": "19.3.1",
+      "react-dom": "19.3.1"
     }
   },
   "engines": {

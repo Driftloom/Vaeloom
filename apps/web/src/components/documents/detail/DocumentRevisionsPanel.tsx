@@ -24,7 +24,7 @@ export interface DocumentRevisionsPanelProps {
   onRetry: () => void;
   versionBusy: boolean;
   uploadSizeLimit: string;
-  fileInputRef: React.RefObject<HTMLInputElement>;
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
   onUploadRevision: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRestorePrompt: (versionNumber: number) => void;
 }

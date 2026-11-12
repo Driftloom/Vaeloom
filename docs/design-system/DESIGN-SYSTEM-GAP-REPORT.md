@@ -53,7 +53,7 @@ mechanisms, component inventories, and accessibility provisions.
 
 | Dimension              | Implementation                                  | Verification Status | Notes                                   |
 | :--------------------- | :---------------------------------------------- | :------------------ | :-------------------------------------- |
-| **Framework**          | Next.js 15.0.0 (App Router), React 18.3.0       | VERIFIED            | `apps/web/package.json`                 |
+| **Framework**          | Next.js 15.0.0 (App Router), React 19.3.1       | VERIFIED            | `apps/web/package.json`                 |
 | **Language**           | TypeScript 5.5.0 (`tsconfig.json`)              | VERIFIED            | Strict mode enabled                     |
 | **Styling Engine**     | Tailwind CSS 3.4.0, PostCSS 8.4.0               | VERIFIED            | `tailwind.config.ts`                    |
 | **Component Package**  | `@vaeloom/ui-kit` (workspace package)           | PARTIALLY VERIFIED  | 14 components, 0 unit tests             |

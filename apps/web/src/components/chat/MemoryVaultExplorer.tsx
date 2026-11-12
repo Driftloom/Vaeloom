@@ -164,7 +164,7 @@ export function MemoryVaultExplorer({
   workspaceId,
   onCiteMemory,
   onOpenVaultDrawer,
-}: MemoryVaultExplorerProps): JSX.Element {
+}: MemoryVaultExplorerProps): React.JSX.Element {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [copiedId, setCopiedId] = useState<string | null>(null);

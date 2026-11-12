@@ -79,7 +79,7 @@ function monogram(raw: string): string {
     .toUpperCase();
 }
 
-export function ChatComposer(props: ChatComposerProps): JSX.Element {
+export function ChatComposer(props: ChatComposerProps): React.JSX.Element {
   const {
     value,
     onChange,

@@ -49,13 +49,13 @@ export function Section({
   className?: string;
   labelledBy?: string;
   as?: 'section' | 'div';
-  innerRef?: React.RefObject<HTMLElement>;
+  innerRef?: React.RefObject<HTMLElement | null>;
 }) {
   return (
     <Tag
       id={id}
       aria-labelledby={labelledBy}
-      ref={innerRef as React.Ref<never>}
+      ref={innerRef as React.Ref<HTMLDivElement>}
       className={`relative py-20 sm:py-28 ${className}`}
     >
       {children}

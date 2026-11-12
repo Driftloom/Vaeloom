@@ -629,7 +629,7 @@ describe('DocumentsHub — the folder filter is server-side', () => {
   it('reaches the folder-delete confirmation, which used to be an unreachable branch', async () => {
     await renderLoaded();
 
-    fireEvent.click(screen.getByRole('button', { name: 'Delete folder Legal Contracts' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete folder Legal Contracts' }));
 
     const dialog = await screen.findByRole('dialog');
     expect(within(dialog).getByText('Delete folder')).toBeInTheDocument();

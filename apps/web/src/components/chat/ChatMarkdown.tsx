@@ -73,7 +73,7 @@ const COMPONENTS: Components = {
   ),
 };
 
-export function ChatMarkdown({ children }: { children: string }): JSX.Element {
+export function ChatMarkdown({ children }: { children: string }): React.JSX.Element {
   return (
     <div className="text-sm leading-relaxed text-text pr-2 break-words space-y-2">
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={COMPONENTS}>

@@ -1,6 +1,7 @@
 'use client';
 
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import type { JSX } from 'react';
 import { ChatMarkdown } from './ChatMarkdown';
 import { ParallelAgentStreamCard } from './ParallelAgentStreamCard';
 import { GroundingDossierModal } from './GroundingDossierModal';

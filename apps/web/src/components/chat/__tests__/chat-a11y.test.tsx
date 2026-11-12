@@ -373,7 +373,11 @@ type HarnessProps = Omit<ChatComposerProps, 'value' | 'onChange'> & {
 };
 
 /** The composer is fully controlled, so the tests drive a stateful host. */
-function ComposerHarness({ initialValue = '', onValueChange, ...rest }: HarnessProps): JSX.Element {
+function ComposerHarness({
+  initialValue = '',
+  onValueChange,
+  ...rest
+}: HarnessProps): React.JSX.Element {
   const [value, setValue] = useState(initialValue);
   return (
     <ChatComposer

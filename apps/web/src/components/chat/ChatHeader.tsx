@@ -1,3 +1,4 @@
+import type { JSX } from 'react';
 import type { ModelOption } from './types';
 import { ChatModelSelector } from './ChatModelSelector';
 import { ChatSessionInspectorPopover } from './ChatSessionInspectorPopover';

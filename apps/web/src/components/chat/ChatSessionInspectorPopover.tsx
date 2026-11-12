@@ -31,7 +31,7 @@ export function ChatSessionInspectorPopover({
   isCompacting = false,
   onToggleMemoryDrawer,
   agentCount,
-}: ChatSessionInspectorPopoverProps): JSX.Element {
+}: ChatSessionInspectorPopoverProps): React.JSX.Element {
   const [open, setOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
 
