@@ -395,6 +395,35 @@ at suite end, emitted by aiosqlite worker threads from abandoned tasks. That is
 the documented `_BACKGROUND_TASKS` debt below; it does not block completion and
 no longer poisons checkpointing.
 
+## Fourth run — `43416419730`: post-test-fix confirmation
+
+Commit `d26a17b9` re-ran the suite after the three test-isolation fixes:
+
+```text
+4 failed, 4983 passed, 81 skipped, 2 xfailed, 2332 warnings in 1868.54s (0:31:08)
+```
+
+The failure count moved 7 → 4 and passes moved 4980 → 4983: exactly the three
+fixed tests converted, with no new failures. The remaining four are the
+pre-existing product gaps classified above. `ci-integrity/run-integrity.json`:
+
+```json
+{
+  "reason": "session-finished",
+  "phase": "running",
+  "elapsed_seconds": 1868.6,
+  "call_reports": 5015,
+  "failed_reports": 4,
+  "node_down": [],
+  "exitstatus": 1,
+  "complete": false
+}
+```
+
+The job failed with exit code 1 (test results), not 66 (watchdog), and was not
+cancelled. The suite finished 22 minutes inside the 45-minute job cap with the
+240 s watchdog armed the whole time.
+
 ## Why this is not a symptom fix
 
 It does not guess which test hangs. It removes every reason the previous logs
@@ -407,18 +436,29 @@ affects any embedder that calls `asyncio.run` per unit of work, not just tests).
 ## Residual / next actions
 
 1. Keep the watchdog and artifact upload regardless of the fix: they are the
-   observability layer for any future stall. Run `43409549651` is the reference
-   for a healthy completion (`node_down: []`, `reason: session-finished`).
+   observability layer for any future stall. Runs `43409549651` and
+   `43416419730` are the reference for a healthy completion (`node_down: []`,
+   `reason: session-finished`, no exit 66).
 2. Drain `_BACKGROUND_TASKS` at shutdown (or bound `_save_eval_phase` with a
    timeout) so abandoned tasks stop producing `Event loop is closed` noise from
    aiosqlite threads. The per-loop lock already makes them harmless to
    checkpointing.
 3. Four pre-existing product failures remain, reproduced in baseline
-   `42814603061` and not masked here: `test_mvp_scope.py` (2 — `conversation` is
-   in the canonical registry but missing from the MVP scope roster) and
-   `test_idempotency.py` (2 — replay does not return the stored response;
-   conflicting payload returns `200` instead of `422`). These belong in a
-   follow-up product change, not this CI-integrity fix.
+   `42814603061` and not masked here. Follow-up PRs were agreed with the user:
+   - **MVP scope (2):** `test_mvp_scope.py` expects 11 canonical agents
+     including `conversation` (updated in `29defcf9`), but
+     `MVP_CANONICAL_AGENTS` in `orchestrator/router.py` still has 10. Result:
+     greetings, ambiguous requests, and emotional containment are blocked as
+     `out_of_scope` when `mvp_scope_enforced=True`. Fix is the roster plus its
+     comment/out-of-scope message and the docs that say "10".
+   - **Idempotency (2):** the middleware's `_store` opens a second transaction
+     while the request transaction still holds the SQLite write lock; on CI it
+     fails with `database is locked` after the 5 s busy timeout and correctly
+     passes the response through with `Idempotency-Stored: false`. Replay is
+     therefore not durable in the SQLite test backend (production Postgres is
+     unaffected). Fix belongs in middleware transaction/backoff design or test
+     DB serialization, with a regression test that asserts
+     `Idempotency-Stored: true`.
 4. Keep `--ci-watchdog-timeout` above `--timeout` plus restart overhead, and
    below the job cap minus a normal suite run. The current 240 s vs 180 s keeps
    60 s of headroom while still firing before cancellation.
