@@ -3,9 +3,10 @@
 **Severity:** P1 (CI reliability / diagnosability) **Area:**
 `.github/workflows/ci-backend.yml`, `apps/api/tests/ci_integrity.py`,
 `apps/api/conftest.py` **Found:** 2026-11-13 while investigating repeated
-`API CI :: test` cancellations **Status: IN PROGRESS** — the failure is now
-bounded and self-diagnosing; the test that stalls is named by the first
-instrumented run.
+`API CI :: test` cancellations **Status: FIXED (awaiting CI confirmation)** —
+the stall was a process-global `asyncio.Lock` poisoned by an abandoned detached
+task across pytest-asyncio's per-test loop teardown; the lock is now scoped per
+event loop.
 
 ## Summary
 
@@ -44,7 +45,9 @@ Root-cause chain, in causal order:
    masking five worker crashes.
 
 Steps 2–5 are fixed in this change. Step 1 is deliberately **not** guessed at:
-the next CI run will name the test and print its stack.
+the next CI run will name the test and print its stack. That run happened
+(`43400920642`); the hang it exposed is diagnosed and fixed in
+[Second instrumented run](#second-instrumented-run--43400920642-the-hang-is-a-poisoned-lock).
 
 ## Evidence
 
@@ -231,26 +234,136 @@ missing evidence. It now prints `last started : <none: no test started
 comfortably above the ~5 s startup+collection measured on Windows, so it still
 asserts the named-test guarantee.
 
+## Second instrumented run — `43400920642`: the hang is a poisoned lock
+
+The instrumentation paid off immediately. The watchdog fired on its own terms
+(the job was **not** cancelled), uploaded `api-ci-evidence`, and the worker
+dumps named the in-flight tests.
+
+| Worker | In-flight test when killed at 180 s | Fate |
+| ------ | ----------------------------------- | ---- |
+| `gw0` | `tests/test_orchestrator.py::TestRunAgentLoop::test_max_iterations_qa_failure_is_explicit` | node down, 241 s after start |
+| `gw1` | `tests/test_product_closure_e2e.py::test_A_new_user_journey` | node down |
+| `gw2` | `tests/test_orchestrator.py::TestStatePersistence::test_load_or_create_existing` | node down |
+
+Three different tests in three workers. `test_document_version_model_invariants`
+died on one worker but passed **64 ms later** on another. The victim is
+whatever writes a checkpoint first after a shared resource is poisoned, not a
+slow test.
+
+`faulthandler` dumps in `worker-gw{0,1,2}.log` show the main thread in
+`selectors.select` inside `pytest_asyncio`, with **no `/tests/` or `/src/api/`
+frames**, and 7–11 idle `aiosqlite` worker threads. That is an async coroutine
+awaiting something that never resolves — not CPU, not DB I/O. faulthandler
+cannot see async stacks, so the wait object had to be found by source.
+
+### Causal chain
+
+1. `get_state_store()` is a **process-wide singleton**. With the default
+   `VAELOOM_STATE_BACKEND=file`, that singleton is one `FileStateStore`.
+2. `FileStateStore` cached **one** lazily-created `asyncio.Lock` on the
+   instance (`state_store.py`, pre-fix `self._lock`), shared by every coroutine
+   in every event loop in the worker.
+3. `_eval_ok()` (`loop.py:4058`) schedules `_save_eval_phase(state)` as a
+   detached task via `loop.create_task(...)` (`loop.py:4068`). That task calls
+   `save_checkpoint` → `FileStateStore.save`, which acquires the singleton lock.
+4. pytest-asyncio 0.26 tears down each test's loop with
+   `shutdown_asyncgens()` + `loop.close()` in `_provide_event_loop`'s
+   finalizer. It **does not cancel pending tasks**. `_BACKGROUND_TASKS` in
+   `loop.py` is never drained either.
+5. An abandoned `_save_eval_phase` task can therefore be frozen mid-lock when
+   its loop closes. The lock stays `_locked=True` forever.
+6. The next checkpoint save in that worker — in a later test, on a fresh loop —
+   awaits the dead loop's lock. No timer is armed for that wait, so the new loop
+   parks in `select` until `pytest-timeout` kills the worker at 180 s.
+
+Confirmed with a minimal repro (`exp-ci-integrity/repro_state_lock.py`):
+
+```text
+loop1: lock acquired; locked = True
+loop1 closed without release
+loop2: HANG - save never completed (lock starved)
+```
+
+### Fix
+
+`FileStateStore` now keeps a
+`weakref.WeakKeyDictionary[event loop, asyncio.Lock]` and resolves the lock from
+`asyncio.get_running_loop()`. A dead loop's abandoned lock becomes irrelevant:
+the next save gets a fresh lock on its own loop and completes.
+
+CAS semantics are preserved. The lock exists to serialize the
+read-check-write window *within one loop* (all production writers for a request
+in one process share that loop); cross-process races were always best-effort
+for the file backend. Regression tests pin both halves:
+
+```text
+# post-fix
+pytest tests/test_state_store_loop_safety.py -o addopts="" -q
+4 passed in 2.32s
+
+# same tests against HEAD's pre-fix state_store.py (temporarily swapped in)
+3 failed, 1 passed in 12.43s   # TimeoutError on all cross-loop cases
+```
+
+Tests: `apps/api/tests/test_state_store_loop_safety.py`
+(`test_lock_from_a_closed_loop_does_not_block_a_live_loop`,
+`test_cas_survives_loop_rollover`,
+`test_concurrent_writers_in_one_loop_stay_serialized`,
+`test_save_checkpoint_after_poisoned_singleton`).
+
+Neighbour suites and guard suite:
+
+```text
+pytest tests/test_state_durability.py tests/test_database_state_store.py \
+       tests/test_state_store_loop_safety.py -o addopts="" -q
+8 passed in 18.21s
+
+pytest tests/test_ci_integrity_guard.py -o addopts="" -q
+5 passed in 78.78s
+
+ruff check apps/api/src/api/orchestrator/state_store.py \
+           apps/api/tests/test_state_store_loop_safety.py
+All checks passed!
+```
+
+### Residual (not required for this fix)
+
+- **Abandoned tasks still exist.** The loop-scoped lock makes them harmless to
+  checkpointing, but `_BACKGROUND_TASKS` is still never drained, so a task can
+  outlive its loop and emit `Event loop is closed` from an aiosqlite worker
+  thread. A test-harness drain would need to override pytest-asyncio's
+  `event_loop` fixture; 0.26 deprecates that override, so it is deferred rather
+  than added speculatively.
+- **Per-test aiosqlite threads and the global engine pool** are separate
+  lifecycle debt in `tests/conftest.py`/`api/database.py`. They explain the
+  thread count and closed-loop warnings but not the hang.
+- **Confirmation:** the next `API CI` run should complete without exit 66, a
+  240 s watchdog fire, or any 180 s worker kill. That is the acceptance gate for
+  calling this closed.
+
 ## Why this is not a symptom fix
 
 It does not guess which test hangs. It removes every reason the previous logs
 could not answer that question, bounds a stall to 240 s instead of 45 minutes,
-and guarantees the next occurrence carries a nodeid and a stack. The hang fix is
-a separate, evidence-gated change.
+and guarantees the next occurrence carries a nodeid and a stack. The instrumented
+run then named the mechanism — a process-global lock surviving its event loop —
+and the fix removes that mechanism instead of masking the symptom (the bug also
+affects any embedder that calls `asyncio.run` per unit of work, not just tests).
 
 ## Residual / next actions
 
-1. Download `api-ci-evidence` from the next run. The hanger is the last `START`
-   without a matching `END` in `worker-gwN.log`; its stack is directly below it.
-   If the worker was idle, `CONTROLLER-STALL.log` shows where the controller and
-   scheduler were stuck instead.
-2. If the watchdog fires, `CONTROLLER-STALL.log` names `last_started` and the
-   surviving workers.
-3. Fix the named hang and re-run; keep the watchdog and the artifact upload.
-4. Pre-existing failures observed in run `42814603061`, unrelated to the
+1. Confirm the next `API CI` run completes without exit 66, a 240 s watchdog
+   fire, or a 180 s worker kill. Keep the watchdog and artifact upload
+   regardless: they are the observability layer for any future stall.
+2. Drain `_BACKGROUND_TASKS` at shutdown (or bound `_save_eval_phase` with a
+   timeout) so abandoned tasks stop producing `Event loop is closed` noise from
+   aiosqlite threads. The per-loop lock already makes them harmless to
+   checkpointing.
+3. Pre-existing failures observed in run `42814603061`, unrelated to the
    crashes: `test_mvp_scope.py` (2), `test_idempotency.py` (2), and
    `test_overleaf_integration.py::test_latex_compiler_fallback` (fixed here by
    installing Chromium).
-5. Keep `--ci-watchdog-timeout` above `--timeout` plus restart overhead, and
+4. Keep `--ci-watchdog-timeout` above `--timeout` plus restart overhead, and
    below the job cap minus a normal suite run. The current 240 s vs 180 s keeps
    60 s of headroom while still firing before cancellation.

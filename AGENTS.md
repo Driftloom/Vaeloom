@@ -217,6 +217,16 @@ reported totals are wrong and a `-n 4` result is not reliable evidence.
 - Keep the watchdog threshold above `--timeout` plus restart overhead, and
   below the job cap minus a normal suite run (240 s vs 180 s today).
 
+**Event-loop-bound locks must not live on process singletons.**
+`get_state_store()` is process-wide, while pytest-asyncio creates a fresh loop
+per test and closes it without cancelling pending tasks. `FileStateStore` keys
+its CAS lock by `asyncio.get_running_loop()` (`state_store.py`). Caching one
+`asyncio.Lock` on the singleton let a detached checkpoint save abandoned at
+loop close hold the lock forever; the next `save_checkpoint` in that worker
+parked in `select` with no timer (F-41, run `43400920642`). Do not "optimise"
+this back to a single instance lock. Regression tests:
+`tests/test_state_store_loop_safety.py`.
+
 Tests use SQLite with a mock backend — a `tmp_path` per-test DB through
 `NullPool`. `mock_llm` and `mock_connector_test` are autouse fixtures in
 `apps/api/tests/conftest.py:381` and `:436`.

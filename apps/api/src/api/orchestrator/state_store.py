@@ -13,6 +13,7 @@ import contextlib
 import json
 import logging
 import os
+import weakref
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Any
@@ -67,16 +68,30 @@ class FileStateStore(StateStore):
 
     def __init__(self, state_dir: Path | None = None):
         self._state_dir = state_dir
-        self._lock: asyncio.Lock | None = None
+        # One lock per event loop, never one lock per store. get_state_store()
+        # is a process-wide singleton, while pytest-asyncio (and any embedder
+        # that calls asyncio.run per unit of work) creates a new loop per test.
+        # A single cached lock outlives its loop: a task abandoned when that
+        # loop closes keeps the lock acquired forever, and every later
+        # save_checkpoint waits on a dead loop — the event loop sits in select
+        # with no timer, so faulthandler cannot even see the coroutine. That is
+        # exactly the CI hang in run 43400920642 (three workers, 180 s each).
+        # Loop-scoped locks make a dead loop's lock irrelevant.
+        self._locks: weakref.WeakKeyDictionary[
+            asyncio.AbstractEventLoop, asyncio.Lock
+        ] = weakref.WeakKeyDictionary()
 
     def _get_lock(self) -> asyncio.Lock:
         # In-loop interlock for the read-check-write CAS window. This
         # serializes coroutines sharing the loop; cross-PROCESS file races
         # remain best-effort (file backend is dev/offline grade — production
-        # deployments use db/redis). Created lazily (loop-bound).
-        if self._lock is None:
-            self._lock = asyncio.Lock()
-        return self._lock
+        # deployments use db/redis).
+        loop = asyncio.get_running_loop()
+        lock = self._locks.get(loop)
+        if lock is None:
+            lock = asyncio.Lock()
+            self._locks[loop] = lock
+        return lock
 
     @property
     def state_dir(self) -> Path:

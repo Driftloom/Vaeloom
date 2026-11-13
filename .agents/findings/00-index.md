@@ -1,11 +1,10 @@
 # Vaeloom — `.agents/findings` Index
 
-**Last Updated:** 2026-11-13 — F-41 CI suite integrity instrumentation (in progress)
+**Last Updated:** 2026-11-13 - F-41 root cause fixed (poisoned cross-loop state-store lock); CI confirmation pending
 
 ## Health
 
-- **Open findings:** 1 (F-41, in progress — instrumentation shipped; the
-  root-cause hang is pending the first instrumented CI run)
+- **Open findings:** 0
 - **Archived findings:** 88 (29 original-folder findings + 59 pre-existing
   archive entries)
 - **Last audit sweep:** 2026-08-30
@@ -15,19 +14,20 @@
 | Status      | Count | Notes                                              |
 | ----------- | ----- | -------------------------------------------------- |
 | Open        | 0     |                                                    |
-| In Progress | 1     | F-41: failure bounded + self-diagnosing; hang TBD  |
+| In Progress | 1     | F-41: root cause fixed; next CI run is the acceptance gate |
 | Resolved    | 30    | 30 findings now have a resolution (see below)      |
 | Archived    | 88    | 29 original-folder + 59 pre-existing               |
 
 ## In Progress Findings (1)
 
-> F-41 closes the diagnostic blindness and the 45-minute wait. It deliberately
-> does not guess the hanging test: the next CI run names it and prints its
-> stack. See `41-ci-suite-integrity.md`.
+> F-41 identified the stall mechanism: a process-global `FileStateStore`
+> `asyncio.Lock` was poisoned when a detached checkpoint task was abandoned at
+> pytest-asyncio's per-test loop close. Locks are now scoped per event loop,
+> with regression tests that fail on the pre-fix code. The next CI run confirms.
 
 | ID   | Severity | Area      | Summary                                                                                                      | Resolution                                                                                                                       | Status      |
 | ---- | -------- | --------- | ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| F-41 | P1       | CI/Testing | Worker deaths print no name/stack; controller has no liveness deadline; `-q` hides restarts; coverage masks crashes | `tests/ci_integrity.py`: fd-backed faulthandler dumps + controller watchdog (exit 66); workflow: `-q` removed, 240s watchdog, coverage split, evidence artifact, Chromium installed | **IN PROGRESS** |
+| F-41 | P1       | CI/Testing | Worker deaths print no name/stack; controller has no liveness deadline; `-q` hides restarts; coverage masks crashes | fd-backed dumps + controller watchdog (exit 66) + workflow hardening; root-cause fix: per-loop `FileStateStore` locks + regression tests | **IN PROGRESS** |
 
 ## Resolved Findings (30)
 
@@ -81,9 +81,10 @@
 
 ## Changelog
 
-- [2026-11-13] Added F-41 (API CI worker-death diagnosability + controller
-  watchdog). Instrumentation and workflow hardening shipped; the hanging test
-  is pending the first instrumented CI artifact.
+- [2026-11-13] F-41 instrumentation named the hang (run `43400920642`):
+  singleton `FileStateStore` lock poisoned by an abandoned detached task across
+  pytest-asyncio loop teardown. Fixed with per-loop locks + regression tests;
+  CI confirmation pending.
 - [2026-08-29] All 29 findings have resolutions; index refreshed (0 open / 88
   archived). 7 stale root index/README files moved into `archive/`.
 - [2026-08-24] Added F-23..F-29 (5 new findings) + refreshed 6 audit reports.
