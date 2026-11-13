@@ -431,6 +431,11 @@ about five minutes under the old 45-minute cap. The cap has since been raised to
 **55 minutes**; the 240 s watchdog still owns stalls, so the change adds
 headroom without delaying stall detection.
 
+The cap-change commit `6a651677` ran as `43428255369`: the same four failures,
+`4 failed, 4983 passed, 81 skipped, 2 xfailed in 2171.28s (0:36:11)`, with
+`node_down: []` and exit status 1. That job took 39m31s against the new
+55-minute cap, about 15 minutes of headroom, and was not cancelled.
+
 ## Why this is not a symptom fix
 
 It does not guess which test hangs. It removes every reason the previous logs
