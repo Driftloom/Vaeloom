@@ -197,9 +197,9 @@ reported totals are wrong and a `-n 4` result is not reliable evidence.
 (`apps/api/tests/ci_integrity.py`, registered by `apps/api/conftest.py`).
 
 - `worker-gwN.log` — per-worker START/END timeline. A hang dump is written 10 s
-  before `--timeout` fires, to a file descriptor, so it survives pytest-timeout's
-  `os._exit`. The hanger is the last `START` with no matching `END`; its stack
-  follows immediately.
+  before `--timeout` fires, to a file descriptor, so it survives
+  pytest-timeout's `os._exit`. The hanger is the last `START` with no matching
+  `END`; its stack follows immediately.
 - `CONTROLLER-STALL.log` + exit code **66** — the controller saw no test
   activity for 240 s. `last_started` names the test, and the file carries all
   thread stacks and xdist state. 66 is reserved for this; pytest owns 0–4, so a
@@ -210,22 +210,20 @@ reported totals are wrong and a `-n 4` result is not reliable evidence.
   `junit.xml` and `coverage.xml`. The evidence directory is `ci-integrity/`,
   deliberately **not** a dot-directory: `upload-artifact` skips hidden files by
   default, so a `.ci-integrity/` path uploads nothing.
-- **Never add `-q` to the core suite.** xdist gates
-  `replacing crashed worker` / `maximum crashed workers reached` on
-  `verbose >= 0`, so `-q` hides exactly the lines that explain a worker death.
-  `-q` is fine for scoped local runs.
-- Keep the watchdog threshold above `--timeout` plus restart overhead, and
-  below the job cap minus a normal suite run (240 s vs 180 s, 55-minute cap
-  today).
+- **Never add `-q` to the core suite.** xdist gates `replacing crashed worker` /
+  `maximum crashed workers reached` on `verbose >= 0`, so `-q` hides exactly the
+  lines that explain a worker death. `-q` is fine for scoped local runs.
+- Keep the watchdog threshold above `--timeout` plus restart overhead, and below
+  the job cap minus a normal suite run (240 s vs 180 s, 55-minute cap today).
 
 **Event-loop-bound locks must not live on process singletons.**
 `get_state_store()` is process-wide, while pytest-asyncio creates a fresh loop
 per test and closes it without cancelling pending tasks. `FileStateStore` keys
 its CAS lock by `asyncio.get_running_loop()` (`state_store.py`). Caching one
-`asyncio.Lock` on the singleton let a detached checkpoint save abandoned at
-loop close hold the lock forever; the next `save_checkpoint` in that worker
-parked in `select` with no timer (F-41, run `43400920642`). Do not "optimise"
-this back to a single instance lock. Regression tests:
+`asyncio.Lock` on the singleton let a detached checkpoint save abandoned at loop
+close hold the lock forever; the next `save_checkpoint` in that worker parked in
+`select` with no timer (F-41, run `43400920642`). Do not "optimise" this back to
+a single instance lock. Regression tests:
 `tests/test_state_store_loop_safety.py`.
 
 Tests use SQLite with a mock backend — a `tmp_path` per-test DB through

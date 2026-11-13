@@ -14,10 +14,10 @@ jobs:
       ENCRYPTION_KEY: ci-test-encryption-key-must-be-at-least-32-chars!!
       # pytest's terminal writer block-buffers when stdout is a pipe, so
       # without this a crashed run hides the progress that preceded it.
-      PYTHONUNBUFFERED: "1"
+      PYTHONUNBUFFERED: '1'
       # Native crashes (SIGSEGV/SIGABRT) dump their stacks to stderr instead
       # of dying silently.
-      PYTHONFAULTHANDLER: "1"
+      PYTHONFAULTHANDLER: '1'
     defaults:
       run:
         working-directory: apps/api
