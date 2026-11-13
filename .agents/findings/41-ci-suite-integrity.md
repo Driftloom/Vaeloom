@@ -150,10 +150,10 @@ Two operational defects in the first attempt, both fixed here:
   disabled the watchdog under the `-n 2` configuration CI uses. Session start
   also bounds a hung collection, and CI collection (~70 s) has ample room under
   the 240 s threshold. The threshold is capped by the job budget, not just the
-  per-test timeout: setup consumes ~3 min of the 45-minute job cap, a normal
-  suite run is ~35-37 min, and 300 s fired 2 s before cancellation on run
-  `43391392028`. 240 s keeps 60 s above `--timeout` and leaves room to upload
-  evidence before the cap.
+  per-test timeout: setup consumes ~3 min, the slowest observed suite run is
+  36m40s, and the job cap is 55 minutes, leaving ~15 min to upload evidence.
+  300 s fired 2 s before the old 45-minute cap on run `43391392028`. 240 s keeps
+  60 s above `--timeout` and the evidence upload well inside the cap.
 - On silence, writes `CONTROLLER-STALL.log` (banner, JSON state, all-thread
   stacks) and exits with **66** — distinct from pytest's 0–4, so a stall can
   never be read as a test failure, interrupt, internal error, or usage error.
@@ -168,8 +168,8 @@ workers configure plugins before collecting `tests/conftest.py`.
 ### 4. Workflow — `.github/workflows/ci-backend.yml`
 
 - Dropped `-q`; added `PYTHONUNBUFFERED=1` and `PYTHONFAULTHANDLER=1`.
-- Added `--ci-watchdog-timeout=240` (above the 180 s per-test timeout and below
-  the 45-minute job cap minus a normal suite run).
+- Added `--ci-watchdog-timeout=240` (above the 180 s per-test timeout and well
+  below the 55-minute job cap minus a normal suite run).
 - Added `--junitxml` and a step-scoped `CI_INTEGRITY_DIR`; evidence is uploaded
   with `actions/upload-artifact@v7` under `if: always()`. The directory is
   `ci-integrity/`, not `.ci-integrity/`: `upload-artifact` skips hidden files by
@@ -421,8 +421,15 @@ pre-existing product gaps classified above. `ci-integrity/run-integrity.json`:
 ```
 
 The job failed with exit code 1 (test results), not 66 (watchdog), and was not
-cancelled. The suite finished 22 minutes inside the 45-minute job cap with the
-240 s watchdog armed the whole time.
+cancelled. That job finished at 34m02s, about eleven minutes inside the
+45-minute cap, with the 240 s watchdog armed the whole time.
+
+Final run `43421566542` (`32e98278`, docs-only delta) reproduced the same four
+failures: `4 failed, 4983 passed, 81 skipped, 2 xfailed in 2200.22s (0:36:40)`,
+`node_down: []`, exit status 1. That job took **39m49s** end to end, leaving
+about five minutes under the old 45-minute cap. The cap has since been raised to
+**55 minutes**; the 240 s watchdog still owns stalls, so the change adds
+headroom without delaying stall detection.
 
 ## Why this is not a symptom fix
 
@@ -462,3 +469,8 @@ affects any embedder that calls `asyncio.run` per unit of work, not just tests).
 4. Keep `--ci-watchdog-timeout` above `--timeout` plus restart overhead, and
    below the job cap minus a normal suite run. The current 240 s vs 180 s keeps
    60 s of headroom while still firing before cancellation.
+5. **Job cap — resolved.** The slowest observed suite is 2200 s (36m40s) and the
+   resulting job was 39m49s, leaving ~5 minutes under the old
+   `timeout-minutes: 45`. The cap is now **55 minutes**: false-cancellation risk
+   is gone without weakening the 240 s stall guard. The tradeoff is a longer
+   worst-case job if something new stalls outside the controller.

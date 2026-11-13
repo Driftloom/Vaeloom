@@ -8,7 +8,7 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 55
     env:
       JWT_SECRET: ci-test-secret-not-for-production
       ENCRYPTION_KEY: ci-test-encryption-key-must-be-at-least-32-chars!!
@@ -78,11 +78,12 @@ jobs:
         # --ci-watchdog-timeout: dsession.loop_once() has no liveness deadline.
         # When a worker is stuck below the Python layer, triggershutdown() can
         # never finish and the job burns until timeout-minutes. 240s is above the
-        # per-test 180s timeout, so real progress never trips it, while leaving
-        # room for upload-artifact before the 45-minute job cap (setup consumes
-        # ~3 min and a normal suite run is ~35-37 min). 300s fired only 2s
-        # before the cap on run 43391392028. A genuine stall exits 66 with a
-        # dump naming the last test the controller saw start.
+        # per-test 180s timeout, so real progress never trips it. The job cap is
+        # 55 minutes: setup ~3 min plus the slowest observed suite (36m40s) lands
+        # near 40 min, leaving ~15 min to upload evidence before a legitimate
+        # timeout. 300s fired only 2s before the old 45-minute cap on run
+        # 43391392028. A genuine stall exits 66 with a dump naming the last test
+        # the controller saw start.
         #
         # --cov-fail-under=0: a worker killed mid-run is dropped from
         # pytest-cov, so the in-step gate reported "coverage 25% < 80%" and

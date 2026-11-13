@@ -215,7 +215,8 @@ reported totals are wrong and a `-n 4` result is not reliable evidence.
   `verbose >= 0`, so `-q` hides exactly the lines that explain a worker death.
   `-q` is fine for scoped local runs.
 - Keep the watchdog threshold above `--timeout` plus restart overhead, and
-  below the job cap minus a normal suite run (240 s vs 180 s today).
+  below the job cap minus a normal suite run (240 s vs 180 s, 55-minute cap
+  today).
 
 **Event-loop-bound locks must not live on process singletons.**
 `get_state_store()` is process-wide, while pytest-asyncio creates a fresh loop
