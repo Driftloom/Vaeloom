@@ -8,10 +8,16 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 55
     env:
       JWT_SECRET: ci-test-secret-not-for-production
       ENCRYPTION_KEY: ci-test-encryption-key-must-be-at-least-32-chars!!
+      # pytest's terminal writer block-buffers when stdout is a pipe, so
+      # without this a crashed run hides the progress that preceded it.
+      PYTHONUNBUFFERED: '1'
+      # Native crashes (SIGSEGV/SIGABRT) dump their stacks to stderr instead
+      # of dying silently.
+      PYTHONFAULTHANDLER: '1'
     defaults:
       run:
         working-directory: apps/api
@@ -22,6 +28,11 @@ jobs:
           python-version: '3.12'
           cache: 'pip'
       - run: pip install -e ".[dev]"
+      - name: Install Playwright Chromium
+        # tests/test_overleaf_integration.py::test_latex_compiler_fallback
+        # exercises the HTML->PDF fallback, which drives Chromium. Without the
+        # browser it failed with PlaywrightUnavailableError on every run.
+        run: python -m playwright install --with-deps chromium
       - name: Verify Architecture & Zero-Bypass Boundaries
         run: python ../../scripts/verify_architecture.py
       - name: Platform Packages & Agents Unit Tests
@@ -57,8 +68,62 @@ jobs:
       - name: Core API Test Suite
         # --max-worker-restart: a worker that dies (OOM kill, or pytest-timeout's
         # thread method, which calls os._exit and takes the worker process with
-        # it) otherwise takes its in-flight tests down with it and the run
-        # reports a crash instead of a result. xdist restarts the worker and
-        # re-schedules the lost tests, so one unlucky worker cannot decide the
-        # outcome of the whole suite.
-        run: python -m pytest tests/ -q -o addopts="-n 2 --dist loadfile --max-worker-restart=4" --timeout=180 --timeout-method=thread --maxfail=25 -rf --tb=short --cov=src/api/ --cov-report=xml --cov-report=term --ignore=tests/temporal --ignore=tests/integration --ignore=tests/adversarial --ignore=tests/test_agent_eval_execution.py --ignore=tests/test_agent_to_agent_hierarchy.py --ignore=tests/test_agentic_gaps_closure.py
+        # it) otherwise takes its in-flight tests down with it. xdist restarts
+        # the worker and re-schedules the lost tests.
+        #
+        # No -q: xdist gates report_line() on verbose >= 0, so -q silently
+        # dropped "replacing crashed worker" and "maximum crashed workers
+        # reached" -- the only lines that explained the worker deaths.
+        #
+        # --ci-watchdog-timeout: dsession.loop_once() has no liveness deadline.
+        # When a worker is stuck below the Python layer, triggershutdown() can
+        # never finish and the job burns until timeout-minutes. 240s is above the
+        # per-test 180s timeout, so real progress never trips it. The job cap is
+        # 55 minutes: setup ~3 min plus the slowest observed suite (36m40s) lands
+        # near 40 min, leaving ~15 min to upload evidence before a legitimate
+        # timeout. 300s fired only 2s before the old 45-minute cap on run
+        # 43391392028. A genuine stall exits 66 with a dump naming the last test
+        # the controller saw start.
+        #
+        # --cov-fail-under=0: a worker killed mid-run is dropped from
+        # pytest-cov, so the in-step gate reported "coverage 25% < 80%" and
+        # masked the crash. Tests decide tests; the separate step below decides
+        # coverage.
+        #
+        # CI_INTEGRITY_DIR is step-scoped so the evidence artifact contains
+        # only this suite, not the standalone suites above. It must not be a
+        # dot-directory: upload-artifact skips hidden files by default, which is
+        # why the first instrumented run uploaded nothing.
+        env:
+          CI_INTEGRITY_DIR: ${{ github.workspace }}/ci-integrity
+        run: |
+          mkdir -p "$CI_INTEGRITY_DIR"
+          python -m pytest tests/ \
+            -o addopts="-n 2 --dist loadfile --max-worker-restart=4" \
+            --timeout=180 --timeout-method=thread \
+            --ci-watchdog-timeout=240 \
+            --maxfail=25 -rf --tb=short \
+            --cov=src/api/ --cov-report=xml --cov-report=term --cov-fail-under=0 \
+            --junitxml="$CI_INTEGRITY_DIR/junit.xml" \
+            --ignore=tests/temporal \
+            --ignore=tests/integration \
+            --ignore=tests/adversarial \
+            --ignore=tests/test_agent_eval_execution.py \
+            --ignore=tests/test_agent_to_agent_hierarchy.py \
+            --ignore=tests/test_agentic_gaps_closure.py
+
+      - name: Coverage floor
+        # Runs only if the suite passed: a lost worker must surface as a test
+        # crash with a stack, never as a coverage percentage.
+        run: python -m coverage report --fail-under=80
+
+      - name: Upload CI evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: api-ci-evidence
+          path: |
+            ci-integrity/
+            apps/api/coverage.xml
+          if-no-files-found: warn
+          retention-days: 14

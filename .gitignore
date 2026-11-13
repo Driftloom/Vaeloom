@@ -328,6 +328,9 @@ htmlcov/
 coverage.xml
 coverage.json
 
+# CI integrity evidence (uploaded as an artifact, never committed)
+ci-integrity/
+
 # Generated OpenAPI specs (regenerated from code)
 docs/openapi.json
 docs/openapi.yaml
