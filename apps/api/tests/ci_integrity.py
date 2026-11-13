@@ -28,7 +28,7 @@ Both guards are opt-in so local runs stay silent and fast:
 * ``CI_INTEGRITY_DIR`` enables the per-worker hang dumps and the controller
   timeline (CI sets it to a directory that is uploaded as an artifact).
 * ``--ci-watchdog-timeout=SECONDS`` enables the controller watchdog (CI passes
-  ``300``). ``0`` disables it, which is the default.
+  ``240``). ``0`` disables it, which is the default.
 
 Exit code 66 means "the controller watchdog fired". pytest owns 0-4, so 66
 cannot be confused with a test failure, an interrupt, an internal error, or a
@@ -193,7 +193,7 @@ class _ControllerState:
 
         Collection is deliberately inside the budget: a hung import or a worker
         that never finishes collecting is a real stall, and CI collection is
-        ~70 s against a 300 s threshold, so normal collection has ample room.
+        ~70 s against a 240 s threshold, so normal collection has ample room.
         ``pytest_collection_finish`` cannot be used to arm this under xdist --
         the controller never calls it (only ``looponfail`` does).
         """
@@ -317,13 +317,21 @@ class _ControllerWatchdog(threading.Thread):
         report.update(self._xdist_state())
         report["stall_threshold_seconds"] = self._stall_seconds
 
+        # A stall before the first logstart is a collection / worker-startup
+        # stall. Say that outright: "last started : None" reads like missing
+        # evidence when it is actually the diagnosis.
+        last_started = report["last_started"] or (
+            "<none: no test started (collection or worker startup)>"
+        )
+        last_report = report["last_report"] or "<none>"
+
         lines = [
             "=" * 78,
             "CI INTEGRITY: the test controller stopped making progress.",
             f"  no activity for {idle:.1f}s (threshold {self._stall_seconds:.0f}s)",
             f"  phase={report['phase']} elapsed={report['elapsed_seconds']}s",
-            f"  last started : {report['last_started']}",
-            f"  last report  : {report['last_report']}",
+            f"  last started : {last_started}",
+            f"  last report  : {last_report}",
             f"  active workers: {report['active_workers']}",
             f"  workers lost  : {report['node_down']}",
             "  This is the condition that used to burn the workflow's 45-minute",
@@ -388,7 +396,7 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         help=(
             "Exit with code 66 when the controller sees no test activity for "
             "this many seconds. 0 disables the watchdog (default). CI passes "
-            "300 so a stalled suite fails in minutes with a stack dump instead "
+            "240 so a stalled suite fails in minutes with a stack dump instead "
             "of being cancelled by timeout-minutes."
         ),
     )

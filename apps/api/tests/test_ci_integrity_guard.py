@@ -107,6 +107,11 @@ def test_watchdog_bounds_a_stalled_controller(
     The xdist case is the one CI runs. It regressed once: arming on
     ``pytest_collection_finish`` left the watchdog dead under xdist because the
     controller never calls that hook.
+
+    The threshold must clear startup + collection (~5 s on Windows here),
+    otherwise the watchdog correctly fires during collection and there is no
+    test to name; the banner then reports ``phase=armed`` and names collection
+    rather than a test.
     """
     artifacts = tmp_path / "artifacts"
 
@@ -114,7 +119,7 @@ def test_watchdog_bounds_a_stalled_controller(
         tmp_path,
         HANGING_TEST,
         *workers,
-        "--ci-watchdog-timeout=2",
+        "--ci-watchdog-timeout=15",
         artifact_dir=artifacts,
     )
 

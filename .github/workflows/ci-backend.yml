@@ -77,10 +77,12 @@ jobs:
         #
         # --ci-watchdog-timeout: dsession.loop_once() has no liveness deadline.
         # When a worker is stuck below the Python layer, triggershutdown() can
-        # never finish and the job burns until timeout-minutes. 300s is
-        # comfortably above the per-test 180s timeout, so real progress never
-        # trips it; a genuine stall exits 66 with a dump naming the last test
-        # the controller saw start.
+        # never finish and the job burns until timeout-minutes. 240s is above the
+        # per-test 180s timeout, so real progress never trips it, while leaving
+        # room for upload-artifact before the 45-minute job cap (setup consumes
+        # ~3 min and a normal suite run is ~35-37 min). 300s fired only 2s
+        # before the cap on run 43391392028. A genuine stall exits 66 with a
+        # dump naming the last test the controller saw start.
         #
         # --cov-fail-under=0: a worker killed mid-run is dropped from
         # pytest-cov, so the in-step gate reported "coverage 25% < 80%" and
@@ -88,15 +90,17 @@ jobs:
         # coverage.
         #
         # CI_INTEGRITY_DIR is step-scoped so the evidence artifact contains
-        # only this suite, not the standalone suites above.
+        # only this suite, not the standalone suites above. It must not be a
+        # dot-directory: upload-artifact skips hidden files by default, which is
+        # why the first instrumented run uploaded nothing.
         env:
-          CI_INTEGRITY_DIR: ${{ github.workspace }}/.ci-integrity
+          CI_INTEGRITY_DIR: ${{ github.workspace }}/ci-integrity
         run: |
           mkdir -p "$CI_INTEGRITY_DIR"
           python -m pytest tests/ \
             -o addopts="-n 2 --dist loadfile --max-worker-restart=4" \
             --timeout=180 --timeout-method=thread \
-            --ci-watchdog-timeout=300 \
+            --ci-watchdog-timeout=240 \
             --maxfail=25 -rf --tb=short \
             --cov=src/api/ --cov-report=xml --cov-report=term --cov-fail-under=0 \
             --junitxml="$CI_INTEGRITY_DIR/junit.xml" \
@@ -118,7 +122,7 @@ jobs:
         with:
           name: api-ci-evidence
           path: |
-            .ci-integrity/
+            ci-integrity/
             apps/api/coverage.xml
           if-no-files-found: warn
           retention-days: 14

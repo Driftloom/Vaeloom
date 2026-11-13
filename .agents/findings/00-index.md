@@ -27,7 +27,7 @@
 
 | ID   | Severity | Area      | Summary                                                                                                      | Resolution                                                                                                                       | Status      |
 | ---- | -------- | --------- | ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| F-41 | P1       | CI/Testing | Worker deaths print no name/stack; controller has no liveness deadline; `-q` hides restarts; coverage masks crashes | `tests/ci_integrity.py`: fd-backed faulthandler dumps + controller watchdog (exit 66); workflow: `-q` removed, 300s watchdog, coverage split, evidence artifact, Chromium installed | **IN PROGRESS** |
+| F-41 | P1       | CI/Testing | Worker deaths print no name/stack; controller has no liveness deadline; `-q` hides restarts; coverage masks crashes | `tests/ci_integrity.py`: fd-backed faulthandler dumps + controller watchdog (exit 66); workflow: `-q` removed, 240s watchdog, coverage split, evidence artifact, Chromium installed | **IN PROGRESS** |
 
 ## Resolved Findings (30)
 

@@ -193,7 +193,7 @@ reported totals are wrong and a `-n 4` result is not reliable evidence.
   (`apps/api/pyproject.toml:89`).
 
 **CI worker deaths are self-diagnosing.** The core suite runs with
-`CI_INTEGRITY_DIR` and `--ci-watchdog-timeout=300`
+`CI_INTEGRITY_DIR` and `--ci-watchdog-timeout=240`
 (`apps/api/tests/ci_integrity.py`, registered by `apps/api/conftest.py`).
 
 - `worker-gwN.log` — per-worker START/END timeline. A hang dump is written 10 s
@@ -201,19 +201,21 @@ reported totals are wrong and a `-n 4` result is not reliable evidence.
   `os._exit`. The hanger is the last `START` with no matching `END`; its stack
   follows immediately.
 - `CONTROLLER-STALL.log` + exit code **66** — the controller saw no test
-  activity for 300 s. `last_started` names the test, and the file carries all
+  activity for 240 s. `last_started` names the test, and the file carries all
   thread stacks and xdist state. 66 is reserved for this; pytest owns 0–4, so a
   stall can never be misread as a test failure. The watchdog arms at session
   start, so a hung collection is bounded too; do not move it to
   `pytest_collection_finish` (the xdist controller never calls it).
 - Artifact `api-ci-evidence` (uploaded `if: always()`) carries both logs plus
-  `junit.xml` and `coverage.xml`.
+  `junit.xml` and `coverage.xml`. The evidence directory is `ci-integrity/`,
+  deliberately **not** a dot-directory: `upload-artifact` skips hidden files by
+  default, so a `.ci-integrity/` path uploads nothing.
 - **Never add `-q` to the core suite.** xdist gates
   `replacing crashed worker` / `maximum crashed workers reached` on
   `verbose >= 0`, so `-q` hides exactly the lines that explain a worker death.
   `-q` is fine for scoped local runs.
-- Keep the watchdog threshold above `--timeout` plus restart overhead
-  (300 s vs 180 s today).
+- Keep the watchdog threshold above `--timeout` plus restart overhead, and
+  below the job cap minus a normal suite run (240 s vs 180 s today).
 
 Tests use SQLite with a mock backend — a `tmp_path` per-test DB through
 `NullPool`. `mock_llm` and `mock_connector_test` are autouse fixtures in

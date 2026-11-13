@@ -94,6 +94,37 @@ The "1 dot" observation above is therefore not a test count.
 Windows Defender I/O makes a local full-suite run a poor proxy for a Linux
 runner, so the hang must be identified from CI evidence.
 
+## First instrumented CI run — `43391392028` (2026-11-13)
+
+The instrumentation worked, and it changed the diagnosis from a guess to a
+named test:
+
+| Time     | Event                                                                                                  |
+| -------- | ------------------------------------------------------------------------------------------------------ |
+| 08:15:13 | Core suite step starts (job cap 08:57:20)                                                              |
+| 08:19:14 | `[gw0] node down: Not properly terminated` — 241 s after start, i.e. ~60 s collection + one 180 s timeout |
+| 08:48:59 | progress at 99%                                                                                        |
+| 08:52:16 | `[gw1] node down`; `replacing crashed worker gw1` → `gw3`                                              |
+| 08:57:17 | watchdog fires after 301.5 s of silence; `last_started` = `tests/test_versions.py::TestVersions::test_document_versioning_and_restore`; active `['gw3']`; lost `gw0`, `gw1` |
+| 08:57:22 | job hits `timeout-minutes: 45` → `The operation was canceled.`                                          |
+
+The `last_started` test passes locally in 5.48 s, so it is environment-specific
+or the worker is stuck outside the test body. `last_report` is
+`test_orchestrator.py::TestStatePersistence::test_load_or_create_existing` — the
+known loadscope crashitem artifact, not the executing test. The worker stack is
+still required to distinguish "stuck inside the test" from "idle worker whose
+scheduler never delivers more work".
+
+Two operational defects in the first attempt, both fixed here:
+
+1. **No artifact was uploaded.** `CI_INTEGRITY_DIR` was `.ci-integrity`, and
+   `upload-artifact` skips hidden files by default. Every log written on the
+   runner was discarded. The directory is now `ci-integrity/`.
+2. **The watchdog fired 2 s before the job cap.** The 45-minute cap covers
+   setup (~3 min) plus the suite (~37 min). 300 s of silence therefore landed at
+   42 min into the step. The threshold is now 240 s, leaving ~60 s for exit 66
+   and the artifact upload.
+
 ## Fix
 
 ### 1. Worker forensics — `apps/api/tests/ci_integrity.py`
@@ -114,7 +145,11 @@ runner, so the hang must be identified from CI evidence.
   controller never calls that hook (only `looponfail` does), which silently
   disabled the watchdog under the `-n 2` configuration CI uses. Session start
   also bounds a hung collection, and CI collection (~70 s) has ample room under
-  the 300 s threshold.
+  the 240 s threshold. The threshold is capped by the job budget, not just the
+  per-test timeout: setup consumes ~3 min of the 45-minute job cap, a normal
+  suite run is ~35-37 min, and 300 s fired 2 s before cancellation on run
+  `43391392028`. 240 s keeps 60 s above `--timeout` and leaves room to upload
+  evidence before the cap.
 - On silence, writes `CONTROLLER-STALL.log` (banner, JSON state, all-thread
   stacks) and exits with **66** — distinct from pytest's 0–4, so a stall can
   never be read as a test failure, interrupt, internal error, or usage error.
@@ -129,9 +164,12 @@ workers configure plugins before collecting `tests/conftest.py`.
 ### 4. Workflow — `.github/workflows/ci-backend.yml`
 
 - Dropped `-q`; added `PYTHONUNBUFFERED=1` and `PYTHONFAULTHANDLER=1`.
-- Added `--ci-watchdog-timeout=300` (above the 180 s per-test timeout).
+- Added `--ci-watchdog-timeout=240` (above the 180 s per-test timeout and below
+  the 45-minute job cap minus a normal suite run).
 - Added `--junitxml` and a step-scoped `CI_INTEGRITY_DIR`; evidence is uploaded
-  with `actions/upload-artifact@v7` under `if: always()`.
+  with `actions/upload-artifact@v7` under `if: always()`. The directory is
+  `ci-integrity/`, not `.ci-integrity/`: `upload-artifact` skips hidden files by
+  default, which is why run `43391392028` uploaded nothing.
 - `--cov-fail-under=0` in the test step plus a separate
   `python -m coverage report --fail-under=80` step that only runs if the suite
   passed. A lost worker can no longer masquerade as a coverage failure.
@@ -141,7 +179,7 @@ workers configure plugins before collecting `tests/conftest.py`.
 
 ### 5. `.gitignore`
 
-`.ci-integrity/` — uploaded as an artifact, never committed.
+`ci-integrity/` — uploaded as an artifact, never committed.
 
 ## Verification
 
@@ -166,7 +204,7 @@ CONTROLLER-STALL.log written with stacks and JSON state
 
 # guard suite
 pytest tests/test_ci_integrity_guard.py -o addopts="" -q
-5 passed in 45.23s
+5 passed in 86.28s
 
 # scoped end-to-end run through the real root conftest
 pytest tests/agents/test_document_agent.py -o addopts="-n 2 --dist loadfile" \
@@ -185,24 +223,34 @@ watchdog stayed silent; only `pytest-timeout` ended it. Moving the arm to
 parameterizes the watchdog case over serial and xdist so this cannot regress
 unnoticed.
 
+**A second race caught during validation:** a 2 s watchdog threshold fired
+during collection (`phase=armed`, `last_started=null`) and named no test. That
+is correct behavior — a hung import is a stall — but the banner read like
+missing evidence. It now prints `last started : <none: no test started
+(collection or worker startup)>`, and the guard test uses a 15 s threshold,
+comfortably above the ~5 s startup+collection measured on Windows, so it still
+asserts the named-test guarantee.
+
 ## Why this is not a symptom fix
 
 It does not guess which test hangs. It removes every reason the previous logs
-could not answer that question, bounds a stall to 300 s instead of 45 minutes,
+could not answer that question, bounds a stall to 240 s instead of 45 minutes,
 and guarantees the next occurrence carries a nodeid and a stack. The hang fix is
 a separate, evidence-gated change.
 
 ## Residual / next actions
 
-1. Merge this instrumentation, then download `api-ci-evidence` from the first
-   run. The hanger is the last `START` without a matching `END` in
-   `worker-gwN.log`; its stack is directly below it.
-2. If the watchdog fires instead, `CONTROLLER-STALL.log` names
-   `last_started` and the surviving workers.
+1. Download `api-ci-evidence` from the next run. The hanger is the last `START`
+   without a matching `END` in `worker-gwN.log`; its stack is directly below it.
+   If the worker was idle, `CONTROLLER-STALL.log` shows where the controller and
+   scheduler were stuck instead.
+2. If the watchdog fires, `CONTROLLER-STALL.log` names `last_started` and the
+   surviving workers.
 3. Fix the named hang and re-run; keep the watchdog and the artifact upload.
 4. Pre-existing failures observed in run `42814603061`, unrelated to the
    crashes: `test_mvp_scope.py` (2), `test_idempotency.py` (2), and
    `test_overleaf_integration.py::test_latex_compiler_fallback` (fixed here by
    installing Chromium).
-5. Keep `--ci-watchdog-timeout` above `--timeout` plus restart overhead. The
-   current 300 s vs 180 s leaves 120 s of headroom.
+5. Keep `--ci-watchdog-timeout` above `--timeout` plus restart overhead, and
+   below the job cap minus a normal suite run. The current 240 s vs 180 s keeps
+   60 s of headroom while still firing before cancellation.
