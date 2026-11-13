@@ -49,7 +49,13 @@ class TestPromptManager:
         assert "{{agent_name}}" not in prompt
         assert "{{mission}}" not in prompt
 
-    def test_fallback_to_base_for_unknown_agent(self, manager):
+    def test_fallback_to_base_for_unknown_agent(self, manager, monkeypatch):
+        # The card registry is process-global: an agent loop earlier in the
+        # same worker can register a card for "unknown_agent", which would make
+        # this assert the generated card prompt instead of the base fallback.
+        import api.orchestrator.card_registry as card_registry
+
+        monkeypatch.setattr(card_registry, "get_agent_card", lambda _name: None)
         prompt = manager.get_prompt("unknown_agent")
         assert "{{agent_name}}" in prompt
 

@@ -3,10 +3,11 @@
 **Severity:** P1 (CI reliability / diagnosability) **Area:**
 `.github/workflows/ci-backend.yml`, `apps/api/tests/ci_integrity.py`,
 `apps/api/conftest.py` **Found:** 2026-11-13 while investigating repeated
-`API CI :: test` cancellations **Status: FIXED (awaiting CI confirmation)** —
-the stall was a process-global `asyncio.Lock` poisoned by an abandoned detached
-task across pytest-asyncio's per-test loop teardown; the lock is now scoped per
-event loop.
+`API CI :: test` cancellations **Status: FIXED** — confirmed by run
+`43409549651`: the core suite completed in 2185.64 s with no watchdog fire, no
+exit 66, and no worker deaths. The stall was a process-global `asyncio.Lock`
+poisoned by an abandoned detached task across pytest-asyncio's per-test loop
+teardown; the lock is now scoped per event loop.
 
 ## Summary
 
@@ -338,9 +339,61 @@ All checks passed!
 - **Per-test aiosqlite threads and the global engine pool** are separate
   lifecycle debt in `tests/conftest.py`/`api/database.py`. They explain the
   thread count and closed-loop warnings but not the hang.
-- **Confirmation:** the next `API CI` run should complete without exit 66, a
-  240 s watchdog fire, or any 180 s worker kill. That is the acceptance gate for
-  calling this closed.
+- **Confirmation:** run `43409549651` met the gate: the suite completed, the
+  watchdog did not fire, and `node_down` is empty. The remaining failures are
+  the 3 fixed test bugs and the 4 pre-existing product gaps listed above.
+
+## Third run — `43409549651`: acceptance gate passed
+
+The fix was pushed as `e6eab694` and CI ran. The core suite **completed**:
+`7 failed, 4980 passed, 81 skipped, 2 xfailed in 2185.64s (0:36:25)`. The job
+failed on test results, not on a stall. `ci-integrity/run-integrity.json`:
+
+```json
+{
+  "reason": "session-finished",
+  "elapsed_seconds": 2185.7,
+  "call_reports": 5015,
+  "failed_reports": 7,
+  "node_down": [],
+  "exitstatus": 1,
+  "complete": false
+}
+```
+
+No exit 66, no `CONTROLLER-STALL.log`, no 240 s watchdog fire, no
+`node down`, no 180 s worker kills. `complete: false` reflects the 7 test
+failures only; the session ended normally.
+
+### The 7 failures, classified
+
+| Failure | Class | Cause | Disposition |
+| ------- | ----- | ----- | ----------- |
+| `test_orchestrator.py::TestStatePersistence::test_save_checkpoint_writes_file` | test bug | asserted on module-level `STATE_DIR`, captured at import, while the store resolves `VAELOOM_STATE_DIR` at call time | fixed: read `tmp_path` |
+| `test_prompt_manager.py::TestPromptManager::test_fallback_to_base_for_unknown_agent` | test bug | process-global card registry can already contain `unknown_agent` from an earlier agent-loop test in the same worker | fixed: monkeypatch `card_registry.get_agent_card` |
+| `tests/eval/test_ws_comprehensive.py::test_concurrency_10_and_25` | test bug | asserted `sum(successes) <= 10`, but released slots are re-acquired, so total successes legitimately exceed the limit (`assert 15 <= 10`) | fixed: assert peak in-flight instead |
+| `test_mvp_scope.py::...test_canonical_agent_passes_scope_gate[conversation]` | pre-existing product gap | `conversation` is absent from the MVP scope roster but present in the canonical registry | not masked; follow-up |
+| `test_mvp_scope.py::...test_canonical_roster_matches_int02` | pre-existing product gap | same roster drift (`conversation`) | not masked; follow-up |
+| `test_idempotency.py::...test_replay_returns_stored_response` | pre-existing product gap | replay does not return the stored `true` response | not masked; follow-up |
+| `test_idempotency.py::...test_same_key_different_payload_conflicts` | pre-existing product gap | returns `200` instead of `422` for a conflicting payload | not masked; follow-up |
+
+The four product failures were present in the pre-branch baseline run
+`42814603061`, so they are not regressions from this change. The three test
+bugs are isolation/assertion defects exposed once the suite stopped dying.
+After the fixes:
+
+```text
+pytest tests/test_orchestrator.py::TestStatePersistence::test_save_checkpoint_writes_file \
+       tests/test_prompt_manager.py::TestPromptManager::test_fallback_to_base_for_unknown_agent \
+       tests/eval/test_ws_comprehensive.py::test_concurrency_10_and_25 \
+       -o addopts="" -q
+3 passed in 3.74s
+```
+
+Residual noise: the job summary still shows `Event loop is closed` annotations
+at suite end, emitted by aiosqlite worker threads from abandoned tasks. That is
+the documented `_BACKGROUND_TASKS` debt below; it does not block completion and
+no longer poisons checkpointing.
 
 ## Why this is not a symptom fix
 
@@ -353,17 +406,19 @@ affects any embedder that calls `asyncio.run` per unit of work, not just tests).
 
 ## Residual / next actions
 
-1. Confirm the next `API CI` run completes without exit 66, a 240 s watchdog
-   fire, or a 180 s worker kill. Keep the watchdog and artifact upload
-   regardless: they are the observability layer for any future stall.
+1. Keep the watchdog and artifact upload regardless of the fix: they are the
+   observability layer for any future stall. Run `43409549651` is the reference
+   for a healthy completion (`node_down: []`, `reason: session-finished`).
 2. Drain `_BACKGROUND_TASKS` at shutdown (or bound `_save_eval_phase` with a
    timeout) so abandoned tasks stop producing `Event loop is closed` noise from
    aiosqlite threads. The per-loop lock already makes them harmless to
    checkpointing.
-3. Pre-existing failures observed in run `42814603061`, unrelated to the
-   crashes: `test_mvp_scope.py` (2), `test_idempotency.py` (2), and
-   `test_overleaf_integration.py::test_latex_compiler_fallback` (fixed here by
-   installing Chromium).
+3. Four pre-existing product failures remain, reproduced in baseline
+   `42814603061` and not masked here: `test_mvp_scope.py` (2 — `conversation` is
+   in the canonical registry but missing from the MVP scope roster) and
+   `test_idempotency.py` (2 — replay does not return the stored response;
+   conflicting payload returns `200` instead of `422`). These belong in a
+   follow-up product change, not this CI-integrity fix.
 4. Keep `--ci-watchdog-timeout` above `--timeout` plus restart overhead, and
    below the job cap minus a normal suite run. The current 240 s vs 180 s keeps
    60 s of headroom while still firing before cancellation.

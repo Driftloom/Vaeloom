@@ -1,6 +1,6 @@
 # Vaeloom — `.agents/findings` Index
 
-**Last Updated:** 2026-11-13 - F-41 root cause fixed (poisoned cross-loop state-store lock); CI confirmation pending
+**Last Updated:** 2026-11-13 - F-41 fixed and confirmed by run `43409549651` (suite completes; no watchdog, exit 66, or worker deaths)
 
 ## Health
 
@@ -14,22 +14,19 @@
 | Status      | Count | Notes                                              |
 | ----------- | ----- | -------------------------------------------------- |
 | Open        | 0     |                                                    |
-| In Progress | 1     | F-41: root cause fixed; next CI run is the acceptance gate |
-| Resolved    | 30    | 30 findings now have a resolution (see below)      |
+| In Progress | 0     |                                                    |
+| Resolved    | 31    | 31 findings now have a resolution (see below)      |
 | Archived    | 88    | 29 original-folder + 59 pre-existing               |
 
-## In Progress Findings (1)
+## Resolved Findings (31)
 
-> F-41 identified the stall mechanism: a process-global `FileStateStore`
-> `asyncio.Lock` was poisoned when a detached checkpoint task was abandoned at
-> pytest-asyncio's per-test loop close. Locks are now scoped per event loop,
-> with regression tests that fail on the pre-fix code. The next CI run confirms.
-
-| ID   | Severity | Area      | Summary                                                                                                      | Resolution                                                                                                                       | Status      |
-| ---- | -------- | --------- | ------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| F-41 | P1       | CI/Testing | Worker deaths print no name/stack; controller has no liveness deadline; `-q` hides restarts; coverage masks crashes | fd-backed dumps + controller watchdog (exit 66) + workflow hardening; root-cause fix: per-loop `FileStateStore` locks + regression tests | **IN PROGRESS** |
-
-## Resolved Findings (30)
+> F-41 (CI suite integrity) opened 2026-11-13 and **RESOLVED same day**: the
+> stall was a process-global `FileStateStore` `asyncio.Lock` poisoned by a
+> detached checkpoint task abandoned at pytest-asyncio's per-test loop close.
+> Locks are now scoped per event loop; run `43409549651` completed the core
+> suite (2185.64 s) with `node_down: []` and no watchdog/exit 66. The remaining
+> 4 failures are pre-existing product gaps (`test_mvp_scope` ×2,
+> `test_idempotency` ×2), tracked separately (see `41-ci-suite-integrity.md`).
 
 > F-40 (parser gap) opened 2026-08-30 and **RESOLVED same day** via unified
 > whitelist + TXT/CSV/XLSX/PPTX parsers + OCR `image_to_data` + deps
@@ -39,8 +36,9 @@
 | ID   | Severity | Area              | Summary                                                                                                         | Resolution                                                                                                                                            | Status       |
 | ---- | -------- | ----------------- | --------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
 | F-40 | Medium   | Ingestion/Parsers | PPTX/XLSX/TXT/CSV claimed Must but PARSERS only 5 entries (`parsers.py:175`) — see `40-ingestion-parser-gap.md` | Unified whitelist (17 PARSERS, 18 EXTENSION_MAP) + TXT/CSV/XLSX/PPTX + OCR fix + 318 corpus — `audit_e2e_v2.py` 21/21 OK, `validate-corpus.py` 0 FAIL | **RESOLVED** |
+| F-41 | P1       | CI/Testing        | Worker deaths print no name/stack; controller has no liveness deadline; `-q` hides restarts; coverage masks crashes | fd-backed dumps + controller watchdog (exit 66) + workflow hardening; root cause: per-loop `FileStateStore` locks + regression tests; confirmed run `43409549651` | **RESOLVED** |
 
-> Resolved (30): F-01..F-29 and F-40 (table below).
+> Resolved (31): F-01..F-29 (table below), plus F-40 and F-41 above.
 
 | ID   | Severity | Area          | Summary                                                           | Resolution / Owner                                                      | Status             |
 | ---- | -------- | ------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------- | ------------------ |
@@ -81,10 +79,12 @@
 
 ## Changelog
 
-- [2026-11-13] F-41 instrumentation named the hang (run `43400920642`):
-  singleton `FileStateStore` lock poisoned by an abandoned detached task across
-  pytest-asyncio loop teardown. Fixed with per-loop locks + regression tests;
-  CI confirmation pending.
+- [2026-11-13] F-41 **RESOLVED**: instrumentation named the hang (run
+  `43400920642`) — a singleton `FileStateStore` lock poisoned by an abandoned
+  detached task across pytest-asyncio loop teardown. Fixed with per-loop locks +
+  regression tests. Run `43409549651` confirmed the suite completes (2185.64 s,
+  no watchdog/exit 66/worker deaths); 4 pre-existing product failures remain
+  unmasked and are tracked as follow-up.
 - [2026-08-29] All 29 findings have resolutions; index refreshed (0 open / 88
   archived). 7 stale root index/README files moved into `archive/`.
 - [2026-08-24] Added F-23..F-29 (5 new findings) + refreshed 6 audit reports.
