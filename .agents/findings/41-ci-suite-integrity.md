@@ -455,22 +455,22 @@ affects any embedder that calls `asyncio.run` per unit of work, not just tests).
    timeout) so abandoned tasks stop producing `Event loop is closed` noise from
    aiosqlite threads. The per-loop lock already makes them harmless to
    checkpointing.
-3. Four pre-existing product failures remain, reproduced in baseline
-   `42814603061` and not masked here. Follow-up PRs were agreed with the user:
-   - **MVP scope (2):** `test_mvp_scope.py` expects 11 canonical agents
-     including `conversation` (updated in `29defcf9`), but
-     `MVP_CANONICAL_AGENTS` in `orchestrator/router.py` still has 10. Result:
-     greetings, ambiguous requests, and emotional containment are blocked as
-     `out_of_scope` when `mvp_scope_enforced=True`. Fix is the roster plus its
-     comment/out-of-scope message and the docs that say "10".
-   - **Idempotency (2):** the middleware's `_store` opens a second transaction
-     while the request transaction still holds the SQLite write lock; on CI it
-     fails with `database is locked` after the 5 s busy timeout and correctly
-     passes the response through with `Idempotency-Stored: false`. Replay is
-     therefore not durable in the SQLite test backend (production Postgres is
-     unaffected). Fix belongs in middleware transaction/backoff design or test
-     DB serialization, with a regression test that asserts
-     `Idempotency-Stored: true`.
+3. **Four pre-existing product failures — resolved in follow-up PRs.** All
+   four were reproduced in baseline `42814603061` and left unmasked here.
+   - **MVP scope (2) — resolved** in `48f7cf3e` (PR #89,
+     `fix/mvp-conversation-scope`): `conversation` added to
+     `MVP_CANONICAL_AGENTS` (11 total) with the scope-lock rationale, the
+     `out_of_scope` hint now lists it, and current docs/specs were aligned to
+     11 canonical / 28 registered. `test_mvp_scope.py`: 25 passed.
+   - **Idempotency (2) — resolved** in `1d76c748`
+     (`fix/idempotency-sqlite-lock`): the middleware is pure ASGI now, so
+     `_store` runs after the inner app completes and `get_db` commits, instead
+     of opening a second SQLite writer under the request transaction's write
+     lock. Store success sends `Idempotency-Stored: true`; failure still passes
+     the real response through with `false`. The new regression
+     `test_store_runs_after_request_transaction_commits` fails on the old code
+     with `sqlite3.OperationalError: database is locked`. Both idempotency
+     suites: 10 passed.
 4. Keep `--ci-watchdog-timeout` above `--timeout` plus restart overhead, and
    below the job cap minus a normal suite run. The current 240 s vs 180 s keeps
    60 s of headroom while still firing before cancellation.
