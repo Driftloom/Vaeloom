@@ -239,8 +239,9 @@ writes: episodic memory, preference memory
 ### Out of Scope
 
 - Agent workflow visualization dashboard (future improvement)
-- Enterprise-scale full roster (22 routable agents in code vs. 8 MVP-canonical;
-  docs claiming 28 are stale — see `orchestrator/router.py:64-87`)
+- Enterprise-scale full roster (28 registered routable agents in code vs. 11
+  MVP-canonical; see `orchestrator/router.py:537-542` and
+  `orchestrator/agent_discovery.py:21-49`)
 - `Vaeloom workflow run/create/status` CLI/SDK examples below are illustrative
   only — no such CLI exists in `orchestrator/` or `tools/`
 

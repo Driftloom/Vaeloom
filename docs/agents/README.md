@@ -5,7 +5,7 @@
 
 | Doc                               | Covers                                                                                                                            |
 | --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| `mvp/agent-inventory.md`          | MVP-canonical 10 routable agents (concept→code mapping, v2.1 code-aligned 2026-09-15) + 12 enterprise-gated + QA/supervisor infra |
+| `mvp/agent-inventory.md`          | MVP-canonical 11 routable agents (concept→code mapping, v2.1 code-aligned 2026-09-15) + 18 enterprise-gated + QA/supervisor infra |
 | `enterprise/enterprise-agents.md` | Enterprise agent set                                                                                                              |
 
 - Code truth: `apps/api/src/api/agents/` (24 entries incl. `__pycache__`; ~23
