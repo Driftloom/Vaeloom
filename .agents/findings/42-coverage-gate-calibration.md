@@ -55,7 +55,7 @@ Two independent causes, neither fixable by lowering a number alone:
    not run.
 2. **A measurement-scope mismatch.** The measured job excludes `tests/temporal`,
    yet `src/api/temporal/*` plus `routers/temporal.py` account for **1317 missing
-   statements** in this artifact (31–49% covered). The standalone temporal step
+   statements** in this artifact (0–49% covered). The standalone temporal step
    runs those 85 tests, but it does not feed this coverage file. Any single
    global percentage that mixes the two scopes is not comparable with a number
    measured over the full suite — including the 94.2% recorded in
