@@ -8,7 +8,7 @@ class TestMvpScopeLock:
     """MVP scope enforcement (INT-02 §2.2 / CF-05 / R5).
 
     With `settings.mvp_scope_enforced = True`, the orchestrator must only
-    dispatch the 8 canonical agents and return an explicit out_of_scope
+    dispatch the 11 canonical agents and return an explicit out_of_scope
     response for enterprise extras. The existing suites run with the lock
     off (conftest autouse fixture); this module turns it on and verifies it.
     """

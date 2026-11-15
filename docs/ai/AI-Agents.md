@@ -19,10 +19,11 @@ This document defines the agent architecture, the agent contract (mission,
 tools, permissions, autonomy, fallback), communication patterns, and the QA
 Agent validation gate. It serves as the reference for AI engineers building new
 agents, platform engineers integrating agent workflows, and operations engineers
-monitoring agent health. The architecture supports 10 agents at MVP scale
-(`MVP_CANONICAL_AGENTS` in `orchestrator/router.py`), and exactly 28 routable
-enterprise agents in code (`AGENT_REGISTRY` in `orchestrator/router.py`), with
-strict isolation boundaries to prevent agent interference.
+monitoring agent health. The architecture supports 11 agents at MVP scale
+(`MVP_CANONICAL_AGENTS` in `orchestrator/router.py`), and 28 registered
+routable agents in code (`AGENT_REGISTRY`, built from
+`orchestrator/agent_discovery.py:21-49`), with strict isolation boundaries to
+prevent agent interference.
 
 ---
 
@@ -40,8 +41,9 @@ graph TD
  QA["QA Agent<br/>Validates output<br/>before delivery"]
  end
 
-  subgraph Agents["Specialized Agents (MVP-canonical 10 + 18 Enterprise)"]
+  subgraph Agents["Specialized Agents (MVP-canonical 11 + 18 Enterprise)"]
   direction TB
+  A0["Conversation Agent<br/>Clarify, contain, route"]
   A1["Memory Agent<br/>Extract and merge entities"]
   A2["Organization Agent<br/>Name and categorize files"]
   A3["Resume Agent<br/>Generate and tailor resumes"]
@@ -71,7 +73,7 @@ graph TD
  EB -.->|notify| ORCH
 
   class ORCH,QA orchestrator
-  class A1,A2,A3,A4,A5,A6,A7,A8,AX agent
+  class A0,A1,A2,A3,A4,A5,A6,A7,A8,AX agent
  class MCP,PERM infra
  class EB event
 
@@ -159,7 +161,7 @@ apps/api/src/backend/agents/
 
 ## Goals
 
-- Enable 8 specialized agents to perform autonomous workflows without direct
+- Enable 11 specialized agents to perform autonomous workflows without direct
   inter-agent coupling
 - Ensure every agent output is validated by the QA Agent before reaching users
   or executing actions
@@ -172,9 +174,10 @@ apps/api/src/backend/agents/
 
 **In Scope:**
 
-- 10 MVP-canonical agents (`router.py:416-437`): Memory, Organization, Resume,
-  ATS, Job Search, Application, Gmail, Scheduler, Planning, Research; 22
-  routable in code (`router.py:64-87`), remainder Enterprise-gated
+- 11 MVP-canonical agents (`router.py:537-542`): Conversation, Memory,
+  Organization, Resume, ATS, Job Search, Application, Gmail, Scheduler,
+  Planning, Research; 28 registered in `AGENT_REGISTRY`
+  (`orchestrator/agent_discovery.py:21-49`), remainder Enterprise-gated
 - Orchestrator coordinating all inter-agent communication
 - QA Agent for output validation and quality gating
 - MCP-shaped tool declarations per agent with runtime permission checking
