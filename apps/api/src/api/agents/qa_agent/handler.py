@@ -1,7 +1,8 @@
 """
 QA Agent — validates every agent output before delivery.
 Checks: schema compliance, hallucination, PII, safety, confidence.
-Hardened: regex PII/harm (word-boundary), result-structure, confidence range.
+Hardened: regex PII/harm (word-boundary), Luhn-validated card numbers,
+result-structure, confidence range.
 """
 import json
 import logging
@@ -22,14 +23,71 @@ class QAValidationResult(BaseModel):
 
 
 # ── Hardened patterns (regex, word-boundary aware) ─────────────────────
+# Structural identifiers are never card numbers. UUIDs are masked before
+# scanning: a UUID whose trailing segments happen to be all digits
+# ("...-1234-567890123456") otherwise reads as a 16-digit card, and ids
+# are what agent payloads are full of. Card candidates are additionally
+# Luhn-checked in _find_credit_card(); the pattern alone cannot tell
+# "4111 1111 1111 1111" from an epoch-millisecond id or a row id.
+_UUID_RE = re.compile(
+    r"\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b",
+    re.I,
+)
+# 13-19 digits with optional single space/hyphen separators (card lengths).
+_CARD_CANDIDATE_RE = re.compile(r"(?<!\d)(?:\d[ -]?){12,18}\d(?!\d)")
+# Context words that make a short (13-14 digit) bare run worth flagging.
+_CARD_CONTEXT_RE = re.compile(
+    r"\b(?:card|visa|mastercard|amex|american express|discover|jcb|unionpay"
+    r"|diners|cvv|cvc|expir\w*)\b",
+    re.I,
+)
+
 PII_REGEXES: list[tuple[re.Pattern, str]] = [
     (re.compile(r"\b\d{3}-\d{2}-\d{4}\b"), "SSN pattern 123-45-6789"),
     (re.compile(r"\b(?:SSN|Social Security)\s*[:\-]?\s*\d{3}[- ]?\d{2}[- ]?\d{4}\b", re.I), "SSN label"),
-    (re.compile(r"\b(?:\d[ -]*?){13,16}\b"), "potential credit-card 13-16 digits"),
     (re.compile(r"\bcredit card\b.*\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b", re.I), "credit card phrase"),
     (re.compile(r"\bapi[_-]?key\s*[:=]\s*[A-Za-z0-9\-_]{16,}", re.I), "api key exposure"),
     (re.compile(r"\bsk-[A-Za-z0-9]{20,}", re.I), "secret key exposure"),
 ]
+
+
+def _luhn_ok(digits: str) -> bool:
+    """True when a digit string satisfies the Luhn checksum (card validity)."""
+    total = 0
+    for i, ch in enumerate(reversed(digits)):
+        value = ord(ch) - 48
+        if i % 2:
+            value *= 2
+            if value > 9:
+                value -= 9
+        total += value
+    return total % 10 == 0
+
+
+def _find_credit_card(text: str) -> str | None:
+    """Return the first Luhn-valid card-shaped candidate, else None.
+
+    A candidate must have 13-19 digits and pass Luhn. Bare 13-14 digit runs
+    (epoch milliseconds, snowflake ids) additionally need card context:
+    they are far more often identifiers than card numbers. Grouped runs and
+    bare 15-19 digit runs are card-shaped on their own.
+    """
+    masked = _UUID_RE.sub(" ", text)
+    for match in _CARD_CANDIDATE_RE.finditer(masked):
+        raw = match.group(0)
+        digits = re.sub(r"[ -]", "", raw)
+        if not 13 <= len(digits) <= 19:
+            continue
+        if set(digits) == {"0"}:  # placeholder / nil id, never a card
+            continue
+        if not _luhn_ok(digits):
+            continue
+        if len(digits) >= 15 or re.search(r"[ -]", raw):
+            return raw
+        window = masked[max(0, match.start() - 60): match.end() + 60]
+        if _CARD_CONTEXT_RE.search(window):
+            return raw
+    return None
 
 HARM_REGEXES: list[tuple[re.Pattern, str]] = [
     (re.compile(r"\bhack into\b", re.I), "hack into"),
@@ -136,8 +194,14 @@ class QAAgent(BaseAgent):
             if pat.search(output_str):
                 issues.append(f"PII leak detected: {label} (matched '{pat.pattern}')")
                 break
-        # Legacy markers (ensure SSN:/social security/credit card still caught even without regex hit)
         else:
+            card_hit = _find_credit_card(output_str)
+            if card_hit:
+                issues.append(
+                    "PII leak detected: potential credit-card number "
+                    f"(matched '{card_hit}')"
+                )
+            # Legacy markers (ensure SSN:/social security/credit card still caught even without regex hit)
             lower = output_str.lower()
             for marker in ["ssn:", "social security", "credit card"]:
                 if marker in lower:
