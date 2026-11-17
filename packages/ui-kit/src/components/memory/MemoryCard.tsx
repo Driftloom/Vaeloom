@@ -34,7 +34,7 @@ export const MemoryCard: React.FC<MemoryCardProps> = ({
 }) => {
   return (
     <div
-      className={`rounded-lg border border-border-subtle bg-surface p-4 hover:border-border-strong transition-colors shadow-sm ${className}`.trim()}
+      className={`rounded-lg border border-border-subtle bg-surface p-4 hover:border-border-strong transition-colors shadow-xs ${className}`.trim()}
     >
       <div className="flex items-start justify-between gap-3 mb-2">
         <div className="flex items-center gap-2">
@@ -48,7 +48,7 @@ export const MemoryCard: React.FC<MemoryCardProps> = ({
               type="button"
               aria-label="Edit memory"
               onClick={() => onEdit(id)}
-              className={`inline-flex items-center justify-center w-6 h-6 min-w-[24px] min-h-[24px] p-1 text-text-muted hover:text-text rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-accent ${MIN_TOUCH_TARGET}`}
+              className={`inline-flex items-center justify-center w-6 h-6 min-w-[24px] min-h-[24px] p-1 text-text-muted hover:text-text rounded focus:outline-hidden focus-visible:ring-1 focus-visible:ring-accent ${MIN_TOUCH_TARGET}`}
             >
               <EditIcon size={14} />
             </button>
@@ -58,7 +58,7 @@ export const MemoryCard: React.FC<MemoryCardProps> = ({
               type="button"
               aria-label="Delete memory"
               onClick={() => onDelete(id)}
-              className={`inline-flex items-center justify-center w-6 h-6 min-w-[24px] min-h-[24px] p-1 text-text-muted hover:text-error rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-accent ${MIN_TOUCH_TARGET}`}
+              className={`inline-flex items-center justify-center w-6 h-6 min-w-[24px] min-h-[24px] p-1 text-text-muted hover:text-error rounded focus:outline-hidden focus-visible:ring-1 focus-visible:ring-accent ${MIN_TOUCH_TARGET}`}
             >
               <TrashIcon size={14} />
             </button>

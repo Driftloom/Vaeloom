@@ -150,7 +150,7 @@ export const SkillDetailPane: React.FC<SkillDetailPaneProps> = ({
     <div
       ref={detailRef}
       tabIndex={-1}
-      className="flex-1 flex flex-col min-h-0 min-w-0 focus:outline-none"
+      className="flex-1 flex flex-col min-h-0 min-w-0 focus:outline-hidden"
     >
       <div className="p-4 sm:p-5 border-b border-border bg-surface shrink-0 space-y-2">
         <div className="lg:hidden">
@@ -245,7 +245,7 @@ export const SkillDetailPane: React.FC<SkillDetailPaneProps> = ({
               {workspaceId && (selectedRow.slug || selectedRow.key) && (
                 <Link
                   href={`/workspace/${workspaceId}/capabilities/skills/${encodeURIComponent(selectedRow.slug || selectedRow.key)}`}
-                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-control border border-border bg-surface-elevated hover:bg-surface text-text transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+                  className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium rounded-control border border-border bg-surface-elevated hover:bg-surface text-text transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
                 >
                   <span>Open Full Page ↗</span>
                 </Link>

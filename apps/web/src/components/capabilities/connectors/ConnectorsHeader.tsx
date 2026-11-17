@@ -76,7 +76,7 @@ export function ConnectorsHeader({
                 aria-controls={`connector-panel-${tab.id}`}
                 tabIndex={activeSubTab === tab.id ? 0 : -1}
                 onClick={() => onTabChange(tab.id)}
-                className={`px-3 py-1 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer whitespace-nowrap flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
+                className={`px-3 py-1 rounded-md text-xs font-medium transition-all duration-150 cursor-pointer whitespace-nowrap flex items-center gap-1.5 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
                   activeSubTab === tab.id
                     ? 'bg-action text-action-fg font-semibold shadow-xs'
                     : 'text-text-secondary hover:text-text'

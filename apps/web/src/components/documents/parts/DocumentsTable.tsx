@@ -171,7 +171,7 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
                     ? `${fileName} — opens a preview`
                     : `${fileName} — no inline preview; the file must be downloaded`
                 }
-                className="font-medium text-text hover:text-action transition-colors text-left truncate max-w-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                className="font-medium text-text hover:text-action transition-colors text-left truncate max-w-xs focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
               >
                 {fileName}
               </button>
@@ -215,7 +215,7 @@ export const DocumentsTable: React.FC<DocumentsTableProps> = ({
                   type="button"
                   disabled={handlers.syncingDocId === doc.id}
                   onClick={() => handlers.onSyncMemory(doc)}
-                  className="inline-flex items-center gap-1 text-[10px] text-text-muted hover:text-action bg-surface hover:bg-surface-hover border border-border px-1.5 py-0.5 rounded font-mono shrink-0 transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  className="inline-flex items-center gap-1 text-[10px] text-text-muted hover:text-action bg-surface hover:bg-surface-hover border border-border px-1.5 py-0.5 rounded font-mono shrink-0 transition-colors disabled:opacity-50 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
                   title="Index this document into workspace Memory"
                 >
                   {handlers.syncingDocId === doc.id ? (

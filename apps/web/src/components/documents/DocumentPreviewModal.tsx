@@ -115,7 +115,7 @@ export function DocumentPreviewModal({
               {isVaultNote && targetWsId && (
                 <Link
                   href={`/workspace/${targetWsId}/memory?query=${encodeURIComponent(noteTitle)}`}
-                  className="px-2.5 py-1 rounded-md bg-purple-500/15 text-purple-300 hover:bg-purple-500/25 border border-purple-500/40 font-medium inline-flex items-center gap-1.5 transition-colors text-xs shadow-sm"
+                  className="px-2.5 py-1 rounded-md bg-purple-500/15 text-purple-300 hover:bg-purple-500/25 border border-purple-500/40 font-medium inline-flex items-center gap-1.5 transition-colors text-xs shadow-xs"
                 >
                   <span>View in Memory Graph</span>
                 </Link>
@@ -135,7 +135,7 @@ export function DocumentPreviewModal({
                 href={content.url}
                 download={fileName}
                 aria-label={`Download ${fileName} to this device`}
-                className="px-2.5 py-1 rounded-md bg-primary text-primary-fg hover:bg-primary/90 font-medium inline-flex items-center gap-1 transition-colors text-xs shadow-sm"
+                className="px-2.5 py-1 rounded-md bg-primary text-primary-fg hover:bg-primary/90 font-medium inline-flex items-center gap-1 transition-colors text-xs shadow-xs"
               >
                 <DownloadIcon size={14} />
                 <span>Download</span>

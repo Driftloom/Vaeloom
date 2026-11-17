@@ -123,7 +123,7 @@ export const DocumentFactsPanel: React.FC<DocumentFactsPanelProps> = ({
 
           <Link
             href={`/workspace/${workspaceId}/memory?query=${encodeURIComponent(fileName)}`}
-            className="inline-flex items-center justify-center rounded-lg px-2.5 py-1 text-xs font-medium border border-border bg-surface text-text-muted hover:text-text hover:border-border-strong transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="inline-flex items-center justify-center rounded-lg px-2.5 py-1 text-xs font-medium border border-border bg-surface text-text-muted hover:text-text hover:border-border-strong transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
           >
             View in Memory
           </Link>
@@ -161,7 +161,7 @@ export const DocumentFactsPanel: React.FC<DocumentFactsPanelProps> = ({
                 onChange={(e) => onNewTagInputChange(e.target.value)}
                 placeholder="new-tag"
                 disabled={tagBusy}
-                className="px-2 py-0.5 text-xs rounded-md bg-surface border border-border/70 text-text placeholder:text-text-dim focus:outline-none focus:border-primary w-24"
+                className="px-2 py-0.5 text-xs rounded-md bg-surface border border-border/70 text-text placeholder:text-text-dim focus:outline-hidden focus:border-primary w-24"
               />
             </FormField>
             <Button type="submit" variant="primary" size="sm" disabled={tagBusy}>

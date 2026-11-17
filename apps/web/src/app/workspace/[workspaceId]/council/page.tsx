@@ -203,7 +203,7 @@ export default function CouncilPage() {
       {/* Input Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
-          <div className="bg-card rounded-xl border border-border p-5 space-y-4 shadow-sm">
+          <div className="bg-card rounded-xl border border-border p-5 space-y-4 shadow-xs">
             <div className="flex items-center justify-between flex-wrap gap-2">
               <label
                 htmlFor="council-artifact"
@@ -254,7 +254,7 @@ export default function CouncilPage() {
               onChange={(e) => setArtifact(e.target.value)}
               placeholder="Paste artifact markdown, resume bullet points, job application text, or proposal here..."
               rows={8}
-              className="w-full rounded-lg bg-background border border-border p-3 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all font-mono"
+              className="w-full rounded-lg bg-background border border-border p-3 text-sm text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary/40 transition-all font-mono"
             />
 
             <div className="flex items-center justify-between flex-wrap gap-3 pt-2">
@@ -265,7 +265,7 @@ export default function CouncilPage() {
                     id="council-artifact-type"
                     value={artifactType}
                     onChange={(e) => setArtifactType(e.target.value)}
-                    className="bg-background border border-border rounded px-2 py-1 text-xs text-foreground focus:outline-none"
+                    className="bg-background border border-border rounded px-2 py-1 text-xs text-foreground focus:outline-hidden"
                   >
                     <option value="resume">Resume</option>
                     <option value="cover_letter">Cover Letter</option>
@@ -281,7 +281,7 @@ export default function CouncilPage() {
                     id="council-mode"
                     value={mode}
                     onChange={(e) => setMode(e.target.value as 'collaborative' | 'adversarial')}
-                    className="bg-background border border-border rounded px-2 py-1 text-xs text-foreground focus:outline-none"
+                    className="bg-background border border-border rounded px-2 py-1 text-xs text-foreground focus:outline-hidden"
                   >
                     <option value="collaborative">Collaborative</option>
                     <option value="adversarial">Adversarial (Red Team)</option>
@@ -360,7 +360,7 @@ export default function CouncilPage() {
         </div>
 
         {/* Protocol Overview Sidebar */}
-        <div className="bg-card rounded-xl border border-border p-5 space-y-4 shadow-sm">
+        <div className="bg-card rounded-xl border border-border p-5 space-y-4 shadow-xs">
           <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
             <svg
               className="w-4 h-4 text-primary"
@@ -424,7 +424,7 @@ export default function CouncilPage() {
       {verdict && !isDeliberating && (
         <div className="space-y-6">
           {/* Verdict Banner */}
-          <div className="bg-card rounded-xl border border-border p-6 shadow-sm space-y-4">
+          <div className="bg-card rounded-xl border border-border p-6 shadow-xs space-y-4">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border/40 pb-4">
               <div className="flex items-center gap-3">
                 <span
@@ -519,7 +519,7 @@ export default function CouncilPage() {
                   ([key, critique]: [string, CouncilCritique]) => (
                     <div
                       key={key}
-                      className="bg-card rounded-xl border border-border p-4 shadow-sm space-y-3 flex flex-col justify-between"
+                      className="bg-card rounded-xl border border-border p-4 shadow-xs space-y-3 flex flex-col justify-between"
                     >
                       <div>
                         <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2 mb-2">
@@ -570,7 +570,7 @@ export default function CouncilPage() {
 
       {/* Certification Result */}
       {certification && (
-        <div className="bg-card rounded-xl border border-ai-verified/30 bg-ai-verified/5 p-5 shadow-sm space-y-3">
+        <div className="bg-card rounded-xl border border-ai-verified/30 bg-ai-verified/5 p-5 shadow-xs space-y-3">
           <div className="flex items-center gap-2 text-ai-verified font-semibold text-sm">
             <svg
               className="w-5 h-5"

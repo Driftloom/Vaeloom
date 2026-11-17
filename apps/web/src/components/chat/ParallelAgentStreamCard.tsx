@@ -43,7 +43,7 @@ export function ParallelAgentStreamCard({
 
   return (
     <div
-      className="my-3 rounded-xl border border-border/80 bg-surface-50/80 p-3.5 space-y-3 shadow-sm"
+      className="my-3 rounded-xl border border-border/80 bg-surface-50/80 p-3.5 space-y-3 shadow-xs"
       data-testid="parallel-agent-stream-container"
     >
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/40 pb-2">

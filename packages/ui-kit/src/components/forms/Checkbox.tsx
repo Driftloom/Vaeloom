@@ -68,7 +68,7 @@ export const Checkbox = React.forwardRef<HTMLInputElement, CheckboxProps>(
               }`}
             >
               {props.checked && !indeterminate && <CheckIcon size={12} strokeWidth={3} />}
-              {indeterminate && <div className="w-2 h-0.5 bg-white rounded-sm" />}
+              {indeterminate && <div className="w-2 h-0.5 bg-white rounded-xs" />}
             </span>
           </label>
           {label && (

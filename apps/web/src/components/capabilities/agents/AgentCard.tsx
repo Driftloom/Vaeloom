@@ -38,7 +38,7 @@ export const AgentCard: React.FC<AgentCardProps> = ({
         type="button"
         onClick={onSelect}
         aria-current={isSelected ? 'true' : undefined}
-        className="flex items-start gap-2.5 min-w-0 flex-1 text-left rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+        className="flex items-start gap-2.5 min-w-0 flex-1 text-left rounded focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
       >
         <span
           className="p-2 rounded-md shrink-0 border flex items-center justify-center"

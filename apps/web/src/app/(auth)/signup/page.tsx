@@ -154,7 +154,7 @@ export default function SignupPage() {
         <div className="relative z-10 flex flex-col justify-center px-16 lg:px-20">
           <div className="mb-12 animate-fade-in">
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-400 to-primary-500 flex items-center justify-center shadow-glow">
+              <div className="w-10 h-10 rounded-xl bg-linear-to-br from-accent-400 to-primary-500 flex items-center justify-center shadow-glow">
                 <span className="text-white font-bold text-lg">V</span>
               </div>
               <span className="text-2xl font-bold text-text">Vaeloom</span>
@@ -163,7 +163,7 @@ export default function SignupPage() {
           <p className="text-4xl lg:text-5xl font-bold text-text leading-tight mb-6 animate-slide-up">
             Start building your
             <br />
-            <span className="bg-gradient-to-r from-accent-400 via-primary-400 to-primary-300 bg-clip-text text-transparent">
+            <span className="bg-linear-to-r from-accent-400 via-primary-400 to-primary-300 bg-clip-text text-transparent">
               AI memory
             </span>
           </p>
@@ -194,7 +194,7 @@ export default function SignupPage() {
         <div className="w-full max-w-[420px] relative z-10 my-auto">
           <div className="lg:hidden text-center mb-4">
             <div className="inline-flex items-center gap-2 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-accent-400 to-primary-500 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-linear-to-br from-accent-400 to-primary-500 flex items-center justify-center">
                 <span className="text-white font-bold text-lg">V</span>
               </div>
               <span className="text-2xl font-bold text-text">Vaeloom</span>

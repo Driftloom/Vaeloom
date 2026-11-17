@@ -426,7 +426,7 @@ export function ResumeBuilder({ workspaceId }: { workspaceId: string }) {
               <button
                 type="button"
                 disabled={uploading}
-                className="btn-primary text-xs py-2 px-5 rounded-xl shadow-sm"
+                className="btn-primary text-xs py-2 px-5 rounded-xl shadow-xs"
               >
                 {uploading ? 'Analyzing…' : 'Browse Files'}
               </button>

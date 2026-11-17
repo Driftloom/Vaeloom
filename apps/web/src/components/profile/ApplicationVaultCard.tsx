@@ -142,7 +142,7 @@ export default function ApplicationVaultCard({
                 value={countriesText}
                 onChange={(e) => setCountriesText(e.target.value)}
                 placeholder="US, CA, UK, IN"
-                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
+                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary/50"
               />
               <span className="text-2xs text-text-dim mt-0.5 block">
                 Countries legally authorized to work in
@@ -156,7 +156,7 @@ export default function ApplicationVaultCard({
               <select
                 value={visaStatus}
                 onChange={(e) => setVisaStatus(e.target.value)}
-                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
+                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary/50"
               >
                 <option value="Citizen">Citizen (U.S. / Target Country)</option>
                 <option value="Permanent Resident / Green Card">
@@ -183,7 +183,7 @@ export default function ApplicationVaultCard({
               <select
                 value={securityClearance}
                 onChange={(e) => setSecurityClearance(e.target.value)}
-                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
+                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary/50"
               >
                 <option value="None">None</option>
                 <option value="Public Trust">Public Trust</option>
@@ -261,7 +261,7 @@ export default function ApplicationVaultCard({
                 <select
                   value={gender}
                   onChange={(e) => setGender(e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-xs bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
+                  className="w-full px-2.5 py-1.5 text-xs bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary/50"
                 >
                   <option value="">Select or decline...</option>
                   <option value="Male">Male</option>
@@ -278,7 +278,7 @@ export default function ApplicationVaultCard({
                 <select
                   value={ethnicity}
                   onChange={(e) => setEthnicity(e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-xs bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
+                  className="w-full px-2.5 py-1.5 text-xs bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary/50"
                 >
                   <option value="">Select or decline...</option>
                   <option value="Hispanic or Latino">Hispanic or Latino</option>
@@ -303,7 +303,7 @@ export default function ApplicationVaultCard({
                 <select
                   value={veteranStatus}
                   onChange={(e) => setVeteranStatus(e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-xs bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
+                  className="w-full px-2.5 py-1.5 text-xs bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary/50"
                 >
                   <option value="">Select or decline...</option>
                   <option value="I am a protected veteran">I am a protected veteran</option>
@@ -319,7 +319,7 @@ export default function ApplicationVaultCard({
                 <select
                   value={disabilityStatus}
                   onChange={(e) => setDisabilityStatus(e.target.value)}
-                  className="w-full px-2.5 py-1.5 text-xs bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
+                  className="w-full px-2.5 py-1.5 text-xs bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary/50"
                 >
                   <option value="">Select or decline...</option>
                   <option value="Yes, I have a disability">Yes, I have a disability</option>
@@ -337,7 +337,7 @@ export default function ApplicationVaultCard({
           <button
             type="submit"
             disabled={saving}
-            className="px-5 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-fg hover:bg-primary-hover disabled:opacity-50 transition-colors shadow-sm"
+            className="px-5 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-fg hover:bg-primary-hover disabled:opacity-50 transition-colors shadow-xs"
           >
             {saving ? 'Encrypting & Saving...' : 'Save Application Vault'}
           </button>

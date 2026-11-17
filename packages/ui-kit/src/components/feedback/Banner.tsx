@@ -50,7 +50,7 @@ export const Banner: React.FC<BannerProps> = ({
           <button
             type="button"
             onClick={action.onClick}
-            className={`inline-flex items-center text-xs font-semibold underline hover:opacity-80 focus:outline-none focus-visible:ring-1 focus-visible:ring-current ${MIN_TOUCH_TARGET}`}
+            className={`inline-flex items-center text-xs font-semibold underline hover:opacity-80 focus:outline-hidden focus-visible:ring-1 focus-visible:ring-current ${MIN_TOUCH_TARGET}`}
           >
             {action.label}
           </button>
@@ -60,7 +60,7 @@ export const Banner: React.FC<BannerProps> = ({
             type="button"
             aria-label="Close banner"
             onClick={onClose}
-            className={`inline-flex items-center justify-center opacity-60 hover:opacity-100 rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-current ${MIN_TOUCH_TARGET}`}
+            className={`inline-flex items-center justify-center opacity-60 hover:opacity-100 rounded focus:outline-hidden focus-visible:ring-1 focus-visible:ring-current ${MIN_TOUCH_TARGET}`}
           >
             <XIcon size={14} />
           </button>

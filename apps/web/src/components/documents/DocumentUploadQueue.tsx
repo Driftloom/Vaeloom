@@ -555,7 +555,7 @@ export const DocumentUploadQueue: React.FC<DocumentUploadQueueProps> = ({
         }}
         tabIndex={hasWorkspace ? 0 : -1}
         aria-disabled={hasWorkspace ? undefined : true}
-        className={`relative border-2 border-dashed rounded-xl p-6 sm:p-8 text-center transition-all duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-100 ${
+        className={`relative border-2 border-dashed rounded-xl p-6 sm:p-8 text-center transition-all duration-200 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-100 ${
           hasWorkspace ? 'cursor-pointer' : 'cursor-not-allowed opacity-60'
         } ${
           isDragOver
@@ -586,7 +586,7 @@ export const DocumentUploadQueue: React.FC<DocumentUploadQueueProps> = ({
                   e.stopPropagation();
                   fileInputRef.current?.click();
                 }}
-                className="text-primary underline hover:text-primary-hover font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:text-text-muted disabled:no-underline disabled:cursor-not-allowed"
+                className="text-primary underline hover:text-primary-hover font-semibold focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:text-text-muted disabled:no-underline disabled:cursor-not-allowed"
               >
                 browse files
               </button>{' '}
@@ -599,7 +599,7 @@ export const DocumentUploadQueue: React.FC<DocumentUploadQueueProps> = ({
                   e.stopPropagation();
                   folderInputRef.current?.click();
                 }}
-                className="text-primary underline hover:text-primary-hover font-semibold focus:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:text-text-muted disabled:no-underline disabled:cursor-not-allowed"
+                className="text-primary underline hover:text-primary-hover font-semibold focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent disabled:text-text-muted disabled:no-underline disabled:cursor-not-allowed"
               >
                 upload folder
               </button>
@@ -687,7 +687,7 @@ export const DocumentUploadQueue: React.FC<DocumentUploadQueueProps> = ({
                       <button
                         type="button"
                         onClick={(e) => handleRemoveItem(item.id, e)}
-                        className="p-1 rounded text-text-muted hover:text-error hover:bg-error/10 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-surface-100"
+                        className="p-1 rounded text-text-muted hover:text-error hover:bg-error/10 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-surface-100"
                         title="Remove from queue"
                         aria-label={`Remove ${item.name} from queue`}
                       >

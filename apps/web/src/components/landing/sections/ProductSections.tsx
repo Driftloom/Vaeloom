@@ -123,7 +123,7 @@ export function ProductDifference() {
                 {DIFFERENCE.vaeloom.label}
               </h3>
               <ol
-                className="relative mt-5 space-y-3 before:absolute before:left-[5px] before:top-2 before:h-[calc(100%-16px)] before:w-px before:bg-gradient-to-b before:from-primary-400 before:to-transparent"
+                className="relative mt-5 space-y-3 before:absolute before:left-[5px] before:top-2 before:h-[calc(100%-16px)] before:w-px before:bg-linear-to-b before:from-primary-400 before:to-transparent"
                 aria-label="The compounding loop"
               >
                 {DIFFERENCE.vaeloom.steps.map((s) => (

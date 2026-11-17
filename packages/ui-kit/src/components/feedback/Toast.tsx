@@ -47,7 +47,7 @@ export const Toast: React.FC<ToastProps> = ({
         type="button"
         aria-label="Dismiss notification"
         onClick={() => onDismiss(id)}
-        className={`shrink-0 inline-flex items-center justify-center text-text-muted hover:text-text rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-accent -mr-1 ${MIN_TOUCH_TARGET}`}
+        className={`shrink-0 inline-flex items-center justify-center text-text-muted hover:text-text rounded focus:outline-hidden focus-visible:ring-1 focus-visible:ring-accent -mr-1 ${MIN_TOUCH_TARGET}`}
       >
         <XIcon size={14} />
       </button>

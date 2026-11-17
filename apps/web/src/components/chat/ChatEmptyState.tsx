@@ -84,7 +84,7 @@ export function ChatEmptyState({
 
   return (
     <div className="py-8 md:py-14 text-center max-w-2xl mx-auto px-4">
-      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-200 text-base font-bold text-text shadow-sm border border-border/60">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-200 text-base font-bold text-text shadow-xs border border-border/60">
         V
       </div>
       <h2 className="mt-4 font-display text-2xl font-semibold text-text tracking-tight">

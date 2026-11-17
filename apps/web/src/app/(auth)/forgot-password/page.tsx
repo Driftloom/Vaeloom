@@ -62,7 +62,7 @@ export default function ForgotPasswordPage() {
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         <div className="relative z-10 flex flex-col justify-center px-16 lg:px-20">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-400 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-primary-500 to-accent-400 flex items-center justify-center">
               <span className="text-white font-bold text-lg">V</span>
             </div>
             <span className="text-2xl font-bold text-text">Vaeloom</span>

@@ -326,7 +326,7 @@ export const SkillsView: React.FC<SkillsViewProps> = ({
                   }
                 }
               }}
-              className="divide-y divide-border-subtle focus:outline-none"
+              className="divide-y divide-border-subtle focus:outline-hidden"
             >
               {filteredRows.map((row) => {
                 const isSelected = row.key === selectedRow?.key;

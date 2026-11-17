@@ -180,7 +180,7 @@ export default function PortfolioShowcase({
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. Distributed Vector Search Engine"
-                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary"
                 />
               </div>
               <div>
@@ -192,7 +192,7 @@ export default function PortfolioShowcase({
                   value={tagline}
                   onChange={(e) => setTagline(e.target.value)}
                   placeholder="e.g. Sub-millisecond ANN search across 10M embeddings"
-                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary"
                 />
               </div>
             </div>
@@ -207,7 +207,7 @@ export default function PortfolioShowcase({
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Describe the architectural problem solved, key design choices, and technical depth..."
-                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary resize-y"
+                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary resize-y"
               />
             </div>
 
@@ -221,7 +221,7 @@ export default function PortfolioShowcase({
                   value={techText}
                   onChange={(e) => setTechText(e.target.value)}
                   placeholder="e.g. Rust, PyO3, SIMD, Tokio, Docker"
-                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary"
                 />
               </div>
               <div>
@@ -233,7 +233,7 @@ export default function PortfolioShowcase({
                   value={metricsSummary}
                   onChange={(e) => setMetricsSummary(e.target.value)}
                   placeholder="e.g. Reduced p99 latency from 45ms to 3.8ms"
-                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary"
                 />
               </div>
             </div>
@@ -248,7 +248,7 @@ export default function PortfolioShowcase({
                   value={liveUrl}
                   onChange={(e) => setLiveUrl(e.target.value)}
                   placeholder="https://..."
-                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary"
                 />
               </div>
               <div>
@@ -260,7 +260,7 @@ export default function PortfolioShowcase({
                   value={githubUrl}
                   onChange={(e) => setGithubUrl(e.target.value)}
                   placeholder="https://github.com/..."
-                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary"
                 />
               </div>
             </div>

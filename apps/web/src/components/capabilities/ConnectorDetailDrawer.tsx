@@ -249,7 +249,7 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
         tabIndex={-1}
         className="fixed inset-y-0 right-0 max-w-full flex pl-10"
       >
-        <div className="w-screen max-w-xl bg-surface border-l border-border shadow-2xl flex flex-col focus:outline-none">
+        <div className="w-screen max-w-xl bg-surface border-l border-border shadow-2xl flex flex-col focus:outline-hidden">
           {/* Header */}
           <div className="p-5 border-b border-border bg-surface shrink-0 flex items-start justify-between gap-4">
             <div className="flex items-start gap-3 min-w-0">
@@ -282,7 +282,7 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
               {workspaceId && (connectorId || row.id || row.provider) && (
                 <Link
                   href={`/workspace/${workspaceId}/capabilities/connectors/${encodeURIComponent(connectorId || row.id || row.provider)}`}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-surface-elevated hover:bg-surface text-text font-medium text-xs transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-surface-elevated hover:bg-surface text-text font-medium text-xs transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
                 >
                   <span>Open Full Page ↗</span>
                 </Link>
@@ -317,7 +317,7 @@ export const ConnectorDetailDrawer: React.FC<ConnectorDetailDrawerProps> = ({
                 aria-selected={activeTab === tab.id}
                 tabIndex={activeTab === tab.id ? 0 : -1}
                 onClick={() => setActiveTab(tab.id)}
-                className={`py-2.5 px-3 text-xs font-medium border-b-2 transition-all rounded-t focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
+                className={`py-2.5 px-3 text-xs font-medium border-b-2 transition-all rounded-t focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
                   activeTab === tab.id
                     ? 'border-primary text-primary font-semibold'
                     : 'border-transparent text-text-secondary hover:text-text'

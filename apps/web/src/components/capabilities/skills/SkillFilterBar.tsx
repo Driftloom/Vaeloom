@@ -108,7 +108,7 @@ export const SkillFilterBar: React.FC<SkillFilterBarProps> = ({
           type="button"
           aria-pressed={categoryFilter === 'all'}
           onClick={() => onCategoryFilterChange('all')}
-          className={`px-2.5 py-1 rounded-pill font-medium transition-colors border cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${MIN_TOUCH_TARGET} ${
+          className={`px-2.5 py-1 rounded-pill font-medium transition-colors border cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${MIN_TOUCH_TARGET} ${
             categoryFilter === 'all'
               ? 'bg-action text-action-fg border-action shadow-elevation-raised font-semibold'
               : 'bg-surface-elevated text-text-secondary border-border hover:text-text hover:bg-surface-hover'
@@ -120,7 +120,7 @@ export const SkillFilterBar: React.FC<SkillFilterBarProps> = ({
           type="button"
           aria-pressed={categoryFilter === 'career'}
           onClick={() => onCategoryFilterChange('career')}
-          className={`px-2.5 py-1 rounded-pill font-medium transition-colors border flex items-center gap-1 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${MIN_TOUCH_TARGET} ${
+          className={`px-2.5 py-1 rounded-pill font-medium transition-colors border flex items-center gap-1 cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${MIN_TOUCH_TARGET} ${
             categoryFilter === 'career'
               ? 'bg-action text-action-fg border-action shadow-elevation-raised font-semibold'
               : 'bg-surface-elevated text-text-secondary border-border hover:text-text hover:bg-surface-hover'
@@ -133,7 +133,7 @@ export const SkillFilterBar: React.FC<SkillFilterBarProps> = ({
           type="button"
           aria-pressed={categoryFilter === 'agent'}
           onClick={() => onCategoryFilterChange('agent')}
-          className={`px-2.5 py-1 rounded-pill font-medium transition-colors border flex items-center gap-1 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${MIN_TOUCH_TARGET} ${
+          className={`px-2.5 py-1 rounded-pill font-medium transition-colors border flex items-center gap-1 cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${MIN_TOUCH_TARGET} ${
             categoryFilter === 'agent'
               ? 'bg-action text-action-fg border-action shadow-elevation-raised font-semibold'
               : 'bg-surface-elevated text-text-secondary border-border hover:text-text hover:bg-surface-hover'
@@ -146,7 +146,7 @@ export const SkillFilterBar: React.FC<SkillFilterBarProps> = ({
           type="button"
           aria-pressed={categoryFilter === 'engineering'}
           onClick={() => onCategoryFilterChange('engineering')}
-          className={`px-2.5 py-1 rounded-pill font-medium transition-colors border flex items-center gap-1 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${MIN_TOUCH_TARGET} ${
+          className={`px-2.5 py-1 rounded-pill font-medium transition-colors border flex items-center gap-1 cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${MIN_TOUCH_TARGET} ${
             categoryFilter === 'engineering'
               ? 'bg-action text-action-fg border-action shadow-elevation-raised font-semibold'
               : 'bg-surface-elevated text-text-secondary border-border hover:text-text hover:bg-surface-hover'

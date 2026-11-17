@@ -165,7 +165,7 @@ export const ToolSuiteAccordion: React.FC<ToolSuiteAccordionProps> = ({
                   type="button"
                   onClick={() => onSelectSuite(suite)}
                   aria-current={isSelected ? 'true' : undefined}
-                  className="flex-1 min-w-0 text-left rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+                  className="flex-1 min-w-0 text-left rounded-lg focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
                 >
                   <span className="flex items-center gap-2.5 min-w-0">
                     <span

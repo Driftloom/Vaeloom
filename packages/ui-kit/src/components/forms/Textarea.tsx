@@ -34,7 +34,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           disabled={disabled}
           aria-invalid={error ? 'true' : undefined}
           aria-describedby={error ? errorId : helperText ? helperId : undefined}
-          className={`w-full rounded-md border bg-surface px-3 py-2 text-sm text-text placeholder-text-muted transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:border-transparent disabled:cursor-not-allowed disabled:opacity-50 min-h-[80px] ${
+          className={`w-full rounded-md border bg-surface px-3 py-2 text-sm text-text placeholder-text-muted transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:border-transparent disabled:cursor-not-allowed disabled:opacity-50 min-h-[80px] ${
             error ? 'border-error' : 'border-border-subtle hover:border-border-strong'
           } ${className}`.trim()}
           {...props}

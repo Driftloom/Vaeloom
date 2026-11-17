@@ -178,7 +178,7 @@ export function ScaleMemoryViewer({ workspaceId }: ScaleMemoryViewerProps) {
                 onClick={() => setSelectedTier(tier.key)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
                   active
-                    ? 'bg-accent text-accent-fg shadow-sm'
+                    ? 'bg-accent text-accent-fg shadow-xs'
                     : 'bg-surface-100 text-text-secondary hover:bg-surface-hover hover:text-text border border-border'
                 }`}
               >
@@ -236,7 +236,7 @@ export function ScaleMemoryViewer({ workspaceId }: ScaleMemoryViewerProps) {
               <Card
                 key={node.id}
                 padding="md"
-                className="space-y-3 border border-border bg-surface hover:border-accent transition cursor-pointer shadow-sm rounded-xl"
+                className="space-y-3 border border-border bg-surface hover:border-accent transition cursor-pointer shadow-xs rounded-xl"
                 onClick={() => setSelectedNode(node)}
               >
                 <div className="flex items-center justify-between gap-2">

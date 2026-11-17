@@ -635,7 +635,7 @@ export function ChatComposer(props: ChatComposerProps): React.JSX.Element {
                 ? 'Ask anything…'
                 : `Message @${selectedAgent}`
             }
-            className="max-h-[120px] min-h-[24px] flex-1 resize-none bg-transparent py-2 text-sm placeholder:text-text-dim focus:outline-none"
+            className="max-h-[120px] min-h-[24px] flex-1 resize-none bg-transparent py-2 text-sm placeholder:text-text-dim focus:outline-hidden"
           />
           <button
             type="button"

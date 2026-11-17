@@ -149,7 +149,7 @@ export default function GlobalSearchPage() {
           placeholder="Search across documents, memories, jobs, resumes, and skills..."
           value={searchQuery}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
-          className="text-sm py-2.5 pl-10 shadow-sm"
+          className="text-sm py-2.5 pl-10 shadow-xs"
         />
         {searchQuery && (
           <button
@@ -245,7 +245,7 @@ export default function GlobalSearchPage() {
             return (
               <Card
                 key={result.id}
-                className="p-4 transition-all hover:border-action/50 hover:shadow-sm group space-y-2.5"
+                className="p-4 transition-all hover:border-action/50 hover:shadow-xs group space-y-2.5"
               >
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                   <div className="flex items-start gap-2.5">

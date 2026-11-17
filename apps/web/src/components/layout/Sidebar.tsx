@@ -264,7 +264,7 @@ export function Sidebar({
         <div className="flex items-center justify-between h-14 px-3 border-b border-border-subtle shrink-0">
           {!isCol && (
             <div className="flex items-center gap-2 min-w-0">
-              <div className="w-7 h-7 rounded-lg bg-action flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-sm">
+              <div className="w-7 h-7 rounded-lg bg-action flex items-center justify-center text-white font-bold text-xs shrink-0 shadow-xs">
                 V
               </div>
               <span className="font-semibold text-sm text-text truncate tracking-tight">
@@ -279,12 +279,12 @@ export function Sidebar({
                   type="button"
                   aria-label="Expand sidebar"
                   onClick={onToggleCollapse}
-                  className="w-8 h-8 rounded-lg bg-action flex items-center justify-center text-white font-bold text-xs shadow-sm hover:opacity-90"
+                  className="w-8 h-8 rounded-lg bg-action flex items-center justify-center text-white font-bold text-xs shadow-xs hover:opacity-90"
                 >
                   V
                 </button>
               ) : (
-                <div className="w-8 h-8 rounded-lg bg-action flex items-center justify-center text-white font-bold text-xs shadow-sm">
+                <div className="w-8 h-8 rounded-lg bg-action flex items-center justify-center text-white font-bold text-xs shadow-xs">
                   V
                 </div>
               )}
@@ -295,7 +295,7 @@ export function Sidebar({
               type="button"
               aria-label="Collapse sidebar"
               onClick={onToggleCollapse}
-              className="p-1 rounded text-text-muted hover:text-text hover:bg-surface-200 focus:outline-none focus-visible:ring-1 focus-visible:ring-accent"
+              className="p-1 rounded text-text-muted hover:text-text hover:bg-surface-200 focus:outline-hidden focus-visible:ring-1 focus-visible:ring-accent"
             >
               <ChevronLeftIcon size={16} />
             </button>
@@ -325,7 +325,7 @@ export function Sidebar({
                 onClick={() => handleModeChange('workspace')}
                 className={`flex items-center justify-center gap-1.5 py-1.5 px-1 rounded-md text-2xs font-medium transition-all ${
                   effectiveMode === 'workspace'
-                    ? 'bg-surface text-text shadow-sm font-semibold border border-border-subtle'
+                    ? 'bg-surface text-text shadow-xs font-semibold border border-border-subtle'
                     : 'text-text-secondary hover:text-text hover:bg-surface-300/60'
                 }`}
                 title="Personal Workspace — daily assistant, memory, career"
@@ -340,7 +340,7 @@ export function Sidebar({
                 onClick={() => handleModeChange('admin')}
                 className={`flex items-center justify-center gap-1.5 py-1.5 px-1 rounded-md text-2xs font-medium transition-all ${
                   effectiveMode === 'admin'
-                    ? 'bg-surface text-text shadow-sm font-semibold border border-border-subtle'
+                    ? 'bg-surface text-text shadow-xs font-semibold border border-border-subtle'
                     : 'text-text-secondary hover:text-text hover:bg-surface-300/60'
                 }`}
                 title="Admin Console — tenant governance, billing, security"
@@ -355,7 +355,7 @@ export function Sidebar({
                 onClick={() => handleModeChange('developer')}
                 className={`flex items-center justify-center gap-1.5 py-1.5 px-1 rounded-md text-2xs font-medium transition-all ${
                   effectiveMode === 'developer'
-                    ? 'bg-surface text-text shadow-sm font-semibold border border-border-subtle'
+                    ? 'bg-surface text-text shadow-xs font-semibold border border-border-subtle'
                     : 'text-text-secondary hover:text-text hover:bg-surface-300/60'
                 }`}
                 title="Developer Studio — cognition S1/S2, agent council, connectors"
@@ -372,7 +372,7 @@ export function Sidebar({
               onClick={cycleMode}
               title={`Active Mode: ${currentModeMeta.label} (Click to switch)`}
               aria-label={`Active Mode: ${currentModeMeta.label}. Click to switch mode.`}
-              className="w-8 h-8 rounded-lg flex items-center justify-center bg-surface-200 text-text hover:bg-surface-300 transition-colors border border-border-subtle shadow-sm"
+              className="w-8 h-8 rounded-lg flex items-center justify-center bg-surface-200 text-text hover:bg-surface-300 transition-colors border border-border-subtle shadow-xs"
             >
               {effectiveMode === 'workspace' && <BrainIcon size={14} />}
               {effectiveMode === 'admin' && <BuildingIcon size={14} />}

@@ -534,7 +534,7 @@ export function CommandCenter({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Type a command, search memories, or jump to a page…"
-            className="flex-1 bg-transparent text-sm sm:text-base text-text placeholder:text-text-dim outline-none"
+            className="flex-1 bg-transparent text-sm sm:text-base text-text placeholder:text-text-dim outline-hidden"
             autoComplete="off"
             spellCheck="false"
           />
@@ -609,7 +609,7 @@ export function CommandCenter({
                   onMouseEnter={() => setFocusedIndex(index)}
                   className={`w-full text-left rounded-lg px-3 py-2.5 transition-colors flex items-center justify-between gap-3 cursor-pointer ${
                     isFocused
-                      ? 'bg-surface-200 border border-primary/30 shadow-sm'
+                      ? 'bg-surface-200 border border-primary/30 shadow-xs'
                       : 'border border-transparent hover:bg-surface-hover'
                   }`}
                 >

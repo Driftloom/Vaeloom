@@ -78,7 +78,7 @@ export function ChatModelSelector({
       <button
         type="button"
         onClick={() => setIsOpen((prev) => !prev)}
-        className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-surface-50 px-2.5 py-1 text-xs font-medium text-text hover:bg-surface-hover hover:border-border transition-colors motion-reduce:transition-none focus:outline-none focus:ring-1 focus:ring-action"
+        className="inline-flex items-center gap-1.5 rounded-lg border border-border/60 bg-surface-50 px-2.5 py-1 text-xs font-medium text-text hover:bg-surface-hover hover:border-border transition-colors motion-reduce:transition-none focus:outline-hidden focus:ring-1 focus:ring-action"
         aria-haspopup="true"
         aria-expanded={isOpen}
         aria-label={`Select model: ${activeModel.name}`}
@@ -136,7 +136,7 @@ export function ChatModelSelector({
                 onClick={() => setFilterTier(tier)}
                 className={`flex-1 py-1 text-[11px] font-medium rounded-md capitalize transition-colors ${
                   filterTier === tier
-                    ? 'bg-surface-200 text-text shadow-sm'
+                    ? 'bg-surface-200 text-text shadow-xs'
                     : 'text-text-muted hover:text-text'
                 }`}
               >

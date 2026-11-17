@@ -172,7 +172,7 @@ export default function CareerSummary({
                   value={company}
                   onChange={(e) => setCompany(e.target.value)}
                   placeholder="e.g. Stripe, OpenAI"
-                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary disabled:opacity-50"
+                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary disabled:opacity-50"
                 />
               </div>
               <div>
@@ -185,7 +185,7 @@ export default function CareerSummary({
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
                   placeholder="e.g. Staff Software Engineer"
-                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary"
                 />
               </div>
             </div>
@@ -198,7 +198,7 @@ export default function CareerSummary({
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   placeholder="e.g. San Francisco, CA (or Remote)"
-                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary"
                 />
               </div>
               <div>
@@ -208,7 +208,7 @@ export default function CareerSummary({
                 <select
                   value={employmentType}
                   onChange={(e) => setEmploymentType(e.target.value)}
-                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary"
                 >
                   <option value="Full-time">Full-time</option>
                   <option value="Contract">Contract / Consultant</option>
@@ -226,7 +226,7 @@ export default function CareerSummary({
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
                   placeholder="e.g. 2021-03 or Mar 2021"
-                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary"
                 />
               </div>
               <div>
@@ -237,7 +237,7 @@ export default function CareerSummary({
                   value={isCurrent ? 'Present' : endDate}
                   onChange={(e) => setEndDate(e.target.value)}
                   placeholder="e.g. 2023-11"
-                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary disabled:opacity-50"
+                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary disabled:opacity-50"
                 />
               </div>
             </div>
@@ -272,7 +272,7 @@ export default function CareerSummary({
                 placeholder={
                   'Architected distributed event pipeline handling 2M events/sec\nMentored 4 engineers and improved release velocity by 35%'
                 }
-                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary resize-y"
+                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary resize-y"
               />
             </div>
 

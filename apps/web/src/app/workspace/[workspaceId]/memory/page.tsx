@@ -693,7 +693,7 @@ function MemoryGraphPageContent() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Link
           href={`/workspace/${workspaceId}/memory/vault`}
-          className="p-3 rounded-xl border border-border bg-surface hover:bg-surface-hover transition flex items-center justify-between group shadow-sm"
+          className="p-3 rounded-xl border border-border bg-surface hover:bg-surface-hover transition flex items-center justify-between group shadow-xs"
         >
           <div>
             <p className="text-xs font-semibold text-text group-hover:text-accent">
@@ -705,7 +705,7 @@ function MemoryGraphPageContent() {
 
         <Link
           href={`/workspace/${workspaceId}/memory/graph`}
-          className="p-3 rounded-xl border border-border bg-surface hover:bg-surface-hover transition flex items-center justify-between group shadow-sm"
+          className="p-3 rounded-xl border border-border bg-surface hover:bg-surface-hover transition flex items-center justify-between group shadow-xs"
         >
           <div>
             <p className="text-xs font-semibold text-text group-hover:text-accent">
@@ -717,7 +717,7 @@ function MemoryGraphPageContent() {
 
         <Link
           href={`/workspace/${workspaceId}/memory/scale`}
-          className="p-3 rounded-xl border border-border bg-surface hover:bg-surface-hover transition flex items-center justify-between group shadow-sm"
+          className="p-3 rounded-xl border border-border bg-surface hover:bg-surface-hover transition flex items-center justify-between group shadow-xs"
         >
           <div>
             <p className="text-xs font-semibold text-text group-hover:text-accent">
@@ -729,7 +729,7 @@ function MemoryGraphPageContent() {
 
         <Link
           href={`/workspace/${workspaceId}/memory/corrections`}
-          className="p-3 rounded-xl border border-border bg-surface hover:bg-surface-hover transition flex items-center justify-between group shadow-sm"
+          className="p-3 rounded-xl border border-border bg-surface hover:bg-surface-hover transition flex items-center justify-between group shadow-xs"
         >
           <div>
             <p className="text-xs font-semibold text-text group-hover:text-accent">
@@ -763,7 +763,7 @@ function MemoryGraphPageContent() {
           )}
 
           {selectedMemoryIds.size > 0 && (
-            <div className="flex items-center justify-between p-3 bg-surface-100 border border-accent rounded-xl shadow-sm">
+            <div className="flex items-center justify-between p-3 bg-surface-100 border border-accent rounded-xl shadow-xs">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-semibold text-accent">
                   {selectedMemoryIds.size} selected
@@ -894,7 +894,7 @@ function MemoryGraphPageContent() {
           />
         ) : (
           <div className="space-y-3">
-            <div className="rounded-xl border border-border bg-surface p-6 shadow-sm">
+            <div className="rounded-xl border border-border bg-surface p-6 shadow-xs">
               <h3 className="text-xs font-semibold text-text uppercase tracking-wider mb-4">
                 Memory Lifecycle &amp; Agent Trajectory
               </h3>
@@ -923,7 +923,7 @@ function MemoryGraphPageContent() {
 
       {/* Tab 4: Knowledge Graph */}
       <TabPanel id="graph" activeTab={activeTab}>
-        <div className="min-h-[600px] h-[70vh] bg-surface border border-border rounded-xl overflow-hidden relative shadow-sm">
+        <div className="min-h-[600px] h-[70vh] bg-surface border border-border rounded-xl overflow-hidden relative shadow-xs">
           <DynamicGraphViewer workspaceId={workspaceId} />
         </div>
       </TabPanel>
@@ -1028,7 +1028,7 @@ function MemoryGraphPageContent() {
               placeholder="e.g. Distributed Consensus in Distributed Systems"
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
-              className="w-full rounded-md border border-border bg-surface-50 p-2.5 text-xs text-text focus:outline-none focus:ring-1 focus:ring-accent font-sans"
+              className="w-full rounded-md border border-border bg-surface-50 p-2.5 text-xs text-text focus:outline-hidden focus:ring-1 focus:ring-accent font-sans"
             />
           </div>
 
@@ -1039,7 +1039,7 @@ function MemoryGraphPageContent() {
             <select
               value={newType}
               onChange={(e) => setNewType(e.target.value)}
-              className="w-full rounded-md border border-border bg-surface-50 p-2.5 text-xs text-text focus:outline-none focus:ring-1 focus:ring-accent font-sans"
+              className="w-full rounded-md border border-border bg-surface-50 p-2.5 text-xs text-text focus:outline-hidden focus:ring-1 focus:ring-accent font-sans"
             >
               {TYPE_FILTERS.filter((f) => f.id !== 'all').map((f) => (
                 <option key={f.id} value={f.id}>
@@ -1059,7 +1059,7 @@ function MemoryGraphPageContent() {
               placeholder="Enter note or markdown content..."
               value={newContent}
               onChange={(e) => setNewContent(e.target.value)}
-              className="w-full rounded-md border border-border bg-surface-50 p-2.5 text-xs text-text focus:outline-none focus:ring-1 focus:ring-accent font-sans"
+              className="w-full rounded-md border border-border bg-surface-50 p-2.5 text-xs text-text focus:outline-hidden focus:ring-1 focus:ring-accent font-sans"
             />
           </div>
 
@@ -1072,7 +1072,7 @@ function MemoryGraphPageContent() {
               placeholder="e.g. memory, architecture, notes"
               value={newTags}
               onChange={(e) => setNewTags(e.target.value)}
-              className="w-full rounded-md border border-border bg-surface-50 p-2.5 text-xs text-text focus:outline-none focus:ring-1 focus:ring-accent font-mono"
+              className="w-full rounded-md border border-border bg-surface-50 p-2.5 text-xs text-text focus:outline-hidden focus:ring-1 focus:ring-accent font-mono"
             />
           </div>
 
@@ -1109,7 +1109,7 @@ function MemoryGraphPageContent() {
               placeholder={`[\n  {\n    "title": "System Architecture Decisions",\n    "content": "Decided on SQLite/PostgreSQL RLS with event stream...",\n    "type": "decision",\n    "tags": ["architecture", "database"]\n  }\n]`}
               value={importJsonText}
               onChange={(e) => setImportJsonText(e.target.value)}
-              className="w-full font-mono text-xs rounded-md border border-border bg-surface-50 p-2.5 text-text focus:outline-none focus:ring-1 focus:ring-accent"
+              className="w-full font-mono text-xs rounded-md border border-border bg-surface-50 p-2.5 text-text focus:outline-hidden focus:ring-1 focus:ring-accent"
             />
           </div>
 

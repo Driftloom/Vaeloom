@@ -258,7 +258,7 @@ export function ExecutionTimeline({
 
   return (
     <div
-      className="rounded-lg border border-border bg-surface p-4 shadow-sm"
+      className="rounded-lg border border-border bg-surface p-4 shadow-xs"
       aria-live="polite"
       aria-label="Execution timeline"
     >

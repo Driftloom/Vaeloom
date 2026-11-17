@@ -199,7 +199,7 @@ export default function EmailIntelligencePage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search sender, subject..."
-            className="w-full px-3 py-1.5 text-xs rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-none focus:border-primary"
+            className="w-full px-3 py-1.5 text-xs rounded-lg bg-surface border border-border text-text placeholder:text-text-muted focus:outline-hidden focus:border-primary"
           />
         </div>
       </div>
@@ -268,7 +268,7 @@ export default function EmailIntelligencePage() {
                     type="button"
                     aria-pressed={isSelected}
                     onClick={() => setSelectedThreadId(thread.id)}
-                    className={`w-full text-left p-3.5 rounded-xl border transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                    className={`w-full text-left p-3.5 rounded-xl border transition-all focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-accent ${
                       isSelected
                         ? 'bg-action/10 border-action/60 shadow-xs'
                         : 'bg-surface border-border-subtle hover:border-border-strong hover:bg-surface-100'

@@ -55,7 +55,7 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
         ref={ref}
         aria-label={ariaLabel}
         disabled={disabled || loading}
-        className={`inline-flex items-center justify-center font-medium transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-100 disabled:opacity-50 disabled:cursor-not-allowed ${vStyle} ${sStyle} ${className}`.trim()}
+        className={`inline-flex items-center justify-center font-medium transition-colors duration-150 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-100 disabled:opacity-50 disabled:cursor-not-allowed ${vStyle} ${sStyle} ${className}`.trim()}
         {...props}
       >
         {loading ? <Spinner size={size === 'lg' ? 'md' : 'sm'} /> : children}

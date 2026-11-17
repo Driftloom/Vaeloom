@@ -272,7 +272,7 @@ export default function MemoryDetailPage() {
                   onClick={() => setActiveView('rendered')}
                   className={`px-2.5 py-1 rounded font-medium transition ${
                     activeView === 'rendered'
-                      ? 'bg-surface text-text shadow-sm'
+                      ? 'bg-surface text-text shadow-xs'
                       : 'text-text-muted hover:text-text'
                   }`}
                 >
@@ -283,7 +283,7 @@ export default function MemoryDetailPage() {
                   onClick={() => setActiveView('raw')}
                   className={`px-2.5 py-1 rounded font-medium transition ${
                     activeView === 'raw'
-                      ? 'bg-surface text-text shadow-sm'
+                      ? 'bg-surface text-text shadow-xs'
                       : 'text-text-muted hover:text-text'
                   }`}
                 >
@@ -528,7 +528,7 @@ export default function MemoryDetailPage() {
             <input
               id="edit-title"
               type="text"
-              className="w-full rounded-md border border-border bg-surface-100 p-2.5 text-xs text-text focus:outline-none focus:ring-1 focus:ring-accent font-sans"
+              className="w-full rounded-md border border-border bg-surface-100 p-2.5 text-xs text-text focus:outline-hidden focus:ring-1 focus:ring-accent font-sans"
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
             />
@@ -543,7 +543,7 @@ export default function MemoryDetailPage() {
             <textarea
               id="edit-summary"
               rows={3}
-              className="w-full rounded-md border border-border bg-surface-100 p-2.5 text-xs text-text focus:outline-none focus:ring-1 focus:ring-accent font-sans"
+              className="w-full rounded-md border border-border bg-surface-100 p-2.5 text-xs text-text focus:outline-hidden focus:ring-1 focus:ring-accent font-sans"
               value={editSummary}
               onChange={(e) => setEditSummary(e.target.value)}
             />
@@ -559,7 +559,7 @@ export default function MemoryDetailPage() {
               id="edit-reason"
               type="text"
               placeholder="e.g. Updated with recent architectural decisions and scope"
-              className="w-full rounded-md border border-border bg-surface-100 p-2.5 text-xs text-text focus:outline-none focus:ring-1 focus:ring-accent font-sans"
+              className="w-full rounded-md border border-border bg-surface-100 p-2.5 text-xs text-text focus:outline-hidden focus:ring-1 focus:ring-accent font-sans"
               value={editReason}
               onChange={(e) => setEditReason(e.target.value)}
             />
@@ -574,7 +574,7 @@ export default function MemoryDetailPage() {
             <textarea
               id="edit-content"
               rows={6}
-              className="w-full rounded-md border border-border bg-surface-100 p-2.5 text-xs text-text focus:outline-none focus:ring-1 focus:ring-accent font-mono"
+              className="w-full rounded-md border border-border bg-surface-100 p-2.5 text-xs text-text focus:outline-hidden focus:ring-1 focus:ring-accent font-mono"
               value={editContent}
               onChange={(e) => setEditContent(e.target.value)}
             />

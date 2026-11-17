@@ -383,7 +383,7 @@ export default function JobsPage() {
                 if (e.key === 'Enter') handleSearch();
               }}
               placeholder="e.g. Product Manager in Berlin, React frontend, ML engineer…"
-              className="flex-1 min-h-11 rounded-full border border-border bg-background px-4 py-2 text-sm outline-none focus:border-primary"
+              className="flex-1 min-h-11 rounded-full border border-border bg-background px-4 py-2 text-sm outline-hidden focus:border-primary"
             />
             <button
               type="button"
@@ -646,7 +646,7 @@ export default function JobsPage() {
                     value={matcherTitle}
                     onChange={(e) => setMatcherTitle(e.target.value)}
                     placeholder="e.g. Lead AI Platform Engineer"
-                    className="w-full text-xs px-3 py-2 rounded-lg bg-background border border-border text-text focus:outline-none focus:border-primary"
+                    className="w-full text-xs px-3 py-2 rounded-lg bg-background border border-border text-text focus:outline-hidden focus:border-primary"
                   />
                 </div>
 
@@ -659,7 +659,7 @@ export default function JobsPage() {
                       value={matcherCompany}
                       onChange={(e) => setMatcherCompany(e.target.value)}
                       placeholder="e.g. Anthropic"
-                      className="w-full text-xs px-3 py-2 rounded-lg bg-background border border-border text-text focus:outline-none focus:border-primary"
+                      className="w-full text-xs px-3 py-2 rounded-lg bg-background border border-border text-text focus:outline-hidden focus:border-primary"
                     />
                   </div>
                   <div>
@@ -667,7 +667,7 @@ export default function JobsPage() {
                     <select
                       value={matcherType}
                       onChange={(e) => setMatcherType(e.target.value)}
-                      className="w-full text-xs px-3 py-2 rounded-lg bg-background border border-border text-text focus:outline-none focus:border-primary"
+                      className="w-full text-xs px-3 py-2 rounded-lg bg-background border border-border text-text focus:outline-hidden focus:border-primary"
                     >
                       <option value="job">Job</option>
                       <option value="hackathon">Hackathon</option>
@@ -686,7 +686,7 @@ export default function JobsPage() {
                     value={matcherSkills}
                     onChange={(e) => setMatcherSkills(e.target.value)}
                     placeholder="Python, FastAPI, Vector Search, Distributed Systems"
-                    className="w-full text-xs px-3 py-2 rounded-lg bg-background border border-border text-text focus:outline-none focus:border-primary"
+                    className="w-full text-xs px-3 py-2 rounded-lg bg-background border border-border text-text focus:outline-hidden focus:border-primary"
                   />
                 </div>
 
@@ -699,7 +699,7 @@ export default function JobsPage() {
                     value={matcherDesc}
                     onChange={(e) => setMatcherDesc(e.target.value)}
                     placeholder="Describe the opportunity expectations..."
-                    className="w-full text-xs px-3 py-2 rounded-lg bg-background border border-border text-text focus:outline-none focus:border-primary resize-none"
+                    className="w-full text-xs px-3 py-2 rounded-lg bg-background border border-border text-text focus:outline-hidden focus:border-primary resize-none"
                   />
                 </div>
 
@@ -745,7 +745,7 @@ export default function JobsPage() {
             {matchResult ? (
               <div className="space-y-4">
                 {/* Score & Verdict Banner */}
-                <div className="card bg-gradient-to-br from-surface to-surface-200 border-primary/30">
+                <div className="card bg-linear-to-br from-surface to-surface-200 border-primary/30">
                   <div className="flex items-center justify-between">
                     <div>
                       <span className="text-xs font-mono uppercase tracking-wider text-text-dim">

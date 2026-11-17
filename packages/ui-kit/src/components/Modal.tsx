@@ -54,7 +54,7 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, 
           <button
             onClick={onClose}
             type="button"
-            className={`inline-flex items-center justify-center rounded text-text-muted hover:text-text transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${MIN_TOUCH_TARGET}`}
+            className={`inline-flex items-center justify-center rounded text-text-muted hover:text-text transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent ${MIN_TOUCH_TARGET}`}
             aria-label="Close"
           >
             <svg

@@ -192,7 +192,7 @@ export default function HelpCenterPage() {
           placeholder="Search guides, architectural concepts, or keyboard shortcuts..."
           value={query}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)}
-          className="text-sm py-2.5 pl-10 shadow-sm"
+          className="text-sm py-2.5 pl-10 shadow-xs"
         />
         {query && (
           <button

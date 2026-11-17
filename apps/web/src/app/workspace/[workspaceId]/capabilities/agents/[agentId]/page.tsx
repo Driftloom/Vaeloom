@@ -284,7 +284,7 @@ export default function AgentSubpage() {
           <>
             <Link
               href={`/workspace/${workspaceId}/chat?agent=${selectedAgent.name}`}
-              className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-lg"
+              className="focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-lg"
             >
               <Button variant="secondary" size="sm">
                 Chat with Agent

@@ -18,68 +18,30 @@ const rgb = (v: string) => `rgb(${v} / <alpha-value>)`;
 
 const config: Config = {
   darkMode: 'class',
-  content: [
-    './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
-    './src/components/**/*.{js,ts,jsx,tsx,mdx}',
-    './src/app/**/*.{js,ts,jsx,tsx,mdx}',
-    // F-06 fix: ui-kit classes were previously purged (Modal backdrop,
-    // Button hover/active/focus states) because the package was not scanned.
-    '../../packages/ui-kit/src/**/*.{js,ts,jsx,tsx}',
-    // Purge-gap fix: lib/, hooks/, trigger/ and __tests__/ render class names
-    // too (error-tracking boundary, connector catalog SVGs, shortcut overlay,
-    // trigger jobs). They were absent from the scan, so Tailwind purged valid
-    // utilities like `text-surface-900` and `bg-[#1c1d24]`. Test files are
-    // included because fixture markup must reflect production output.
-    './src/lib/**/*.{js,ts,jsx,tsx,mdx}',
-    './src/hooks/**/*.{js,ts,jsx,tsx,mdx}',
-    './src/trigger/**/*.{js,ts,jsx,tsx,mdx}',
-    './src/__tests__/**/*.{js,ts,jsx,tsx,mdx}',
-  ],
+  // Source scanning moved to `src/styles/globals.css` as `@source` directives.
+  // Tailwind 4 replaced the `content` key with `@source`, and keeping both
+  // would leave two lists that can drift. The CSS lists the same directory
+  // surface this block used to declare, plus the ui-kit package.
   /**
    * Agent dot colours, served to the browser as class *strings*.
    *
    * `AGENT_COLOR_PALETTE` lives in `apps/api/src/api/routers/agent_commands.py`
    * and reaches the client through `GET /agents/commands` as the `color` field.
-   * A `.py` file is outside every `content` glob above, so Tailwind's scanner never
-   * sees these names and purges all 26 — an agent avatar dot then renders with no
+   * A `.py` file is outside every source glob, so Tailwind's scanner never sees
+   * these names and purges all 26 — an agent avatar dot then renders with no
    * background at all. The backend stays the single source of truth for the
-   * palette; this list only guarantees the utilities it names survive the purge.
+   * palette; the `@source inline(...)` list in `src/styles/globals.css` only
+   * guarantees the utilities it names survive the purge. Tailwind 4 removed the
+   * `safelist` config key, so that list now lives with the other source
+   * directives in CSS.
    *
    * Duplication risk: adding an agent or recolouring one in Python will NOT add the
-   * class here, and the new dot ships colourless with nothing to fail a build. A
+   * class there, and the new dot ships colourless with nothing to fail a build. A
    * shared token set (CSS variables keyed by agent) would remove the duplication,
    * but it is a cross-stack change to the palette contract, not a config fix, so it
    * is deliberately not taken here. `tailwind.config.ts` is also the only place in
    * the frontend that knows these values, so grep for `bg-slate-700` to audit.
    */
-  safelist: [
-    'bg-accent',
-    'bg-amber-500',
-    'bg-amber-600',
-    'bg-blue-400',
-    'bg-blue-500',
-    'bg-cyan-500',
-    'bg-emerald-500',
-    'bg-emerald-600',
-    'bg-emerald-700',
-    'bg-fuchsia-500',
-    'bg-gray-500',
-    'bg-indigo-500',
-    'bg-lime-600',
-    'bg-orange-500',
-    'bg-pink-500',
-    'bg-primary',
-    'bg-purple-500',
-    'bg-red-500',
-    'bg-red-600',
-    'bg-rose-500',
-    'bg-sky-500',
-    'bg-slate-700',
-    'bg-teal-500',
-    'bg-violet-500',
-    'bg-warning',
-    'bg-yellow-500',
-  ],
   theme: {
     extend: {
       colors: {
@@ -266,10 +228,9 @@ const config: Config = {
         overlay: rgb('var(--overlay)'),
       },
       boxShadow: {
-        // `xs` was used in 78 files but is a Tailwind v4 scale entry; this
-        // project is v3.4, so every one of those shadows rendered as none.
-        // Value matches v4 `shadow-xs` == v3 `shadow-sm` so the intended
-        // hairline elevation is preserved rather than invented.
+        // Tailwind 4 ships `shadow-xs` natively; the pin keeps the exact
+        // hairline value the design system audited rather than inheriting a
+        // future upstream tweak. It is identical to the v4 default today.
         xs: '0 1px 2px 0 rgb(0 0 0 / 0.05)',
         glow: '0 0 20px rgba(99, 102, 241, 0.12)',
         'glow-lg': '0 0 40px rgba(99, 102, 241, 0.18)',
@@ -282,17 +243,6 @@ const config: Config = {
         'elevation-overlay': 'var(--elevation-overlay)',
         'elevation-modal': 'var(--elevation-modal)',
         'elevation-card': 'var(--elevation-card)',
-      },
-      backdropBlur: {
-        // `xs` is a Tailwind v4 scale entry; this project is v3.4, so every
-        // `backdrop-blur-xs` purged silently and rendered nothing — the same
-        // registry dead zone `boxShadow.xs` covers above. Declared here so a
-        // future consumer cannot ship a class that renders nothing: this row
-        // is first-party parity, not a licence to keep the spelling, and the
-        // design-system guardrails scan bans it in the capabilities subtree.
-        // Value matches v3 `blur-sm` (4px) so the intended frost is
-        // preserved rather than invented.
-        xs: '4px',
       },
       spacing: {
         // `0.2` was used in 38 files (capability view chips, Sidebar rows).
@@ -332,13 +282,13 @@ const config: Config = {
         'spin-slow': 'spin 24s linear infinite',
         breathe: 'breathe 7s ease-in-out infinite',
         flow: 'flowDash 1.6s linear infinite',
-        // Declared natively because the project is Tailwind v3 with
-        // `plugins: []`. The v4 spellings -- `animate-in`, `slide-in-from-*`,
-        // `zoom-in-*` -- come from the `tailwindcss-animate` plugin, are not
-        // generated here, and therefore purge to nothing. Each of those four
-        // usages rendered a component that simply appeared, with no motion at
-        // all, and nothing failed. `design-system-guardrails.test.ts` now
-        // asserts this list stays closed.
+        // Declared natively because no animation plugin is installed. The
+        // plugin spellings -- `animate-in`, `slide-in-from-*`, `zoom-in-*` --
+        // are not core utilities, are not generated here, and therefore purge
+        // to nothing. Each of those four usages rendered a component that
+        // simply appeared, with no motion at all, and nothing failed.
+        // `design-system-guardrails.test.ts` now asserts this list stays
+        // closed.
         'slide-in-from-right': 'slideInFromRight 0.2s ease-out',
         'zoom-in-95': 'zoomIn95 0.2s ease-out',
       },

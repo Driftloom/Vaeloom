@@ -27,7 +27,7 @@ export const SearchField = React.forwardRef<HTMLInputElement, SearchFieldProps>(
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full rounded-md border border-border-subtle bg-surface pl-9 pr-8 py-1.5 text-sm text-text placeholder-text-muted transition-colors hover:border-border-strong focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:border-transparent"
+          className="w-full rounded-md border border-border-subtle bg-surface pl-9 pr-8 py-1.5 text-sm text-text placeholder-text-muted transition-colors hover:border-border-strong focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:border-transparent"
           {...props}
         />
         {value && (
@@ -38,7 +38,7 @@ export const SearchField = React.forwardRef<HTMLInputElement, SearchFieldProps>(
               onChange('');
               onClear?.();
             }}
-            className={`absolute right-1.5 inline-flex items-center justify-center text-text-muted hover:text-text rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-accent ${MIN_TOUCH_TARGET}`}
+            className={`absolute right-1.5 inline-flex items-center justify-center text-text-muted hover:text-text rounded focus:outline-hidden focus-visible:ring-1 focus-visible:ring-accent ${MIN_TOUCH_TARGET}`}
           >
             <XIcon size={14} />
           </button>

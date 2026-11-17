@@ -5,11 +5,12 @@
  * because the three defects that dominated the zero-trust audit were all
  * INVISIBLE at the type level and invisible to jest:
  *
- *   1. Tailwind classes that do not exist. `shadow-xs`, `py-0.2`, `destructive`,
- *      `animate-in`, `bg-primary-hover` and ~20 more were used in 78/38/11/6/9
- *      files respectively and were never declared in tailwind.config.ts, so
- *      they rendered NOTHING. `destructive` was an entire colour family, which
- *      made the cognition page's three error banners unstyled.
+ *   1. Tailwind classes that do not exist. `py-0.2`, `destructive`,
+ *      `animate-in`, `bg-primary-hover` and ~20 more were used in
+ *      78/38/11/6/9 files respectively and were never declared in
+ *      tailwind.config.ts, so they rendered NOTHING. `destructive` was an
+ *      entire colour family, which made the cognition page's three error
+ *      banners unstyled.
  *   2. Content-glob purging. tailwind.config.ts did not scan src/lib,
  *      src/hooks or src/trigger, so valid classes used only there were purged.
  *   3. Mojibake. 144 lines across 14 files contained UTF-8 double-decoded
@@ -128,19 +129,21 @@ describe('Tailwind class definitions', () => {
     expect(config).toMatch(/'0\.2':/);
   });
 
-  it('scans every directory that can emit class strings', () => {
+  it('declares @source globs for every directory that can emit class strings', () => {
     // Regression: src/lib, src/hooks, src/trigger and src/__tests__ were absent
-    // from `content`, so classes used only there were purged.
+    // from the v3 `content` surface, so classes used only there were purged.
+    // Tailwind 4 replaced `content` with CSS `@source` directives; these are
+    // relative to src/styles/globals.css.
     for (const glob of [
-      './src/lib/',
-      './src/hooks/',
-      './src/trigger/',
-      './src/app/',
-      './src/components/',
+      "../lib/",
+      "../hooks/",
+      "../trigger/",
+      "../app/",
+      "../components/",
     ]) {
-      expect(config).toContain(glob);
+      expect(css).toContain(`@source '${glob}`);
     }
-    expect(config).toContain('../../packages/ui-kit/src/');
+    expect(css).toContain('../../../../packages/ui-kit/src/');
   });
 
   it('defines the custom component classes and utilities the app relies on', () => {
@@ -195,19 +198,18 @@ describe('Tailwind class definitions', () => {
     expect(css).not.toMatch(/\.btn-[a-z]+[^}]*[^-\w]focus:ring-(?!offset)/);
   });
 
-  it('declares a backdropBlur row so v4-spelling blur classes cannot purge', () => {
-    // v4 spells the smallest blur `backdrop-blur-xs`; this project is v3.4, so
-    // that spelling purged silently and rendered nothing -- the shadow.xs
-    // dead zone again, so the extraction mirrors the boxShadow test above.
-    expect(config).toMatch(/backdropBlur:\s*\{/);
-    expect(config).toMatch(/^ {8}'?xs'?:/m);
+  it('does not redeclare a v3-only backdrop blur workaround', () => {
+    // The v3 config declared `backdropBlur.xs` because v3 had no such scale
+    // entry. Tailwind 4 generates `backdrop-blur-xs` from `--blur-xs`, so a
+    // config row would be dead weight (and is not part of the v4 Config type).
+    expect(config).not.toMatch(/backdropBlur:\s*\{/);
   });
 
-  it('uses no dead backdrop-blur class in the capabilities subtree', () => {
-    // The v4 spelling purges on v3, and the overlay refactor agrees no
-    // backdrop-filter belongs on a scrim, so the literal is banned from the
-    // whole capabilities subtree. Comments are stripped like the animation
-    // scans so an explanatory file never reports itself.
+  it('uses no backdrop-filter class in the capabilities subtree', () => {
+    // Scrims carry no backdrop-filter: the overlay refactor settled that as a
+    // design rule, and this scan keeps it enforced across the subtree. Comments
+    // are stripped like the animation scans so an explanatory file never
+    // reports itself.
     const CAPABILITIES = join(SRC, 'components', 'capabilities');
     const offenders: string[] = [];
     for (const f of walk(CAPABILITIES)) {
@@ -216,10 +218,10 @@ describe('Tailwind class definitions', () => {
         .replace(/\/\/[^\n]*/g, '');
       if (text.includes('backdrop-blur-xs')) offenders.push(srcRel(f));
     }
-    // McpConfigModal carried the same dead spelling and received the same
-    // one-line scrim fix in the commit that added this guard; the file is
-    // scheduled for outright deletion by a later phase, and the strict result
-    // below keeps the subtree permanently free of the purged literal.
+    // McpConfigModal carried the same class and received the same one-line
+    // scrim fix in the commit that added this guard; the file is scheduled for
+    // outright deletion by a later phase, and the strict result below keeps the
+    // subtree permanently free of the banned literal.
     expect(offenders).toEqual([]);
   });
 
@@ -326,9 +328,9 @@ describe('Animation utilities resolve', () => {
     expect(offenders).toEqual([]);
   });
 
-  it('uses no bare v4 animation utility that v3 cannot generate', () => {
-    // The v4 `animation-*` namespace has no `animate-` prefix. On v3 it matches
-    // nothing at all and is not even a colour or spacing utility. Every
+  it('uses no plugin-only animation utility that Tailwind core cannot generate', () => {
+    // `animate-in`, `slide-in-from-*` and `zoom-in-*` come from the
+    // `tailwindcss-animate` plugin family, not from core utilities. Every
     // `animate-*` occurrence is stripped first, so a legitimate
     // `animate-fade-in` is not reported here -- that one is asserted declared
     // by the test above.

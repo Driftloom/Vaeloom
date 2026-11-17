@@ -106,7 +106,7 @@ export function ChatMemoryDrawer({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search pinned memories & notes..."
-            className="w-full px-3 py-1.5 text-xs bg-surface-50 border border-border/60 rounded-lg text-text placeholder:text-text-dim focus:outline-none focus:ring-1 focus:ring-action"
+            className="w-full px-3 py-1.5 text-xs bg-surface-50 border border-border/60 rounded-lg text-text placeholder:text-text-dim focus:outline-hidden focus:ring-1 focus:ring-action"
             data-testid="memory-search-input"
           />
         </div>

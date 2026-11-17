@@ -1,6 +1,26 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+@config '../../tailwind.config.ts';
+
+/* Tailwind 4 replaces the v3 `content` defaults with automatic source
+ * detection, and package sources outside the app are not discovered from
+ * here. Keep the same scan surface the v3 config declared. */
+@source '../pages/**/*.{js,ts,jsx,tsx,mdx}';
+@source '../components/**/*.{js,ts,jsx,tsx,mdx}';
+@source '../app/**/*.{js,ts,jsx,tsx,mdx}';
+@source '../lib/**/*.{js,ts,jsx,tsx,mdx}';
+@source '../hooks/**/*.{js,ts,jsx,tsx,mdx}';
+@source '../trigger/**/*.{js,ts,jsx,tsx,mdx}';
+@source '../__tests__/**/*.{js,ts,jsx,tsx,mdx}';
+@source '../../../../packages/ui-kit/src/**/*.{js,ts,jsx,tsx}';
+
+/* Agent dot colours are served to the browser as class strings by
+ * `AGENT_COLOR_PALETTE` in apps/api/src/api/routers/agent_commands.py. The
+ * Python file is outside every source glob, so these utilities must be kept
+ * explicitly. This is the v4 replacement for the v3 `safelist` entry; the
+ * backend remains the single source of truth for the palette. */
+@source inline(
+  '{bg-accent,bg-amber-500,bg-amber-600,bg-blue-400,bg-blue-500,bg-cyan-500,bg-emerald-500,bg-emerald-600,bg-emerald-700,bg-fuchsia-500,bg-gray-500,bg-indigo-500,bg-lime-600,bg-orange-500,bg-pink-500,bg-primary,bg-purple-500,bg-red-500,bg-red-600,bg-rose-500,bg-sky-500,bg-slate-700,bg-teal-500,bg-violet-500,bg-warning,bg-yellow-500}'
+);
 
 /* ─────────────────────────────────────────────────────────────────────────────
  * Vaeloom dual-theme design tokens (Phase 02A / Wave 03)
@@ -384,6 +404,26 @@ html.high-contrast,
 }
 
 @layer base {
+  /* Tailwind 4 changed two Preflight defaults that v3 projects relied on:
+   * the default border colour is now `currentColor` (was gray-200) and
+   * placeholders now mix the text colour at 50% (was gray-400). Most surfaces
+   * here set explicit `border-*` / `placeholder:*` utilities, but some class
+   * strings are assembled dynamically, so pin the v3 values instead of letting
+   * those surfaces silently change appearance. Utilities win over these base
+   * rules, so explicit tokens are unaffected. */
+  *,
+  ::before,
+  ::after,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: #e5e7eb; /* v3 gray-200 */
+  }
+
+  ::placeholder {
+    color: #9ca3af; /* v3 gray-400 */
+    opacity: 1;
+  }
+
   body {
     @apply bg-background text-text font-sans antialiased;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
@@ -433,13 +473,8 @@ html.high-contrast,
    * them to <Card> is a separate, visually-risked migration.
    * ────────────────────────────────────────────────────────────────────────── */
 
-  .btn-base {
-    @apply inline-flex items-center justify-center font-medium rounded-lg
-           transition-colors focus:outline-none
-           focus-visible:ring-2 focus-visible:ring-offset-2
-           focus-visible:ring-offset-background
-           disabled:opacity-50 disabled:cursor-not-allowed;
-  }
+  /* Shared button base. Declared as `@utility btn-base` at the end of this
+   * file: Tailwind 4 only lets `@apply` reference registered utilities. */
 
   /* Canonical primary action — one family for the whole product. */
   .btn-primary {
@@ -482,9 +517,8 @@ html.high-contrast,
   .btn-md { @apply px-4 py-2 text-sm; }
   .btn-lg { @apply px-6 py-3 text-base; }
 
-  .card {
-    @apply bg-surface rounded-xl border border-border p-4 sm:p-5 shadow-card;
-  }
+  /* Card shell. Declared as `@utility card` at the end of this file so
+   * `.card-hover` can @apply it under Tailwind 4. */
 
   .card-hover {
     @apply card cursor-pointer
@@ -503,9 +537,9 @@ html.high-contrast,
   /* Mirrors ui-kit Input base + normalClasses. */
   .input-field {
     @apply block w-full rounded-lg border bg-surface-100 px-3 py-2
-           text-sm text-text shadow-sm transition-colors
+           text-sm text-text shadow-xs transition-colors
            placeholder:text-text-muted
-           focus:outline-none focus:ring-2 focus:ring-offset-0
+           focus:outline-hidden focus:ring-2 focus:ring-offset-0
            border-border focus:border-accent focus:ring-accent/20
            disabled:opacity-50 disabled:cursor-not-allowed;
   }
@@ -567,20 +601,20 @@ html.high-contrast,
   .markdown-body th { @apply bg-surface-200 font-semibold text-text; }
 
   .gradient-text {
-    @apply bg-gradient-to-r from-text via-primary-300 to-accent-400
+    @apply bg-linear-to-r from-text via-primary-300 to-accent-400
            bg-clip-text text-transparent;
   }
 
   .gradient-border {
     @apply relative before:absolute before:inset-0 before:rounded-xl before:p-[1px]
-           before:bg-gradient-to-r before:from-surface-300 before:to-surface-400
+           before:bg-linear-to-r before:from-surface-300 before:to-surface-400
            before:-z-10;
   }
 
   .skip-link {
     @apply sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[100]
            focus:px-4 focus:py-2 focus:rounded-lg focus:bg-action focus:text-action-fg focus:font-medium
-           focus:outline-none;
+           focus:outline-hidden;
   }
   .skip-link:focus {
     box-shadow: 0 0 0 2px var(--color-focus-ring, #818cf8);
@@ -1174,5 +1208,27 @@ html.high-contrast,
 .hero-copy > *:not(.hero-copy-plate) {
   position: relative;
   z-index: 2;
+}
+
+/* ---------------------------------------------------------------------------
+ * Custom utilities
+ *
+ * Tailwind 4 only allows `@apply` with registered utilities, so the shared
+ * button base and card shell live here instead of inside `@layer components`.
+ * The class names are unchanged; the variants above still @apply them.
+ * `outline-hidden` is the v4 spelling of v3's `outline-hidden` (transparent
+ * outline kept for Windows High Contrast); v4's `outline-hidden` removes the
+ * outline entirely, which would drop the focus ring fallback.
+ * ------------------------------------------------------------------------- */
+@utility btn-base {
+  @apply inline-flex items-center justify-center font-medium rounded-lg
+         transition-colors focus:outline-hidden
+         focus-visible:ring-2 focus-visible:ring-offset-2
+         focus-visible:ring-offset-background
+         disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+@utility card {
+  @apply bg-surface rounded-xl border border-border p-4 sm:p-5 shadow-card;
 }
 

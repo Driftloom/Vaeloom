@@ -508,7 +508,7 @@ function ChatMessageItemComponent({
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               rows={3}
-              className="w-full resize-y rounded-lg border border-border bg-surface-100 px-3 py-2 text-sm text-text focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
+              className="w-full resize-y rounded-lg border border-border bg-surface-100 px-3 py-2 text-sm text-text focus:outline-hidden focus:ring-2 focus:ring-accent/20 focus:border-accent"
             />
             <div className="flex items-center gap-2">
               <button
@@ -785,7 +785,7 @@ function ChatMessageItemComponent({
                 <button
                   type="button"
                   onClick={() => onSend(chip)}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full bg-surface-elevated hover:bg-surface-hover text-text border border-border transition-all cursor-pointer shadow-sm hover:border-primary/50 hover:text-primary active:scale-95"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-full bg-surface-elevated hover:bg-surface-hover text-text border border-border transition-all cursor-pointer shadow-xs hover:border-primary/50 hover:text-primary active:scale-95"
                 >
                   {chip}
                 </button>

@@ -41,7 +41,7 @@ export const AgentProposal: React.FC<AgentProposalProps> = ({
 
   return (
     <div
-      className={`rounded-lg border border-border-subtle bg-surface p-4 shadow-sm ${className}`.trim()}
+      className={`rounded-lg border border-border-subtle bg-surface p-4 shadow-xs ${className}`.trim()}
     >
       <div className="flex items-start justify-between gap-3 mb-2">
         <div className="flex items-center gap-2">

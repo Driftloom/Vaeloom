@@ -54,7 +54,7 @@ export default function MemoryGraphWorkbenchPage() {
       />
 
       {/* Main Full-Height Graph Workbench */}
-      <div className="min-h-[700px] h-[75vh] bg-surface border border-border rounded-xl overflow-hidden relative shadow-sm">
+      <div className="min-h-[700px] h-[75vh] bg-surface border border-border rounded-xl overflow-hidden relative shadow-xs">
         <DynamicGraphViewer workspaceId={workspaceId} />
       </div>
 

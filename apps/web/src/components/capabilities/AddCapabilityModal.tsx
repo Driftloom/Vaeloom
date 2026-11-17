@@ -1447,7 +1447,7 @@ function TagEditor({
               type="button"
               onClick={() => onRemove(tag)}
               aria-label={`Remove tag ${tag}`}
-              className="text-text-muted hover:text-text ml-0.5 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+              className="text-text-muted hover:text-text ml-0.5 rounded focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
             >
               ×
             </button>
@@ -1632,7 +1632,7 @@ function EditorPanel({
           <button
             type="button"
             onClick={onTogglePreview}
-            className="text-primary hover:underline rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+            className="text-primary hover:underline rounded focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
           >
             {preview ? 'Edit source' : 'Preview rendered'}
           </button>
@@ -2434,7 +2434,7 @@ export function AddCapabilityModal({
                 type="button"
                 aria-label={`Remove environment variable ${entry.key}`}
                 onClick={() => setEnvList((prev) => prev.filter((_, idx) => idx !== index))}
-                className="text-text-muted hover:text-text rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+                className="text-text-muted hover:text-text rounded focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
               >
                 ×
               </button>
@@ -2487,7 +2487,7 @@ export function AddCapabilityModal({
                   type="button"
                   aria-label={`Remove parameter ${param.name || index + 1}`}
                   onClick={() => setToolParams((prev) => prev.filter((_, i) => i !== index))}
-                  className="text-text-muted hover:text-error rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+                  className="text-text-muted hover:text-error rounded focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
                 >
                   ×
                 </button>
@@ -2586,7 +2586,7 @@ export function AddCapabilityModal({
         aria-labelledby="add-capability-modal-title"
         aria-describedby="add-capability-modal-desc"
         tabIndex={-1}
-        className="relative w-full max-w-5xl h-[670px] max-h-[90dvh] bg-surface border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden text-text antialiased focus:outline-none"
+        className="relative w-full max-w-5xl h-[670px] max-h-[90dvh] bg-surface border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden text-text antialiased focus:outline-hidden"
       >
         <header className="px-5 py-3 border-b border-border bg-surface-elevated flex items-start justify-between gap-4 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
@@ -2618,7 +2618,7 @@ export function AddCapabilityModal({
             type="button"
             onClick={onClose}
             aria-label="Close modal"
-            className="text-text-muted hover:text-text p-1 rounded-lg hover:bg-surface-hover focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 shrink-0"
+            className="text-text-muted hover:text-text p-1 rounded-lg hover:bg-surface-hover focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 shrink-0"
           >
             <svg
               className="w-4 h-4"
@@ -2645,7 +2645,7 @@ export function AddCapabilityModal({
               type="button"
               onClick={() => setIssues([])}
               aria-label="Dismiss validation problems"
-              className="rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-error"
+              className="rounded focus:outline-hidden focus-visible:ring-1 focus-visible:ring-error"
             >
               ×
             </button>
@@ -2670,7 +2670,7 @@ export function AddCapabilityModal({
               type="button"
               onClick={() => setFileReport(null)}
               aria-label="Dismiss file parse result"
-              className="rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-success"
+              className="rounded focus:outline-hidden focus-visible:ring-1 focus-visible:ring-success"
             >
               ×
             </button>
@@ -2687,7 +2687,7 @@ export function AddCapabilityModal({
               type="button"
               onClick={() => setFileError(null)}
               aria-label="Dismiss file error"
-              className="rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-error"
+              className="rounded focus:outline-hidden focus-visible:ring-1 focus-visible:ring-error"
             >
               ×
             </button>

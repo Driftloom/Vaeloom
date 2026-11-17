@@ -28,7 +28,7 @@ export function AIInsight({
 }: AIInsightProps) {
   return (
     <Card
-      className={`p-4 border-l-4 border-l-primary bg-gradient-to-r from-primary/5 via-surface to-surface transition-all ${className}`}
+      className={`p-4 border-l-4 border-l-primary bg-linear-to-r from-primary/5 via-surface to-surface transition-all ${className}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2">
@@ -61,7 +61,7 @@ export function AIInsight({
           <button
             type="button"
             onClick={onAction}
-            className={`inline-flex items-center text-xs font-medium text-primary hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${MIN_TOUCH_TARGET}`}
+            className={`inline-flex items-center text-xs font-medium text-primary hover:underline focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent ${MIN_TOUCH_TARGET}`}
           >
             {actionText} →
           </button>

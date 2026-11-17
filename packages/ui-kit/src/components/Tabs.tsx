@@ -71,7 +71,7 @@ export const Tabs: React.FC<TabsProps> = ({
 
     if (variant === 'pills') {
       return isActive
-        ? 'bg-action text-action-fg font-medium shadow-sm'
+        ? 'bg-action text-action-fg font-medium shadow-xs'
         : 'text-text-secondary hover:text-text hover:bg-surface-hover';
     }
 
@@ -115,7 +115,7 @@ export const Tabs: React.FC<TabsProps> = ({
             disabled={tab.disabled}
             onClick={() => !tab.disabled && handleTabChange(tab.id)}
             onKeyDown={(e) => handleKeyDown(e, idx)}
-            className={`inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${sizeClasses} ${getVariantClasses(isActive, tab.disabled)}`}
+            className={`inline-flex items-center justify-center rounded-md font-medium transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${sizeClasses} ${getVariantClasses(isActive, tab.disabled)}`}
           >
             {tab.icon && <span className="shrink-0">{tab.icon}</span>}
             <span>{tab.label}</span>
@@ -151,7 +151,7 @@ export const TabPanel: React.FC<TabPanelProps> = ({ id, activeTab, children, cla
       id={`tabpanel-${id}`}
       aria-labelledby={`tab-${id}`}
       tabIndex={0}
-      className={`focus:outline-none ${className}`}
+      className={`focus:outline-hidden ${className}`}
     >
       {children}
     </div>
