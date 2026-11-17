@@ -26,6 +26,13 @@ module.exports = {
     // build tooling (nx 20, Jest's glob chain) with repo-authored patterns.
     // The fix is minimatch 11, a major bump for those tools; track separately.
     '1244623',
+    // 1247710 -- picomatch <=4.0.7, HIGH (GHSA-fc5q-39xc-vjpf, CVE-2026-112366).
+    // NO FIX EXISTS: 4.0.7 is the latest published release and the advisory's
+    // patched range is empty. Reachable only through build/test tooling
+    // (jest-haste-map, jest-util, lint-staged, @parcel/watcher, tinyglobby,
+    // fdir) with repo-authored glob patterns; no runtime request path builds a
+    // pattern from user input. Revisit when picomatch publishes a patch.
+    '1247710',
     '1109804',
     '1113465',
     '1113544',
