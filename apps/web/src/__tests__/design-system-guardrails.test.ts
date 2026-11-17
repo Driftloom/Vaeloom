@@ -134,13 +134,7 @@ describe('Tailwind class definitions', () => {
     // from the v3 `content` surface, so classes used only there were purged.
     // Tailwind 4 replaced `content` with CSS `@source` directives; these are
     // relative to src/styles/globals.css.
-    for (const glob of [
-      "../lib/",
-      "../hooks/",
-      "../trigger/",
-      "../app/",
-      "../components/",
-    ]) {
+    for (const glob of ['../lib/', '../hooks/', '../trigger/', '../app/', '../components/']) {
       expect(css).toContain(`@source '${glob}`);
     }
     expect(css).toContain('../../../../packages/ui-kit/src/');
