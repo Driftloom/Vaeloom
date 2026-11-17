@@ -8,6 +8,15 @@ updates:
     open-pull-requests-limit: 10
     labels:
       - 'dependencies'
+    ignore:
+      # Next.js 16.4.x hard-rejects TypeScript 7 inside its own compiler
+      # detection: "The TypeScript 7 native compiler does not provide the
+      # JavaScript compiler API that Next.js requires." There is no
+      # repo-side workaround, so every TS 7 PR would arrive already red.
+      # Evidence and the closed bump: #84. Drop this entry once Next.js
+      # supports TS 7.
+      - dependency-name: 'typescript'
+        versions: ['>=7.0.0']
     groups:
       react:
         patterns:
