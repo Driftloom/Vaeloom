@@ -22,6 +22,13 @@ class TestIdempotency:
         first = await client.post("/api/v1/consent/grant", json=payload, headers=headers_with_key)
         assert first.status_code == 200
         assert "Idempotency-Replayed" not in first.headers
+        # Durable store proof: the middleware only writes after the request
+        # transaction commits, so the record must exist before the replay.
+        assert first.headers.get("Idempotency-Stored") == "true"
+        stored = await db_session.execute(
+            text("SELECT COUNT(*) FROM idempotency_records WHERE idempotency_key = 'key-1'")
+        )
+        assert stored.scalar_one() == 1
 
         second = await client.post("/api/v1/consent/grant", json=payload, headers=headers_with_key)
         assert second.status_code == 200
@@ -32,6 +39,46 @@ class TestIdempotency:
             text("SELECT COUNT(*) FROM consent_records WHERE scope = 'data_processing'")
         )
         assert result.scalar_one() == 1
+
+    async def test_store_runs_after_request_transaction_commits(
+        self, client: AsyncClient, db_session, monkeypatch,
+    ):
+        """Regression: the store must not open a second SQLite writer while the
+        request transaction still holds the write lock (database is locked)."""
+        from sqlalchemy import text
+        from sqlalchemy.ext.asyncio import async_sessionmaker
+
+        from api.middleware.idempotency import IdempotencyMiddleware
+
+        headers = await self._auth_header(client)
+        headers_with_key = {**headers, "Idempotency-Key": "key-commit-order"}
+        observed: dict[str, int] = {}
+        original_store = IdempotencyMiddleware._store
+
+        async def observing_store(self, key, path, req_hash, response, tenant_id,
+                                  workspace_id, actor, body_bytes=None):
+            probe_factory = async_sessionmaker(db_session.bind, expire_on_commit=False)
+            async with probe_factory() as probe:
+                result = await probe.execute(
+                    text("SELECT COUNT(*) FROM consent_records WHERE scope = 'data_processing'")
+                )
+                observed["consent_rows"] = result.scalar_one()
+            return await original_store(
+                self, key, path, req_hash, response, tenant_id,
+                workspace_id, actor, body_bytes=body_bytes,
+            )
+
+        monkeypatch.setattr(IdempotencyMiddleware, "_store", observing_store)
+        res = await client.post(
+            "/api/v1/consent/grant",
+            json={"scope": "data_processing"},
+            headers=headers_with_key,
+        )
+        assert res.status_code == 200
+        assert res.headers.get("Idempotency-Stored") == "true"
+        assert observed["consent_rows"] == 1, (
+            "idempotency store ran before the request transaction committed"
+        )
 
     async def test_same_key_different_payload_conflicts(self, client: AsyncClient):
         headers = await self._auth_header(client)
@@ -94,6 +141,7 @@ class TestIdempotency:
 
         first = await client.post("/api/v1/approvals", json=payload, headers=headers_with_key)
         assert first.status_code == 201
+        assert first.headers.get("Idempotency-Stored") == "true"
         second = await client.post("/api/v1/approvals", json=payload, headers=headers_with_key)
         assert second.status_code == 201
         assert second.headers.get("Idempotency-Replayed") == "true"

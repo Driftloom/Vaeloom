@@ -16,20 +16,36 @@ async def test_concurrency_10_and_25():
     from api.infrastructure.agent_observability import WorkspaceConcurrencyLimiter
     # Use tighter limits to verify bounding without DB
     lim = WorkspaceConcurrencyLimiter(per_workspace=5, global_limit=10)
-    async def acquire_one(ws, i):
-        ok = await lim.acquire(ws)
-        if ok:
-            await asyncio.sleep(0.05)
-            lim.release(ws)
-        return ok
     for conc in [10, 25]:
         ws = f"ws-{conc}"
+        active = 0
+        peak = 0
+        gauge = asyncio.Lock()
+
+        async def acquire_one(ws, i, gauge=gauge):
+            nonlocal active, peak
+            ok = await lim.acquire(ws)
+            if not ok:
+                return False
+            async with gauge:
+                active += 1
+                peak = max(peak, active)
+            try:
+                await asyncio.sleep(0.05)
+            finally:
+                async with gauge:
+                    active -= 1
+                lim.release(ws)
+            return True
+
         start = time.monotonic()
         results = await asyncio.gather(*[acquire_one(ws, i) for i in range(conc)])
         elapsed = (time.monotonic()-start)*1000
-        # 25 concurrent with per-ws 5 → at least some fail-fast, total bounded <2s
+        # Released slots can be re-acquired, so total successes are not bounded
+        # by the limit; concurrent holders are. Assert peak in-flight, not sum.
         assert elapsed < 3000, f"conc {conc} total {elapsed:.0f}ms"
-        assert sum(results) <= 10  # global limit respected
+        assert any(results), f"conc {conc}: limiter admitted no work"
+        assert peak <= min(lim._per_ws, lim._global), f"conc {conc} peak {peak} exceeded limiter"
 
 @pytest.mark.asyncio
 async def test_supervisor_fanout_3_and_5():

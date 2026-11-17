@@ -522,16 +522,22 @@ async def classify_intent(message: str, workspace_id: str | None = None) -> tupl
 
 
 
-# ── MVP scope lock (INT-02 §2.2): 10 canonical agents ───────────────
-# Orchestrator + Organization, Memory, Resume, ATS, Job Search &
-# Application, Gmail, Scheduler. All other repo agents (career, learning,
-# research, github, coding, reminder, analytics, recommendation,
-# reflection, security, connector, plugin, drive, qa) are enterprise
-# extras that must not run in MVP builds (CF-05, R5/R6).
+# ── MVP scope lock (INT-02 §2.2): 11 canonical agents ───────────────
+# Orchestrator + Conversation, Organization, Memory, Resume, ATS, Job
+# Search & Application, Gmail, Scheduler, Planning, Research. All other
+# repo agents (career, learning, github, coding, reminder, analytics,
+# recommendation, reflection, security, connector, plugin, drive, qa) are
+# enterprise extras that must not run in MVP builds (CF-05, R5/R6).
+#
+# conversation is canonical because it is the router's universal fallback
+# (greetings, distress containment, boundary/empty/unclassified input all
+# resolve to it at :351/:355/:371/:399). Excluding it made the MVP lock
+# turn ambiguous input into out_of_scope instead of a safe reply.
 
 MVP_CANONICAL_AGENTS = frozenset({
-    "organization", "memory", "resume", "ats", "job_search",
-    "application", "gmail", "scheduler", "planning", "research",
+    "conversation", "organization", "memory", "resume", "ats",
+    "job_search", "application", "gmail", "scheduler", "planning",
+    "research",
 })
 
 # Categories that map only to canonical agents
@@ -555,8 +561,8 @@ def _handle_out_of_scope(agent_name: str, confidence: float) -> dict[str, Any]:
         "result": {
             "summary": (
                 f"'{agent_name}' is outside the MVP scope. "
-                "Available: organization, memory, resume, ATS, job search & application, "
-                "gmail, scheduler, planning and research."
+                "Available: conversation, organization, memory, resume, ATS, "
+                "job search & application, gmail, scheduler, planning and research."
             ),
             "details": None,
             "proposals": [],

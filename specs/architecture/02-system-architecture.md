@@ -102,11 +102,12 @@ graph TD
 > agents. **Memory & Knowledge Layer** (the CORE — knowledge graph, vector
 > store, structured memory, RAG, consolidation) is the spine everything reads
 > from and writes to. **Storage & Security** provides encryption, secrets
-> management, permissions, and audit logging. **Scope:** MVP is 6 layers / 10
-> canonical agents (organization, memory, resume, ats, job_search, application,
-> gmail, scheduler, planning, research); Enterprise extends to 8 layers (adds
-> Events/Realtime + Data Infra) and 22 routable agents. Code truth:
-> `apps/api/src/api/orchestrator/router.py:64-87,416-437`.
+> management, permissions, and audit logging. **Scope:** MVP is 6 layers / 11
+> canonical agents (conversation, organization, memory, resume, ats, job_search,
+> application, gmail, scheduler, planning, research); Enterprise extends to 8
+> layers (adds Events/Realtime + Data Infra) and 28 registered routable agents.
+> Code truth: `apps/api/src/api/orchestrator/router.py:537-542`,
+> `apps/api/src/api/orchestrator/agent_discovery.py:21-49`.
 
 > **Layer summary:** Each section below complements the diagram above with
 > implementation status and contracts. Status flags (NOT IMPLEMENTED / STUB /

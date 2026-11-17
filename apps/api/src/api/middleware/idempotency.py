@@ -8,22 +8,31 @@ observes another scope's result, even on key collision; a different payload
 under the same identity gets 422.
 
 Runs AFTER Auth+Tenant in the middleware stack (see main.py ordering) so
-request.state carries authoritative scope. Requests without auth context
+`scope["state"]` carries authoritative scope. Requests without auth context
 scope to '' sentinels (fail-closed per-scope isolation still holds: two
 unauthenticated callers share only the ('','','') namespace on public
 paths — and all consequential paths require auth).
+
+Pure ASGI, not BaseHTTPMiddleware: the response is captured instead of
+forwarded, so the inner app finishes — including FastAPI dependency teardown,
+which is where `get_db` commits — before `_store` opens its own session. The
+BaseHTTPMiddleware version stored while the request transaction still held the
+SQLite write lock, so the store's expired-row DELETE hit "database is locked"
+and replay protection was silently lost (Idempotency-Stored: false).
 """
 import hashlib
 import json
 import logging
 import uuid
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
-from fastapi import Request
 from sqlalchemy import delete, select
 from sqlalchemy.exc import IntegrityError
-from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
+from starlette.datastructures import Headers
+from starlette.requests import ClientDisconnect
 from starlette.responses import JSONResponse, Response
+from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
 from ..database import async_session_factory
 from ..models.schema import IdempotencyRecord
@@ -32,6 +41,7 @@ logger = logging.getLogger("vaeloom-api.middleware.idempotency")
 
 IDEMPOTENCY_HEADER = "Idempotency-Key"
 REPLAYED_HEADER = "Idempotency-Replayed"
+STORED_HEADER = "Idempotency-Stored"
 RETENTION_HOURS = 24
 
 CONSEQUENTIAL_PREFIXES = (
@@ -49,18 +59,19 @@ def _is_consequential(path: str, method: str) -> bool:
     return path.startswith("/api/v1/approvals")
 
 
-def _scope_from_request(request: Request) -> tuple[str, str, str]:
-    """Authoritative scope from middleware-populated request state.
+def _scope_from_asgi(scope: Scope) -> tuple[str, str, str]:
+    """Authoritative scope from middleware-populated ASGI state.
 
     tenant/workspace from TenantMiddleware; actor (sub/user_id) from Auth.
     '' sentinel for absent values (never None: NULLs would defeat the UNIQUE
     scope constraint on PostgreSQL).
     """
-    tenant = getattr(request.state, "tenant_id", None) or ""
-    workspace = getattr(request.state, "workspace_id", None) or ""
-    user = getattr(request.state, "user", None) or {}
+    state: dict[str, Any] = scope.get("state") or {}
+    tenant = state.get("tenant_id") or ""
+    workspace = state.get("workspace_id") or ""
+    user = state.get("user") or {}
     actor = (
-        getattr(request.state, "user_id", None)
+        state.get("user_id")
         or (user.get("sub") if isinstance(user, dict) else None)
         or (user.get("user_id") if isinstance(user, dict) else None)
         or ""
@@ -72,20 +83,63 @@ def _request_hash(method: str, path: str, body: bytes) -> str:
     return hashlib.sha256(f"{method}|{path}|{body.decode('utf-8', errors='replace')}".encode()).hexdigest()
 
 
-class IdempotencyMiddleware(BaseHTTPMiddleware):
-    def __init__(self, app, session_factory=None):
-        super().__init__(app)
+async def _read_request_body(receive: Receive) -> bytes:
+    """Buffer the request body so it can be replayed to the inner app."""
+    chunks: list[bytes] = []
+    while True:
+        message = await receive()
+        if message["type"] == "http.disconnect":
+            raise ClientDisconnect()
+        chunks.append(message.get("body", b""))
+        if not message.get("more_body", False):
+            return b"".join(chunks)
+
+
+def _replaying_receive(body: bytes, receive: Receive) -> Receive:
+    """Serve the buffered body once, then defer to the real receiver."""
+    replayed = False
+
+    async def replay() -> Message:
+        nonlocal replayed
+        if not replayed:
+            replayed = True
+            return {"type": "http.request", "body": body, "more_body": False}
+        return await receive()
+
+    return replay
+
+
+def _append_header(start_message: Message, name: str, value: str) -> None:
+    encoded_name = name.lower().encode("latin-1")
+    headers = [
+        (key, val)
+        for key, val in (start_message.get("headers") or [])
+        if key.lower() != encoded_name
+    ]
+    headers.append((encoded_name, value.encode("latin-1")))
+    start_message["headers"] = headers
+
+
+class IdempotencyMiddleware:
+    def __init__(self, app: ASGIApp, session_factory=None):
+        self.app = app
         self._session_factory = session_factory or async_session_factory
 
-    async def dispatch(self, request: Request, call_next: RequestResponseEndpoint) -> Response:
-        path = request.url.path
-        key = request.headers.get(IDEMPOTENCY_HEADER)
-        if not key or not _is_consequential(path, request.method):
-            return await call_next(request)
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
 
-        body = await request.body()
-        req_hash = _request_hash(request.method, path, body)
-        tenant_id, workspace_id, actor = _scope_from_request(request)
+        path = scope.get("path", "")
+        method = scope.get("method", "")
+        key = Headers(scope=scope).get(IDEMPOTENCY_HEADER)
+        if not key or not _is_consequential(path, method):
+            await self.app(scope, receive, send)
+            return
+
+        body = await _read_request_body(receive)
+        req_hash = _request_hash(method, path, body)
+        tenant_id, workspace_id, actor = _scope_from_asgi(scope)
 
         try:
             replayed = await self._replay(key, path, req_hash, tenant_id, workspace_id, actor)
@@ -98,42 +152,62 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
                 _fail_closed = False
             if _fail_closed:
                 logger.error("Idempotency lookup failed; fail-closed 503 (consequential path)")
-                return JSONResponse(
+                await JSONResponse(
                     status_code=503,
                     content={"detail": "Idempotency store unavailable — consequential request refused"},
                     headers={"Idempotency-Lookup": "failed"},
-                )
+                )(scope, receive, send)
+                return
             logger.exception("Idempotency lookup failed; passing through")
             replayed = None
         if replayed is not None:
-            return replayed
+            await replayed(scope, receive, send)
+            return
 
-        response = await call_next(request)
-        # Consume the body once, up front: _store must never be the owner of
-        # the only read (a store failure after a partial read would otherwise
-        # leave an exhausted iterator and an empty body to the client).
+        messages: list[Message] = []
+        start_message: Message | None = None
+
+        async def capture(message: Message) -> None:
+            nonlocal start_message
+            if message["type"] == "http.response.start":
+                start_message = message
+            messages.append(message)
+
+        # The inner app runs to completion here, so FastAPI tears down the
+        # dependency stack (and `get_db` commits) before we touch the DB.
+        await self.app(scope, _replaying_receive(body, receive), capture)
+
+        if start_message is None:
+            # No response start (e.g. non-HTTP path leaked through): forward as-is.
+            for message in messages:
+                await send(message)
+            return
+
+        raw_body = b"".join(
+            message.get("body", b"")
+            for message in messages
+            if message["type"] == "http.response.body"
+        )
+        captured_response = Response(
+            content=raw_body,
+            status_code=start_message.get("status", 200),
+        )
         try:
-            raw_body = b"".join([chunk async for chunk in response.body_iterator])
-        except Exception:
-            logger.exception("Idempotency body read failed; passing response through")
-            return response
-        try:
-            await self._store(key, path, req_hash, response, tenant_id, workspace_id, actor, body_bytes=raw_body)
-            response = Response(
-                content=raw_body,
-                status_code=response.status_code,
-                headers=dict(response.headers),
+            await self._store(
+                key, path, req_hash, captured_response,
+                tenant_id, workspace_id, actor, body_bytes=raw_body,
             )
+            _append_header(start_message, STORED_HEADER, "true")
         except Exception:
             # The side effect already executed, so a 503 here cannot prevent a
             # duplicate — it would only lie about what happened. Pass the real
             # bytes through but tag them so the caller knows replay protection
             # was NOT durably recorded and must retry with the same key.
             logger.exception("Idempotency store failed; passing response through (not durably recorded)")
-            headers = dict(response.headers)
-            headers["Idempotency-Stored"] = "false"
-            response = Response(content=raw_body, status_code=response.status_code, headers=headers)
-        return response
+            _append_header(start_message, STORED_HEADER, "false")
+
+        for message in messages:
+            await send(message)
 
     async def _replay(
         self, key: str, path: str, req_hash: str,

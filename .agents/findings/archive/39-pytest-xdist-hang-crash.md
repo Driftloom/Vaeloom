@@ -71,3 +71,22 @@ in `tests/security/conftest.py` already uses `try/finally` with guarded
   guarantees any future stall becomes a named stack dump rather than a silent
   hang, so CI no longer risks an indefinite freeze. Split-by-directory remains a
   belt-and-suspenders option.
+
+---
+
+## Correction — 2026-11-13 (F-41): the timeout guarantee did not hold
+
+The closing claim above — that `pytest-timeout` "guarantees any future stall
+becomes a named stack dump" — is **false under xdist**, and CI proved it.
+`--timeout-method=thread` terminates the worker with `os._exit(1)`
+(`pytest_timeout.py:505-542`). The `+++ Timeout +++` banner and the thread stack
+travel over the execnet channel, which dies with the process, so the controller
+prints only `[gwN] node down: Not properly terminated` — no test name, no stack.
+Separately, `-q` sets `verbose=-1`, and xdist gates `report_line()` on
+`verbose >= 0`, so `replacing crashed worker` / `maximum crashed workers
+reached` were suppressed too.
+
+Finding 41 adds fd-backed faulthandler dumps (which survive `os._exit`), a
+controller watchdog (exit 66) instead of an unbounded wait, and removes `-q`
+from the CI suite. See `../41-ci-suite-integrity.md`.
+

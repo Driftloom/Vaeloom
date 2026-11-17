@@ -3,17 +3,17 @@
 > **Purpose:** Define the MVP AI agents, their capabilities, and execution
 > patterns **Status:** ✅ Upgraded to enterprise quality (code-aligned
 > 2026-09-15) **Owner:** AI Team **Version:** 2.1 **Last Updated:** 2026-09-15
-> **Code truth:** `apps/api/src/api/orchestrator/router.py:64-87,416-437`
+> **Code truth:** `apps/api/src/api/orchestrator/router.py:537-542`
 > **Note:** v2.0 names (Document Ingestion, Auto-Organization, Deadline
 > Detection, Tailored Application, Master Resume, Memory Graph, Gmail Digest)
 > were conceptual and do not match handler modules. The table below maps
-> concepts → actual routable agents. MVP-canonical = 10; full registry = 22.
+> concepts → actual routable agents. MVP-canonical = 11; full registry = 28.
 
 ## Agent Architecture
 
 ```mermaid
 graph TD
-  subgraph MVP["MVP-canonical (10)"]
+  subgraph MVP["MVP-canonical (11)"]
   A1["organization"]
   A2["memory"]
   A3["resume"]
@@ -24,6 +24,7 @@ graph TD
   A8["scheduler"]
   A9["planning"]
   A10["research"]
+  A11["conversation"]
   end
 
   subgraph ENT["Enterprise-gated (+12)"]
@@ -48,7 +49,7 @@ graph TD
   MVP --> QA
   ENT --> QA
   QA --> SUP
-  A1 & A2 & A3 & A4 & A5 & A6 & A7 & A8 & A9 & A10 --> S1
+  A1 & A2 & A3 & A4 & A5 & A6 & A7 & A8 & A9 & A10 & A11 --> S1
   A2 --> S2
   A1 --> S3
   A5 --> S4
@@ -68,6 +69,12 @@ graph TD
 | 8   | scheduler      | Deadline Detection   | `agents/scheduler_agent/handler.py`    |
 | 9   | planning       | planning support     | `agents/memory/planning_agent.py`      |
 | 10  | research       | research support     | `agents/research_agent/handler.py`     |
+| 11  | conversation   | Conversation / safe fallback | `agents/conversation_agent/handler.py` |
+
+> `conversation` is canonical despite not owning a business category: it is
+> the router's universal fallback for greetings, distress containment,
+> boundary, empty, and unclassified input. Without it the MVP lock converts
+> ambiguous messages into `out_of_scope` instead of a safe reply.
 
 > Model/schedule columns from v2.0 (Claude Sonnet/Haiku, Daily/Hourly/Weekly)
 > are not in code — runtime uses `llm_service` + `model_router` + scheduler

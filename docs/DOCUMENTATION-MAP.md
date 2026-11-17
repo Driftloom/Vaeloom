@@ -80,7 +80,7 @@ ops** (v0.2.0, regen 2026-09-21 via `scripts/gen_openapi.py`), **44 ADRs** — s
 | System Architecture        | 6-layer MVP + 8-layer Enterprise overlay         | `02-system-architecture.md`                                 |
 | Agent Execution Lifecycle  | Router → Supervisor/Loop → approval → QA → audit | `03-agent-workflow.md`                                      |
 | Memory + Retrieval Reality | 6 types, dual stores, 3 disjoint RAG paths       | `04-memory-knowledge-graph.md`                              |
-| Agent Architecture         | 10 MVP-canonical / 22 routable + QA gate         | `ai/AI-Agents.md`, `agents/mvp/agent-inventory.md`          |
+| Agent Architecture         | 11 MVP-canonical / 28 registered + QA gate        | `ai/AI-Agents.md`, `agents/mvp/agent-inventory.md`          |
 | Security Architecture      | AuthN/AuthZ/tenant/RBAC reality                  | `security/Security-Architecture.md`                         |
 | Connector Architecture     | 15 built-in connectors + OAuth lifecycle         | `backend/Connectors.md`                                     |
 | Approval / HITL            | HMAC ledger + pending proposal cards             | `03-agent-workflow.md`, `backend/Authorization.md`          |

@@ -591,11 +591,13 @@ class TestStatePersistence:
 
     async def test_save_checkpoint_writes_file(self, tmp_path, monkeypatch):
         monkeypatch.setenv("VAELOOM_STATE_DIR", str(tmp_path))
-        from api.orchestrator.state import save_checkpoint, LoopState, STATE_DIR
+        from api.orchestrator.state import save_checkpoint, LoopState
         state = LoopState("save-me")
         state.add_phase("act_0", {"result": "ok"})
         await save_checkpoint(state)
-        saved = json.loads((STATE_DIR / "save-me.json").read_text())
+        # STATE_DIR is captured at import time; the store resolves the env var
+        # at call time, so the durable file lands under tmp_path.
+        saved = json.loads((tmp_path / "save-me.json").read_text())
         assert saved["request_id"] == "save-me"
         assert saved["phases"] == {"act_0": {"result": "ok"}}
 
