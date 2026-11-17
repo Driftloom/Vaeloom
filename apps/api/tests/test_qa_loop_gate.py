@@ -153,3 +153,66 @@ async def test_loop_qa_gate_triggers_retry_on_rejection(monkeypatch):
     assert "High confidence corrected draft." in resp.final_result
     assert attempts == 2
 
+
+@pytest.mark.asyncio
+async def test_repeated_qa_rejection_reports_qa_failed_not_cycle(monkeypatch):
+    """A QA-mandated retry must not be mislabelled as a stuck agent.
+
+    The retry path simply `continue`s without feeding the QA issues back to
+    the model, so an unchanged act result is expected on the next iteration.
+    Repeating that three times used to trip cycle detection and end the run
+    as "repeated action cycle", hiding the real reason (QA rejection). The
+    truthful terminal reason is qa_failed.
+    """
+    _circuit_breakers.clear()
+    monkeypatch.setattr(settings, "agent_react_enabled", False)
+    import uuid
+
+    async def repeated_act(plan, request, on_token=None, state=None):
+        return {
+            "agent_name": "resume",
+            "action": "suggest",
+            "confidence": 0.9,
+            "result": {
+                "summary": "Needs review.",
+                "details": None,
+                "proposals": [],
+                "questions": [],
+            },
+            # Same fingerprint every iteration, as a deterministic model would
+            # replay after a retry that carried no correction feedback.
+            "tool_calls": [{
+                "id": "call-1",
+                "type": "function",
+                "function": {"name": "search_documents",
+                             "arguments": '{"query": "x"}'},
+            }],
+        }
+
+    monkeypatch.setattr(
+        "api.orchestrator.loop._act_phase_inner", repeated_act, raising=False
+    )
+
+    class _Rejecting:
+        decision = "rejected"
+        issues = ["PII leak detected: test fixture"]
+
+    async def fake_validate(self, result, context=None):
+        return _Rejecting()
+
+    monkeypatch.setattr(QAAgent, "validate", fake_validate, raising=False)
+
+    agent = MockGroundedAgent({})
+    req = AgentRequest(
+        agent=agent,
+        request_id=f"req_{uuid.uuid4()}",
+        message="Review my experience",
+        workspace_id=str(uuid.uuid4()),
+        agent_name="resume",
+    )
+
+    resp = await run_agent_loop(req)
+
+    assert resp.termination_reason == "qa_failed"
+    assert "cycle" not in str(resp.final_result).lower()
+

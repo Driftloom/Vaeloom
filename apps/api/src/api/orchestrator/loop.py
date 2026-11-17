@@ -3792,6 +3792,13 @@ async def run_agent_loop(request: AgentRequest) -> AgentResponse:
         return AgentResponse(status=state.status, final_result="max retries exceeded",
                              termination_reason=state.termination_reason)
 
+    # QA rejections retry the act phase without telling the model what to fix
+    # (the retry is a plain loop `continue`). If that retried iteration
+    # re-proposes the same action, the repetition is mandated by this loop,
+    # not a stuck agent — so cycle/no-progress detection is suspended for
+    # exactly that iteration and the run ends with the truthful `qa_failed`
+    # reason instead of a misleading `cycle_detected`.
+    _qa_retry_next = False
     for iteration in range(start_iter, max_iters):
         logger.info(f"--- Iteration {iteration + 1}/{max_iters} ---")
         state.iteration = iteration
@@ -3918,7 +3925,10 @@ async def run_agent_loop(request: AgentRequest) -> AgentResponse:
         await save_checkpoint(state)
 
         # Cycle + no-progress detection (explicit termination, observable).
-        if tracker.detect_cycle() == "cycle_detected":
+        # Suspended on a QA-mandated retry (see _qa_retry_next above).
+        _qa_retry_this = _qa_retry_next
+        _qa_retry_next = False
+        if not _qa_retry_this and tracker.detect_cycle() == "cycle_detected":
             state.terminate("failed", "cycle_detected")
             state.add_phase(f"terminated_{iteration}", {"reason": "cycle_detected", "safety": tracker.snapshot()})
             await save_checkpoint(state)
@@ -3926,7 +3936,7 @@ async def run_agent_loop(request: AgentRequest) -> AgentResponse:
             return AgentResponse(status=state.status,
                                  final_result="Run stopped: repeated action cycle detected with no progress",
                                  termination_reason=state.termination_reason)
-        if tracker.detect_no_progress(len(state.completed_tool_calls)) == "no_progress":
+        if not _qa_retry_this and tracker.detect_no_progress(len(state.completed_tool_calls)) == "no_progress":
             state.terminate("failed", "no_progress")
             state.add_phase(f"terminated_{iteration}", {"reason": "no_progress", "safety": tracker.snapshot()})
             await save_checkpoint(state)
@@ -3945,6 +3955,7 @@ async def run_agent_loop(request: AgentRequest) -> AgentResponse:
 
         if qa_res.decision == "rejected" and iteration < max_iters - 1:
             logger.warning(f"QA REJECTED loop iteration {iteration}: {qa_res.issues} — retrying for self-correction")
+            _qa_retry_next = True
             continue
 
         if qa_res.decision == "rejected":
