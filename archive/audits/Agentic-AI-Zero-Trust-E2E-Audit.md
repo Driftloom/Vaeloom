@@ -905,78 +905,90 @@ Telemetry | Failure behavior |
 should be mini) | document,timeline / agent_actions | search_documents,
 rename_file, move_file, categorize_document | memory.read, connector.write
 (categorize) | 3 iter × 3 QA | 600/300 | 4 | 120s | circuit 3/30s, slot 5 | 30
-rpm / 5 conc |
-$0.005 | AgentMetric, AgentAction, audit | approval-gated file_organize → fallback ask_clarification |
-| memory | extract structured entities from docs | sonnet | profile,document / profile,document | search_documents, create_entity, merge_entities, query_graph | memory.read/write | 3×3 | 700/350 | 4 | 120s | 3/30s | 30/5 | $0.006
-| metric+audit | fallback ask_clarification | | resume | build/optimize master
-resume, XYZ | sonnet/balanced | career,skills,achievements / career,skills |
-search_documents, query_graph, calculate_semantic_ats_score,
-audit_ats_formatting, compile_resume_pdf/docx | memory.read,
-system.document.compile | 3×3 | 800/600+pdf | 6 | 120s (+30 pdf) | 3/30s | 30/5
-|
-$0.015 | metric | strict source attribution, ask when uncertain |
-| ats | read-only resume vs JD scoring | sonnet (should be mini) | career,skills / — | search_documents (+ internal calculate_semantic_ats) | memory.read | 1×3 (read-only) | 500/300 | 1 | 5s | 3/30s | 30/5 | $0.004
-| metric | ask for JD if missing | | job_search | search, rank, shortlist roles
-| balanced | career,preferences / — | search_jobs(board), browse_job_page,
-verify_application_link, scrape_company_insights, query_graph |
+rpm / 5 conc | $0.005 | AgentMetric, AgentAction, audit | approval-gated
+file_organize → fallback ask_clarification | | memory | extract structured
+entities from docs | sonnet | profile,document / profile,document |
+search_documents, create_entity, merge_entities, query_graph | memory.read/write
+| 3×3 | 700/350 | 4 | 120s | 3/30s | 30/5 | $0.006 | metric+audit | fallback
+ask_clarification | | resume | build/optimize master resume, XYZ |
+sonnet/balanced | career,skills,achievements / career,skills | search_documents,
+query_graph, calculate_semantic_ats_score, audit_ats_formatting,
+compile_resume_pdf/docx | memory.read, system.document.compile | 3×3 |
+800/600+pdf | 6 | 120s (+30 pdf) | 3/30s | 30/5 | $0.015 | metric | strict
+source attribution, ask when uncertain | | ats | read-only resume vs JD scoring
+| sonnet (should be mini) | career,skills / — | search_documents (+ internal
+calculate_semantic_ats) | memory.read | 1×3 (read-only) | 500/300 | 1 | 5s |
+3/30s | 30/5 | $0.004 | metric | ask for JD if missing | | job_search | search,
+rank, shortlist roles | balanced | career,preferences / — | search_jobs(board),
+browse_job_page, verify_application_link, scrape_company_insights, query_graph |
 connector.jobs.read, system.browser.read | 3×3 | 1.2k/800 | 5 | 120s (board 15s)
-| 3/30s | 30/5 + quota 20/h |
-$0.02 | metric | filter rejected, mock if board API unavailable |
-| application | tailor docs, hand-off submissions | sonnet (approval) | career,timeline | search_documents, verify_application_link, scrape_company_insights, compile_cover_letter/pdf | memory.read, system.document.compile | 3×3 | 900/700 | 4 | 120s | 3/30s | 30/5 | $0.018
-| metric+audit | never submit without approval | | gmail | classify, extract
+| 3/30s | 30/5 + quota 20/h | $0.02 | metric | filter rejected, mock if board
+API unavailable | | application | tailor docs, hand-off submissions | sonnet
+(approval) | career,timeline | search_documents, verify_application_link,
+scrape_company_insights, compile_cover_letter/pdf | memory.read,
+system.document.compile | 3×3 | 900/700 | 4 | 120s | 3/30s | 30/5 | $0.018 |
+metric+audit | never submit without approval | | gmail | classify, extract
 deadlines, draft (never send) | sonnet (should be mini) | communications /
 schedule_events,episodic | search_gmail/outlook, draft_email/outlook |
 connector.gmail.read/write, connector.outlook.* | 3×3 | 600/300 | 4 | 120s |
-3/30s | 30/5 |
-$0.007 | metric+audit | draft-only, push+scheduled triggers |
-| scheduler | deadlines, conflicts, schedule | fast (calendar_check) | schedule_events,timeline / timeline | create/list calendar/outlook, search_documents, notify_user | connector.calendar.* | 3×3 | 500/250 | 4 | 10s | 3/30s | 30/5 | $0.004
-| metric | full autonomy for reminders, approval for calendar_write | | planning
-| roadmap/milestones by profile/goals | powerful (plan_generate) | (memory)
-research, goals | (logical: build_roadmap, suggest_milestones) | memory.* | 3×3
-| 700/400 | 3 | 120s | 3/30s | 30/5 |
-$0.012 | metric | fallback clarification |
-| research | company/industry/trend research | fast–balanced | research,companies / — | research_company, analyze_industry, spot_trends, web_search | system.web_search | 1×3 | 600/400 | 4 | 20s (scrape) | 3/30s | 30/5 + quota | $0.008
-| metric | read-only, full autonomy | | career | path & skill development |
-fast–balanced | career,skills,education / — | analyze_career_path,
-identify_skill_gaps, recommend_courses | memory.read | 1×3 | 600/350 | 3 | 120s
-| 3/30s | 30/5 |
-$0.006 | metric | read-only |
-| learning | curate learning resources | suggest | skills,learning,goals / learning,progress | search_courses, recommend_materials, track_progress | — | 1×3 | 600/350 | 3 | 120s | 3/30s | 30/5 | $0.006
-| metric | — | | github | profile/repo skill assessment | suggest |
-github,skills / — | fetch_github_repo, search_github_repos, get_github_profile,
+3/30s | 30/5 | $0.007 | metric+audit | draft-only, push+scheduled triggers | |
+scheduler | deadlines, conflicts, schedule | fast (calendar_check) |
+schedule_events,timeline / timeline | create/list calendar/outlook,
+search_documents, notify_user | connector.calendar.* | 3×3 | 500/250 | 4 | 10s |
+3/30s | 30/5 | $0.004 | metric | full autonomy for reminders, approval for
+calendar_write | | planning | roadmap/milestones by profile/goals | powerful
+(plan_generate) | (memory) research, goals | (logical: build_roadmap,
+suggest_milestones) | memory.* | 3×3 | 700/400 | 3 | 120s | 3/30s | 30/5 |
+$0.012 | metric | fallback clarification | | research | company/industry/trend
+research | fast–balanced | research,companies / — | research_company,
+analyze_industry, spot_trends, web_search | system.web_search | 1×3 | 600/400 |
+4 | 20s (scrape) | 3/30s | 30/5 + quota | $0.008 | metric | read-only, full
+autonomy | | career | path & skill development | fast–balanced |
+career,skills,education / — | analyze_career_path, identify_skill_gaps,
+recommend_courses | memory.read | 1×3 | 600/350 | 3 | 120s | 3/30s | 30/5 |
+$0.006 | metric | read-only | | learning | curate learning resources | suggest |
+skills,learning,goals / learning,progress | search_courses, recommend_materials,
+track_progress | — | 1×3 | 600/350 | 3 | 120s | 3/30s | 30/5 | $0.006 | metric |
+— | | github | profile/repo skill assessment | suggest | github,skills / — |
+fetch_github_repo, search_github_repos, get_github_profile,
 create_github_issue/PR (gated) | connector.github.read/write | 3×3 | 700/400 | 5
-| 10s read /15 write | 3/30s | quota |
-$0.008 | metric+audit | approval for issue/PR |
-| coding | challenges / interview prep | suggest | coding,challenges / coding,progress | solve_challenge, review_code, generate_practice, execute_code_sandbox | system.sandbox_exec | 1×3 | 800/600 | 4 | 120s (sandbox 5s per call) | 3/30s | 30/5 | $0.012
-| metric | sandbox timeout per call | | reminder | deadlines, follow-ups,
-reminders | full | tasks,deadlines / tasks,reminders | check_deadlines,
-schedule_followup, sort_by_priority + calendar | connector.calendar.* | 1×3 |
-500/250 | 4 | 120s | 3/30s | 30/5 |
-$0.004 | metric | — |
-| analytics | activity/job metrics, reports | read_only | analytics,activity / — | get_activity_trends, analyze_applications, generate_report | memory.read | 1×3 | 500/300 | 3 | 120s | 3/30s | 30/5 | $0.005
+| 10s read /15 write | 3/30s | quota | $0.008 | metric+audit | approval for
+issue/PR | | coding | challenges / interview prep | suggest | coding,challenges
+/ coding,progress | solve_challenge, review_code, generate_practice,
+execute_code_sandbox | system.sandbox_exec | 1×3 | 800/600 | 4 | 120s (sandbox
+5s per call) | 3/30s | 30/5 | $0.012 | metric | sandbox timeout per call | |
+reminder | deadlines, follow-ups, reminders | full | tasks,deadlines /
+tasks,reminders | check_deadlines, schedule_followup, sort_by_priority +
+calendar | connector.calendar.* | 1×3 | 500/250 | 4 | 120s | 3/30s | 30/5 |
+$0.004 | metric | — | | analytics | activity/job metrics, reports | read_only |
+analytics,activity / — | get_activity_trends, analyze_applications,
+generate_report | memory.read | 1×3 | 500/300 | 3 | 120s | 3/30s | 30/5 | $0.005
 | metric | anonymize aggregate | | recommendation | jobs, connections, content |
 suggest | profile,skills / recommendations,preferences | match_jobs,
 suggest_connections, curate_content | connector.jobs.read | 1×3 | 700/400 | 4 |
-120s | 3/30s | 30/5 |
-$0.008 | metric | preference_vector via embedding |
-| reflection | weekly/monthly summaries (consolidation) | suggest | activity,goals / reflections | generate_weekly_digest, monthly_review, track_goals | — | 1×3 | 600/400 | 3 | 120s | 3/30s | 30/5 | $0.008
-| metric | background, privacy-aware | | security | PII/leak & anomaly
-monitoring | full (monitor) | activity,access_logs / security_alerts |
-monitor_activity, scan_for_pii, analyze_access_logs | — | 1×3 | 600/300 | 4 |
-120s | 3/30s | 30/5 |
-$0.006 | metric | full autonomy monitor, suggest for writes |
-| connector | discover & configure integrations | suggest | connectors,integrations / connectors,health | discover_connectors, guide_setup, monitor_health, sync_notion, send_slack (gated) | connector.* | 1×3 | 600/350 | 4 | 120s (slack write gated) | 3/30s | 30/5 | $0.006
-| metric | — | | plugin | plugin marketplace | suggest | plugins,extensions /
-plugins,updates | browse_plugins, check_compatibility, manage_updates | system.*
-| 1×3 | 600/350 | 3 | 120s | 3/30s | 30/5 |
-$0.006 | metric | compatibility check |
-| drive | sync Google Drive → ingest | suggest | documents / documents,episodic | list/search/download drive/onedrive | connector.drive.read | 3×3 | 500/300 | 4 | 120s | 3/30s | 30/5 | $0.005
-| metric | ingestion approval gate | | supervisor | DAG delegation of
-multi-intent goals | orchestrates | delegates to above | delegates | — | N×3
-plus merge | 3.8k/~1k | N×12 | per-child | per-child | parallel layers |
-$0.04 (3 agents) | supervisor metric+dag+proposals | provenance-tagged context |
-| qa | mandatory validation gate | — (deterministic) | — | — | — | 3 attempts | — | 0 | <1s | 3 | — | ~$0
-| qa issues | rejects → best_effort flag |
+120s | 3/30s | 30/5 | $0.008 | metric | preference_vector via embedding | |
+reflection | weekly/monthly summaries (consolidation) | suggest | activity,goals
+/ reflections | generate_weekly_digest, monthly_review, track_goals | — | 1×3 |
+600/400 | 3 | 120s | 3/30s | 30/5 | $0.008 | metric | background, privacy-aware
+| | security | PII/leak & anomaly monitoring | full (monitor) |
+activity,access_logs / security_alerts | monitor_activity, scan_for_pii,
+analyze_access_logs | — | 1×3 | 600/300 | 4 | 120s | 3/30s | 30/5 | $0.006 |
+metric | full autonomy monitor, suggest for writes | | connector | discover &
+configure integrations | suggest | connectors,integrations / connectors,health |
+discover_connectors, guide_setup, monitor_health, sync_notion, send_slack
+(gated) | connector.* | 1×3 | 600/350 | 4 | 120s (slack write gated) | 3/30s |
+30/5 | $0.006 | metric | — | | plugin | plugin marketplace | suggest |
+plugins,extensions / plugins,updates | browse_plugins, check_compatibility,
+manage_updates | system.* | 1×3 | 600/350 | 3 | 120s | 3/30s | 30/5 | $0.006 |
+metric | compatibility check | | drive | sync Google Drive → ingest | suggest |
+documents / documents,episodic | list/search/download drive/onedrive |
+connector.drive.read | 3×3 | 500/300 | 4 | 120s | 3/30s | 30/5 | $0.005 | metric
+| ingestion approval gate | | supervisor | DAG delegation of multi-intent goals
+| orchestrates | delegates to above | delegates | — | N×3 plus merge | 3.8k/~1k
+| N×12 | per-child | per-child | parallel layers | $0.04 (3 agents) | supervisor
+metric+dag+proposals | provenance-tagged context | | qa | mandatory validation
+gate | — (deterministic) | — | — | — | 3 attempts | — | 0 | <1s | 3 | — | ~$0 |
+qa issues | rejects → best_effort flag |
 
 ---
 
@@ -1012,8 +1024,8 @@ services/DB/tool/model/audit/failure/cost.
 
 - **Catalog truth:** model costs per 1k input/output USD: mini 0.00015/0.0006,
   Sonnet 0.003/0.015, Opus 0.015/0.075
-- **Per-request sample (simple static):** ~400 in + 250 out = Sonnet
-  $0.00495, mini $0.00021
+- **Per-request sample (simple static):** ~400 in + 250 out = Sonnet $0.00495,
+  mini $0.00021
 - **Per-request ReAct (1 tool):** ~1.1k in + 400 out = Sonnet $0.0093
 - **Per-workflow §8 table** gives budgets to **request / agent / workflow /
   workspace / user / system** levels; system max is unbounded today beyond
@@ -1419,8 +1431,8 @@ above._
   `AGENT_TASK_TYPE_MAP` and selects tier-matched model via
   `model_router.select_model(task_type, provider=default_provider)` when tier
   differs. Logs `task_type→tier`.
-- **Measured:** `gmail/email_classify→fast` now routes anthropic `haiku`
-  $9e-06 vs sonnet $0.000105 (11×); `scheduler/calendar_check→haiku`;
+- **Measured:** `gmail/email_classify→fast` now routes anthropic `haiku` $9e-06
+  vs sonnet $0.000105 (11×); `scheduler/calendar_check→haiku`;
   `memory/memory_extract→sonnet` (balanced, no override, correct).
 - **Verdict:** **VERIFIED** — routing now affects model selection.
 

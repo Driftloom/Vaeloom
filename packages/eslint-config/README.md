@@ -14,9 +14,9 @@ applications. Requires ESLint 10; eslintrc (`.eslintrc.*`) is not supported.
 
 ## Usage
 
-Each package keeps an `eslint.config.js` at its root. ESLint resolves the
-config from the directory it runs in, so the file stays per project and the
-workspace has no implicit root config.
+Each package keeps an `eslint.config.js` at its root. ESLint resolves the config
+from the directory it runs in, so the file stays per project and the workspace
+has no implicit root config.
 
 Package preset:
 

@@ -6,6 +6,13 @@ module.exports = [
   ...next,
   ...nextjs,
   {
-    ignores: ['.next/**', 'dist/**', 'coverage/**', 'node_modules/**', 'playwright-report/**', 'test-results/**'],
+    ignores: [
+      '.next/**',
+      'dist/**',
+      'coverage/**',
+      'node_modules/**',
+      'playwright-report/**',
+      'test-results/**',
+    ],
   },
 ];
