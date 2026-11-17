@@ -33,6 +33,12 @@ overrides:
   baseline-browser-mapping: 2.11.0
   react: 19.3.1
   react-dom: 19.3.1
+  # jest 30.5.2 still pins glob ^13.0.6 (via @jest/reporters, jest-config,
+  # jest-runtime) and babel-plugin-istanbul 8 pulls test-exclude 7 -> glob
+  # ^10.5.0. Both ranges include the aborted-walk advisory fixed in glob
+  # 14.0.2. glob 14 keeps the CJS entry point and the glob.sync alias that
+  # test-exclude uses, so force the patched major until jest widens its range.
+  'glob@>=9.0.0 <=14.0.1': 14.0.4
 
 peerDependencyRules:
   allowedVersions:
