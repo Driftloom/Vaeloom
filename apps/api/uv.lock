@@ -666,19 +666,20 @@ wheels = [
 
 [[package]]
 name = "fastapi"
-version = "0.162.1"
+version = "0.163.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "annotated-doc" },
+    { name = "anyio" },
     { name = "opentelemetry-api" },
     { name = "pydantic" },
     { name = "starlette" },
     { name = "typing-extensions" },
     { name = "typing-inspection" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/eb/fb/3e954cd19540d69f9547e2577afe73b2eadad2ee47b691376a5b9345c50a/fastapi-0.162.1.tar.gz", hash = "sha256:b18411785f55d05baa296fcfa2901f26728483190e7d8eb8f8e6aa47ed94b030", size = 529173, upload-time = "2026-11-07T11:56:03.769Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f1/98/5411252e1c08bdd919c5d55774cebe9da0bebfb174c4e4ffa1a5821935ff/fastapi-0.163.0.tar.gz", hash = "sha256:ef55fa066d74b922aac7231af7869c4469b88ca00cac5d0421e42ceee213a902", size = 543109, upload-time = "2026-11-14T16:53:16.356Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/5c/06/83c13e92ae48a2cb0e8adfa939a93f5c7165e64f5bff916a3fbf5c59f7fb/fastapi-0.162.1-py3-none-any.whl", hash = "sha256:8107bbfbde522cbd3edcfb32e4923f1786fc52d901ff60a9f724f142df24a648", size = 150728, upload-time = "2026-11-07T11:56:02.09Z" },
+    { url = "https://files.pythonhosted.org/packages/de/b0/2d68e967b2fc6012ef1e7e91253c8222a2a895a45dee3677562deb93987e/fastapi-0.163.0-py3-none-any.whl", hash = "sha256:7572550ab4935e3ff373dc0191aea410d6c48127cc5477bc290b992fe539e345", size = 154381, upload-time = "2026-11-14T16:53:14.67Z" },
 ]
 
 [[package]]
@@ -3176,7 +3177,7 @@ requires-dist = [
     { name = "croniter", specifier = ">=3.0.0" },
     { name = "cryptography", specifier = ">=42.0.0" },
     { name = "email-validator", marker = "extra == 'dev'", specifier = ">=2.0.0" },
-    { name = "fastapi", specifier = "==0.162.1" },
+    { name = "fastapi", specifier = "==0.163.0" },
     { name = "freezegun", marker = "extra == 'dev'", specifier = ">=1.4.0" },
     { name = "google-api-python-client", specifier = ">=2.130.0" },
     { name = "google-auth-httplib2", specifier = ">=0.2.0" },
@@ -3202,8 +3203,8 @@ requires-dist = [
     { name = "pyjwt", specifier = ">=2.8.0" },
     { name = "pymupdf", specifier = ">=1.24.0" },
     { name = "pytesseract", specifier = ">=0.3.13" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.4.2,<9" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23.0,<1.0" },
+    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.4.2,<10" },
+    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23.0,<2.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0.0" },
     { name = "pytest-timeout", marker = "extra == 'dev'", specifier = ">=2.3.0" },
     { name = "pytest-xdist", marker = "extra == 'dev'", specifier = ">=3.6.0" },
