@@ -7,16 +7,6 @@
 #
 # Removal conditions are recorded per entry. Do not add an ID without one.
 
-# @opentelemetry/propagator-jaeger 1.28.0, pulled in by
-# @opentelemetry/sdk-node 0.55.0 (packages/observability). Patched only in
-# propagator-jaeger 2.9.0, which ships with the 2.x SDK line. Remove after the
-# observability package moves off sdk-node 0.55.
-CVE-2026-59892
-
-# @opentelemetry/core 1.28.0, same sdk-node 0.55.0 chain. Patched only in
-# core 2.8.0. Remove with the sdk-node upgrade above.
-CVE-2026-54285
-
 # file-type 20.4.1, pulled in by @nestjs/common 10.4.22 (observability and
 # service-auth packages). Patched only in file-type 21.x, which ships with
 # Nest 11. Remove after the Nest 10 -> 11 upgrade.
