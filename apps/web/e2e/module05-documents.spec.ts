@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { apiRequest, gotoWorkspace, login } from './helpers';
+import { DOCUMENTS_API, apiRequest, gotoWorkspace, login, waitForDocumentUpload } from './helpers';
 
 /**
  * These are the only end-to-end assertions on the stored-XSS upload boundary
@@ -8,7 +8,6 @@ import { apiRequest, gotoWorkspace, login } from './helpers';
  * awaited request. Nothing here may swallow the failure and continue.
  */
 
-const DOCS_API = '/api/v1/documents';
 const UNIQUE = `module05-verified-${Date.now()}`;
 
 test.describe('Module 05 — Documents & Security Workflow', () => {
@@ -24,10 +23,7 @@ test.describe('Module 05 — Documents & Security Workflow', () => {
     // control file is queued; otherwise `isUploading` would swallow the second
     // setInputFiles event and the test would assert nothing about persistence.
     const rejection = await Promise.all([
-      page.waitForResponse(
-        (res) => res.url().includes(DOCS_API) && res.request().method() === 'POST',
-        { timeout: 30_000 },
-      ),
+      waitForDocumentUpload(page),
       page.setInputFiles('input[type="file"]:not([webkitdirectory])', {
         name: maliciousName,
         mimeType: 'text/html',
@@ -45,10 +41,7 @@ test.describe('Module 05 — Documents & Security Workflow', () => {
     // then prove the rejected file is absent from the very same listing.
     const controlName = `module05-ctrl-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`;
     const [controlUpload] = await Promise.all([
-      page.waitForResponse(
-        (res) => res.url().includes(DOCS_API) && res.request().method() === 'POST',
-        { timeout: 30_000 },
-      ),
+      waitForDocumentUpload(page),
       page.setInputFiles('input[type="file"]:not([webkitdirectory])', {
         name: controlName,
         mimeType: 'text/plain',
@@ -75,7 +68,7 @@ test.describe('Module 05 — Documents & Security Workflow', () => {
       documents?: Array<{ path?: string }>;
     }>(page, {
       method: 'GET',
-      path: `${DOCS_API}?workspace_id=${encodeURIComponent(wsId)}`,
+      path: `${DOCUMENTS_API}?workspace_id=${encodeURIComponent(wsId)}`,
     });
     expect(list.status, `document list failed: ${list.text}`).toBe(200);
     const docs = list.json?.documents ?? list.json?.items ?? [];
@@ -95,10 +88,7 @@ test.describe('Module 05 — Documents & Security Workflow', () => {
 
     const fileName = `module05-fixture-${Date.now()}-${Math.random().toString(36).slice(2)}.txt`;
     const [upload] = await Promise.all([
-      page.waitForResponse(
-        (res) => res.url().includes(DOCS_API) && res.request().method() === 'POST',
-        { timeout: 30_000 },
-      ),
+      waitForDocumentUpload(page),
       page.setInputFiles('input[type="file"]:not([webkitdirectory])', {
         name: fileName,
         mimeType: 'text/plain',
@@ -119,7 +109,9 @@ test.describe('Module 05 — Documents & Security Workflow', () => {
     // network event carrying the anti-XSS headers under test.
     const [content] = await Promise.all([
       page.waitForResponse(
-        (res) => res.url().includes('/content') && res.request().method() === 'GET',
+        (res) =>
+          /\/api\/v1\/documents\/[^/?]+\/content/.test(res.url()) &&
+          res.request().method() === 'GET',
         { timeout: 30_000 },
       ),
       row.getByRole('button', { name: fileName, exact: true }).click(),

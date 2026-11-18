@@ -1,4 +1,4 @@
-import { expect, type Locator, type Page } from '@playwright/test';
+import { expect, type Locator, type Page, type Response } from '@playwright/test';
 
 export const TEST_USER = {
   email: 'audit@vaeloom.test',
@@ -49,6 +49,36 @@ export async function login(
 
 export async function gotoWorkspace(page: Page, wsId: string, seg = ''): Promise<void> {
   await page.goto(`/workspace/${wsId}${seg}`, { waitUntil: 'domcontentloaded' });
+}
+
+/** The document collection endpoint — the only POST that creates a document. */
+export const DOCUMENTS_API = '/api/v1/documents';
+
+/**
+ * Waits for the document COLLECTION upload request (the one that answers 201).
+ *
+ * `url().includes('/api/v1/documents')` also matches every background POST the
+ * documents UI issues to a subroute: `POST /documents/versions/batch` (200, fired
+ * whenever the visible document-id list changes, e.g. when the list refreshes
+ * after a rejected upload), `/archive`, `/share`, folder creation. A wait with
+ * that matcher can therefore resolve on an unrelated 200 that arrives between
+ * setInputFiles and the real upload — the caller's 201 assertion then fails on a
+ * perfectly healthy upload. Match the exact collection pathname so only the
+ * upload itself can satisfy the wait; a missing upload still fails loudly with a
+ * timeout naming the awaited request.
+ */
+export function waitForDocumentUpload(page: Page, timeout = 30_000): Promise<Response> {
+  return page.waitForResponse(
+    (res) => {
+      if (res.request().method() !== 'POST') return false;
+      try {
+        return new URL(res.url()).pathname === DOCUMENTS_API;
+      } catch {
+        return false;
+      }
+    },
+    { timeout },
+  );
 }
 
 export interface ApiResult<T = unknown> {
