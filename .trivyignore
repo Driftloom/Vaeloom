@@ -27,3 +27,11 @@ CVE-2026-31808
 # (eslint 8, nx 20, Jest glob chains) with repo-authored patterns. Patched
 # only in minimatch 11, a major bump for those tools. Remove with that upgrade.
 CVE-2026-118764
+
+# picomatch 2.3.2 / 4.0.5 / 4.0.7, reached only through build and test tooling
+# (jest-haste-map, jest-util, lint-staged, @parcel/watcher, tinyglobby, fdir)
+# with repo-authored glob patterns. NO FIX EXISTS: 4.0.7 is the latest
+# published release and the advisory's patched range is empty. Already accepted
+# by the npm gate as advisory 1247710 in security-audit.config.js. Remove when
+# picomatch publishes a release outside the vulnerable range.
+CVE-2026-112366
