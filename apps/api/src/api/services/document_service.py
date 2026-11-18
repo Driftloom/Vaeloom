@@ -1,7 +1,6 @@
 import difflib
 import io
 import logging
-import os
 import re
 import uuid
 import zipfile
@@ -632,28 +631,6 @@ class DocumentService:
             db.add(mem_rec)
         except Exception as mem_err:
             logger.warning("Dynamic memory creation on document upload failed (non-blocking): %s", mem_err)
-
-        # 6. Trigger background ingestion pipeline (fail-open)
-        if not os.environ.get("PYTEST_CURRENT_TEST"):
-            try:
-                import asyncio
-
-                from ..ingestion.pipeline import run_pipeline
-
-                async def _bg_run_pipeline():
-                    try:
-                        await run_pipeline(
-                            workspace_id=str(workspace_id),
-                            filename=filename,
-                            content=content,
-                            user_id=str(user_id) if user_id else None,
-                        )
-                    except Exception as bg_e:
-                        logger.debug("Background run_pipeline failed (non-blocking): %s", bg_e)
-
-                asyncio.create_task(_bg_run_pipeline())
-            except Exception as schedule_e:
-                logger.debug("Could not schedule background pipeline: %s", schedule_e)
 
         return doc
 
@@ -1838,4 +1815,46 @@ class DocumentService:
 
 
 document_service = DocumentService()
+
+
+async def run_pipeline_for_document(
+    document_id: str,
+    workspace_id: str,
+    user_id: str | None = None,
+) -> None:
+    """Run ingestion for a document that is already committed.
+
+    Upload persists the ``Document`` row and v1 synchronously, then schedules
+    this. It must not run earlier: ``run_pipeline`` opens its own session, so its
+    content-hash dedup cannot see an uncommitted upload and used to create a
+    second row for the same file. The explicit ``document_id`` also removes the
+    path/fuzzy heuristics from the post-upload path.
+    """
+    try:
+        from ..database import scoped_session
+
+        async with scoped_session(workspace_id=str(workspace_id), require=False) as db:
+            content, _doc_type, path = await document_service.get_content(
+                str(document_id), str(workspace_id), db
+            )
+
+        if not content:
+            logger.warning(
+                "Ingestion skipped for document %s: no stored content", document_id
+            )
+            return
+
+        from ..ingestion.pipeline import run_pipeline
+
+        await run_pipeline(
+            workspace_id=str(workspace_id),
+            filename=(path or "").rsplit("/", 1)[-1] or "untitled",
+            content=content,
+            user_id=str(user_id) if user_id else None,
+            document_id=str(document_id),
+        )
+    except Exception as e:
+        # Post-response work must never take the request down; the upload has
+        # already succeeded and the row is committed.
+        logger.debug("Background ingestion failed for %s (non-blocking): %s", document_id, e)
 

@@ -28,6 +28,7 @@ async def run_pipeline(
     content: bytes,
     user_id: str | None = None,
     connector_id: str | None = None,
+    document_id: str | None = None,
 ) -> dict[str, Any]:
     """Run the ingestion pipeline.
 
@@ -44,8 +45,14 @@ async def run_pipeline(
         # 2. Compute content hash for dedup
         content_hash = hashlib.sha256(content).hexdigest()
 
-        # 3. Check for duplicates
-        existing_doc_id = await check_dedup(workspace_id, content_hash, filename)
+        # 3. Resolve the target document. An upload has already persisted the row
+        # and passes its id, so content-hash dedup is unnecessary there — and it
+        # is racy: the pipeline opens its own session, which cannot see the
+        # upload's row until the request transaction commits.
+        if document_id:
+            existing_doc_id = str(document_id)
+        else:
+            existing_doc_id = await check_dedup(workspace_id, content_hash, filename)
 
         # 4. Write to database
         async with get_session_cm(workspace_id) as session:
@@ -59,38 +66,70 @@ async def run_pipeline(
                     existing_doc = doc_result.scalar_one_or_none()
 
                     if existing_doc:
-                        # Get next version number
-                        version_result = await session.execute(
-                            select(func.max(DocumentVersion.version_number))
-                            .where(DocumentVersion.document_id == document_id)
+                        # Reuse the version that already carries these exact bytes.
+                        # Upload persists v1 before scheduling ingestion, and
+                        # /process can be retried, so appending unconditionally
+                        # would mint a no-op version on every run.
+                        same_version_result = await session.execute(
+                            select(DocumentVersion)
+                            .where(
+                                DocumentVersion.document_id == document_id,
+                                DocumentVersion.checksum == content_hash,
+                            )
+                            .order_by(DocumentVersion.version_number.desc())
+                            .limit(1)
                         )
-                        max_version = version_result.scalar() or 0
-                        next_version = max_version + 1
+                        same_version = same_version_result.scalar_one_or_none()
 
-                        # Create new version
-                        new_version = DocumentVersion(
-                            document_id=document_id,
-                            version_number=next_version,
-                            storage_key=f"storage/{workspace_id}/{document_id}/v{next_version}_{filename}",
-                            checksum=content_hash,
-                            size_bytes=len(content),
-                        )
-                        session.add(new_version)
-                        # The primary key is generated on flush, so reading `.id`
-                        # before this point yields None. Downstream that string is fed
-                        # to `uuid.UUID(...)` when building DocumentChunk rows, which
-                        # raised for every chunk and left the document with no
-                        # retrievable content.
-                        await session.flush()
-
-                        # Update document metadata
                         existing_doc.updated_at = datetime.now(UTC)
                         if parsed_doc.metadata:
                             existing_doc.metadata_ = {**existing_doc.metadata_, **parsed_doc.metadata}
 
-                        logger.info(f"Added version {next_version} to doc {document_id}")
-                        version_id = str(new_version.id)
+                        if same_version is not None:
+                            version_id = str(same_version.id)
+                            logger.info(
+                                "Reused version %s of doc %s for identical content",
+                                same_version.version_number,
+                                document_id,
+                            )
+                        else:
+                            # Get next version number
+                            version_result = await session.execute(
+                                select(func.max(DocumentVersion.version_number))
+                                .where(DocumentVersion.document_id == document_id)
+                            )
+                            max_version = version_result.scalar() or 0
+                            next_version = max_version + 1
+
+                            # Create new version
+                            new_version = DocumentVersion(
+                                document_id=document_id,
+                                version_number=next_version,
+                                storage_key=f"storage/{workspace_id}/{document_id}/v{next_version}_{filename}",
+                                checksum=content_hash,
+                                size_bytes=len(content),
+                            )
+                            session.add(new_version)
+                            # The primary key is generated on flush, so reading `.id`
+                            # before this point yields None. Downstream that string is fed
+                            # to `uuid.UUID(...)` when building DocumentChunk rows, which
+                            # raised for every chunk and left the document with no
+                            # retrievable content.
+                            await session.flush()
+
+                            logger.info(f"Added version {next_version} to doc {document_id}")
+                            version_id = str(new_version.id)
                     else:
+                        if document_id:
+                            # Explicitly addressed document is gone (deleted while
+                            # queued). Creating a row here would resurrect it.
+                            logger.warning(
+                                "Ingestion target %s not found; skipping", document_id
+                            )
+                            return {
+                                "status": "error",
+                                "reason": f"document {document_id} not found",
+                            }
                         # Document was deleted but version exists — create fresh
                         existing_doc_id = None
 
@@ -252,10 +291,29 @@ async def _persist_chunks_with_embeddings(
         logger.warning("Chunk persist skipped - models not importable: %s", e)
         return
 
+    # A reused version already carries these exact chunks: (document_version_id,
+    # chunk_index) is unique, so re-inserting would trip the constraint and abort
+    # the whole batch transaction. Skip what is already indexed.
+    existing_indices: set[int] = set()
+    if version_id:
+        try:
+            async with get_session_cm(workspace_id) as _session:
+                indexed = await _session.execute(
+                    select(DocumentChunk.chunk_index).where(
+                        DocumentChunk.document_version_id == uuid.UUID(version_id)
+                    )
+                )
+                existing_indices = set(indexed.scalars().all())
+        except Exception as e:
+            logger.debug("Could not read indexed chunk positions: %s", e)
+
     # Pre-generate embeddings outside DB transaction to avoid holding transaction open on LLM calls
     # WS06: quarantined chunks (prompt injection flagged) get zero-vector so they cannot poison ranking via embedding similarity
     chunk_embeddings: list[list[float] | None] = []
     for ch in chunks:
+        if ch.index in existing_indices:
+            chunk_embeddings.append(None)
+            continue
         emb = None
         if (ch.metadata or {}).get("quarantined"):
             logger.info(f"WS06 quarantine: skipping embedding for chunk {ch.index} (zero vector)")
@@ -274,6 +332,8 @@ async def _persist_chunks_with_embeddings(
         async with get_session_cm(workspace_id) as session:
             async with session.begin():
                 for idx, ch in enumerate(chunks):
+                    if ch.index in existing_indices:
+                        continue
                     emb_vec = chunk_embeddings[idx] if idx < len(chunk_embeddings) else None
                     token_count = max(1, len(ch.content) // 4) if ch.content else 0
                     content_hash = _hashlib.sha256(ch.content.encode("utf-8")).hexdigest() if ch.content else None
