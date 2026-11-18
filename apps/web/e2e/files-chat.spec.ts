@@ -1,7 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { gotoWorkspace, login } from './helpers';
-
-const DOCS_API = '/api/v1/documents';
+import { gotoWorkspace, login, waitForDocumentUpload } from './helpers';
 
 test.describe('files', () => {
   test('upload, select, bulk archive and clear selection', async ({ page }) => {
@@ -13,10 +11,7 @@ test.describe('files', () => {
 
     const fileName = `pw-e2e-${Date.now()}.txt`;
     const [upload] = await Promise.all([
-      page.waitForResponse(
-        (res) => res.url().includes(DOCS_API) && res.request().method() === 'POST',
-        { timeout: 30_000 },
-      ),
+      waitForDocumentUpload(page),
       page.setInputFiles('input[type="file"]:not([webkitdirectory])', {
         name: fileName,
         mimeType: 'text/plain',
@@ -70,10 +65,7 @@ test.describe('files', () => {
     const fileName = `pw-viewer-${Date.now()}.txt`;
     const marker = `viewer-marker-${Date.now()}`;
     const [upload] = await Promise.all([
-      page.waitForResponse(
-        (res) => res.url().includes(DOCS_API) && res.request().method() === 'POST',
-        { timeout: 30_000 },
-      ),
+      waitForDocumentUpload(page),
       page.setInputFiles('input[type="file"]:not([webkitdirectory])', {
         name: fileName,
         mimeType: 'text/plain',
