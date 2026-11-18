@@ -19,7 +19,7 @@
     "@opentelemetry/instrumentation-http": "^0.55.0",
     "@opentelemetry/instrumentation-nestjs-core": "^0.67.0",
     "@opentelemetry/resources": "^2.10.0",
-    "@opentelemetry/sdk-node": "^0.55.0",
+    "@opentelemetry/sdk-node": "^0.301.2",
     "@opentelemetry/semantic-conventions": "^1.25.0",
     "nestjs-pino": "^4.1.0",
     "pino": "^10.3.1",
