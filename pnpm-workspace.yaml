@@ -36,4 +36,4 @@ overrides:
 
 peerDependencyRules:
   allowedVersions:
-    eslint: 8
+    eslint: '10'
