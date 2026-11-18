@@ -126,7 +126,7 @@ export function TwoFactorAuthCard({
   };
 
   return (
-    <div className="rounded-xl border border-border bg-surface p-6 shadow-sm">
+    <div className="rounded-xl border border-border bg-surface p-6 shadow-xs">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-start gap-3.5">
           <div
@@ -278,7 +278,7 @@ export function TwoFactorAuthCard({
                     value={verifyCode}
                     onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ''))}
                     placeholder="000000"
-                    className="w-full text-center text-2xl tracking-[0.4em] font-mono py-3 rounded-lg border border-border bg-background text-text focus:border-action focus:outline-none"
+                    className="w-full text-center text-2xl tracking-[0.4em] font-mono py-3 rounded-lg border border-border bg-background text-text focus:border-action focus:outline-hidden"
                   />
                   {error && <p className="text-xs text-error mt-2">{error}</p>}
                 </div>

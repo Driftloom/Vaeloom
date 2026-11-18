@@ -64,7 +64,7 @@ export default function MemoryAboutMe({ profile, workspaceId, onUpdate }: Memory
             value={bio}
             onChange={(e) => setBio(e.target.value)}
             rows={5}
-            className="w-full bg-background border border-border rounded-xl p-3.5 text-text focus:outline-none focus:ring-1 focus:ring-primary text-sm leading-relaxed resize-y"
+            className="w-full bg-background border border-border rounded-xl p-3.5 text-text focus:outline-hidden focus:ring-1 focus:ring-primary text-sm leading-relaxed resize-y"
             placeholder="Write a concise overview of your background, passions, and expertise..."
           />
           <div className="flex items-center gap-2">

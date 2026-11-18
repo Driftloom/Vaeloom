@@ -56,7 +56,7 @@ function VerifyEmailContent() {
     <div className="min-h-screen min-h-[100dvh] flex items-center justify-center bg-background p-4 sm:p-8 overflow-y-auto overscroll-y-contain">
       <div className="w-full max-w-[400px] text-center space-y-6 my-auto">
         <div className="inline-flex items-center gap-2 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-400 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-linear-to-br from-primary-500 to-accent-400 flex items-center justify-center">
             <span className="text-white font-bold text-lg">V</span>
           </div>
           <span className="text-2xl font-bold text-text">Vaeloom</span>

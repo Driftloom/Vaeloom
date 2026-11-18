@@ -161,7 +161,7 @@ export default function SkillsShowcase({
             onChange={(e) => setNewSkillName(e.target.value)}
             placeholder="e.g. Next.js, Rust, Kubernetes, PyTorch..."
             autoFocus
-            className="flex-1 px-3 py-1.5 text-sm bg-background border border-border rounded-lg text-text focus:outline-none focus:ring-1 focus:ring-primary"
+            className="flex-1 px-3 py-1.5 text-sm bg-background border border-border rounded-lg text-text focus:outline-hidden focus:ring-1 focus:ring-primary"
           />
           <Button
             variant="primary"

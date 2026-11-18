@@ -179,7 +179,7 @@ export function MorningBriefingCard({ workspaceId }: MorningBriefingCardProps) {
                     className={`flex items-start gap-3 p-3 rounded-lg border transition-all cursor-pointer ${
                       checked
                         ? 'bg-surface-50 border-border text-text-muted line-through'
-                        : 'bg-surface-100 border-border hover:border-border-strong text-text shadow-sm'
+                        : 'bg-surface-100 border-border hover:border-border-strong text-text shadow-xs'
                     }`}
                   >
                     <input
@@ -226,7 +226,7 @@ export function MorningBriefingCard({ workspaceId }: MorningBriefingCardProps) {
         {/* Right Column: Reality Gap Diagnostic & Friction */}
         <div className="space-y-4">
           {/* Reality Gap Score Meter */}
-          <div className="rounded-xl border border-border bg-surface-100 p-4 shadow-sm">
+          <div className="rounded-xl border border-border bg-surface-100 p-4 shadow-xs">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-semibold uppercase tracking-wider text-text-muted">
                 Reality Gap (Intent vs Action)
@@ -274,7 +274,7 @@ export function MorningBriefingCard({ workspaceId }: MorningBriefingCardProps) {
           {/* Friction & Bottlenecks */}
           {((briefing.openFriction?.length ?? 0) > 0 ||
             (briefing.resolvedFriction?.length ?? 0) > 0) && (
-            <div className="rounded-xl border border-border bg-surface-100 p-4 shadow-sm">
+            <div className="rounded-xl border border-border bg-surface-100 p-4 shadow-xs">
               <span className="text-xs font-semibold uppercase tracking-wider text-text-muted block mb-2">
                 Friction Points & Conquered Blockers
               </span>

@@ -66,7 +66,7 @@ export default function AgentInsights({ workspaceId, onUpdate }: AgentInsightsPr
   }
 
   return (
-    <Panel className="space-y-5 border border-primary/20 bg-gradient-to-br from-surface to-primary/5">
+    <Panel className="space-y-5 border border-primary/20 bg-linear-to-br from-surface to-primary/5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary text-base">

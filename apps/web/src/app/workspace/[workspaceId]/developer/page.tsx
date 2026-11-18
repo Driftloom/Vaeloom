@@ -466,7 +466,7 @@ function DeveloperContent() {
                 </label>
                 <select
                   id="webhook-event"
-                  className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:border-primary"
+                  className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-hidden focus:border-primary"
                   value={webhookEvent}
                   onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
                     setWebhookEvent(e.target.value)
@@ -494,7 +494,7 @@ function DeveloperContent() {
                 }
                 placeholder="Enter a throwaway value for this run"
                 aria-describedby="webhook-test-secret-help"
-                className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:border-primary"
+                className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-hidden focus:border-primary"
               />
               <p id="webhook-test-secret-help" className="text-xs text-text-muted mt-1">
                 TEST VALUE ONLY. It is sent with this single test delivery and cleared immediately
@@ -612,7 +612,7 @@ function DeveloperContent() {
           <div className="space-y-1">
             <label className="block text-sm font-medium text-text">Permissions</label>
             <select
-              className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-none focus:border-primary"
+              className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-text focus:outline-hidden focus:border-primary"
               value={newKeyPerms}
               onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setNewKeyPerms(e.target.value)}
             >
@@ -653,7 +653,7 @@ function DeveloperContent() {
                 type="text"
                 readOnly
                 value={createdSecret ?? ''}
-                className="w-full bg-background border border-border rounded-md px-3 py-2 font-mono text-sm text-primary select-all focus:outline-none focus:border-primary"
+                className="w-full bg-background border border-border rounded-md px-3 py-2 font-mono text-sm text-primary select-all focus:outline-hidden focus:border-primary"
               />
               <Button
                 variant={copiedSecret ? 'secondary' : 'primary'}

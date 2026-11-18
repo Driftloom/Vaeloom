@@ -76,7 +76,7 @@ export interface DocumentStatsBarProps {
 
 /** Visible keyboard indicator; matches the ui-kit Button contract. */
 const CARD_FOCUS =
-  'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-100';
+  'focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-100';
 
 /** Static grid classes — Tailwind cannot see an interpolated class name. */
 const GRID_BY_CARD_COUNT: Record<number, string> = {

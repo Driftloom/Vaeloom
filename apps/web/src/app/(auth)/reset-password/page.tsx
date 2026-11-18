@@ -147,7 +147,7 @@ function ResetPasswordForm() {
         <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
           <div className="relative z-10 flex flex-col justify-center px-16 lg:px-20">
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-400 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-linear-to-br from-primary-500 to-accent-400 flex items-center justify-center">
                 <span className="text-white font-bold text-lg">V</span>
               </div>
               <span className="text-2xl font-bold text-text">Vaeloom</span>
@@ -186,7 +186,7 @@ function ResetPasswordForm() {
         <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
           <div className="relative z-10 flex flex-col justify-center px-16 lg:px-20">
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-400 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-linear-to-br from-primary-500 to-accent-400 flex items-center justify-center">
                 <span className="text-white font-bold text-lg">V</span>
               </div>
               <span className="text-2xl font-bold text-text">Vaeloom</span>
@@ -229,7 +229,7 @@ function ResetPasswordForm() {
         <div className="relative z-10 flex flex-col justify-center px-16 lg:px-20">
           <div className="mb-12 animate-fade-in">
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-400 flex items-center justify-center shadow-glow">
+              <div className="w-10 h-10 rounded-xl bg-linear-to-br from-primary-500 to-accent-400 flex items-center justify-center shadow-glow">
                 <span className="text-white font-bold text-lg">V</span>
               </div>
               <span className="text-2xl font-bold text-text">Vaeloom</span>
@@ -252,7 +252,7 @@ function ResetPasswordForm() {
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-10">
             <div className="inline-flex items-center gap-2 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-400 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-linear-to-br from-primary-500 to-accent-400 flex items-center justify-center">
                 <span className="text-white font-bold text-lg">V</span>
               </div>
               <span className="text-2xl font-bold text-text">Vaeloom</span>
@@ -407,7 +407,7 @@ function ResetPasswordForm() {
                 >
                   <p className="text-sm text-error flex items-center gap-2">
                     <svg
-                      className="w-5 h-5 flex-shrink-0"
+                      className="w-5 h-5 shrink-0"
                       fill="currentColor"
                       viewBox="0 0 20 20"
                       aria-hidden="true"
@@ -484,7 +484,7 @@ export default function ResetPasswordPage() {
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-background">
           <div className="flex flex-col items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-400 flex items-center justify-center animate-pulse">
+            <div className="w-10 h-10 rounded-xl bg-linear-to-br from-primary-500 to-accent-400 flex items-center justify-center animate-pulse">
               <span className="text-white font-bold text-lg">V</span>
             </div>
             <p className="text-text-muted text-sm">Loading...</p>

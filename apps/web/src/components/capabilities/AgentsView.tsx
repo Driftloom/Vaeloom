@@ -162,7 +162,7 @@ export const AgentsView: React.FC<AgentsViewProps> = ({
                 type="button"
                 onClick={() => setActiveTypeFilter(tab.id)}
                 aria-pressed={activeTypeFilter === tab.id}
-                className={`py-1 rounded-md text-xs font-sans font-medium transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${
+                className={`py-1 rounded-md text-xs font-sans font-medium transition-colors cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${
                   activeTypeFilter === tab.id
                     ? 'bg-primary/10 text-primary font-semibold'
                     : 'text-text-secondary hover:text-text'

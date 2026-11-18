@@ -40,7 +40,7 @@ export default function ATSReadiness({ workspaceId, onSkillAdded }: ATSReadiness
 
   if (isLoading) {
     return (
-      <Panel className="bg-gradient-to-br from-surface to-surface-200 animate-pulse space-y-4">
+      <Panel className="bg-linear-to-br from-surface to-surface-200 animate-pulse space-y-4">
         <div className="h-5 w-32 bg-surface-200 rounded" />
         <div className="h-16 w-16 mx-auto rounded-full bg-surface-200" />
         <div className="h-4 w-48 bg-surface-200 rounded mx-auto" />
@@ -72,7 +72,7 @@ export default function ATSReadiness({ workspaceId, onSkillAdded }: ATSReadiness
   const strokeDashoffset = circumference - (score / 100) * circumference;
 
   return (
-    <Panel className="mb-6 bg-gradient-to-br from-surface to-surface-200 p-6 space-y-5">
+    <Panel className="mb-6 bg-linear-to-br from-surface to-surface-200 p-6 space-y-5">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <svg

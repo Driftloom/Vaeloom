@@ -25,7 +25,7 @@ export const Button: React.FC<ButtonProps> = ({
   // aliases in globals.css use the same focus-visible contract so both
   // surfaces render an identical indicator.
   const base =
-    'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed';
+    'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed';
 
   const variants: Record<string, string> = {
     // Canonical primary action family — indigo with guaranteed-contrast label.

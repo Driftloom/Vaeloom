@@ -191,7 +191,7 @@ function LoginForm() {
           {/* Logo */}
           <div className="mb-12 animate-fade-in">
             <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-400 flex items-center justify-center shadow-glow">
+              <div className="w-10 h-10 rounded-xl bg-linear-to-br from-primary-500 to-accent-400 flex items-center justify-center shadow-glow">
                 <span className="text-white font-bold text-lg">V</span>
               </div>
               <span className="text-2xl font-bold text-text">Vaeloom</span>
@@ -230,7 +230,7 @@ function LoginForm() {
           {/* Mobile logo */}
           <div className="lg:hidden text-center mb-6">
             <div className="inline-flex items-center gap-2 mb-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-accent-400 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-xl bg-linear-to-br from-primary-500 to-accent-400 flex items-center justify-center">
                 <span className="text-white font-bold text-lg">V</span>
               </div>
               <span className="text-2xl font-bold text-text">Vaeloom</span>
@@ -267,7 +267,7 @@ function LoginForm() {
                     value={mfaCode}
                     onChange={(e) => setMfaCode(e.target.value)}
                     placeholder="123456 or Recovery Code"
-                    className="w-full text-center text-xl font-mono py-3 rounded-xl border border-border bg-background text-text focus:border-primary focus:outline-none"
+                    className="w-full text-center text-xl font-mono py-3 rounded-xl border border-border bg-background text-text focus:border-primary focus:outline-hidden"
                   />
                 </div>
 

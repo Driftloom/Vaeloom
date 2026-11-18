@@ -171,7 +171,7 @@ export const McpServerCard: React.FC<McpServerCardProps> = ({
           type="button"
           onClick={onSelect}
           aria-current={isSelected ? 'true' : undefined}
-          className="flex items-center gap-2.5 min-w-0 flex-1 text-left rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+          className="flex items-center gap-2.5 min-w-0 flex-1 text-left rounded focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
         >
           <Tooltip content={`Status: ${isSyncing ? 'syncing' : statusMeta.label}`}>
             <StatusDot

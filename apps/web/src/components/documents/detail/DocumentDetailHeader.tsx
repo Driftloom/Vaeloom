@@ -74,7 +74,7 @@ export const DocumentDetailHeader: React.FC<DocumentDetailHeaderProps> = ({
               href={blobUrl}
               download={fileName}
               aria-label={`Download ${fileName}`}
-              className="inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-medium bg-action text-action-fg hover:bg-action-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              className="inline-flex items-center justify-center gap-1.5 rounded-lg px-3.5 py-1.5 text-sm font-medium bg-action text-action-fg hover:bg-action-hover transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
             >
               <DownloadIcon size={14} />
               <span>Download</span>
@@ -83,7 +83,7 @@ export const DocumentDetailHeader: React.FC<DocumentDetailHeaderProps> = ({
 
           <Link
             href={`/workspace/${workspaceId}/chat?docId=${docId}&docName=${encodeURIComponent(fileName)}`}
-            className="inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium border border-border bg-surface-hover text-text hover:bg-surface-active transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="inline-flex items-center justify-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium border border-border bg-surface-hover text-text hover:bg-surface-active transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-background"
           >
             Chat
           </Link>

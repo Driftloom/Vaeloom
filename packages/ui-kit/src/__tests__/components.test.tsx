@@ -98,7 +98,7 @@ describe('Button', () => {
       const cls = screen.getByRole('button').className.split(/\s+/);
       expect(cls).toContain('focus-visible:ring-2');
       expect(cls).toContain('focus-visible:ring-offset-2');
-      expect(cls).toContain('focus:outline-none');
+      expect(cls).toContain('focus:outline-hidden');
       // Regression guard: a bare `focus:ring-*` would fire the ring on every
       // mouse click, duplicating the global `:focus-visible` outline in
       // globals.css. The ring must be keyboard-only.

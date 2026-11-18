@@ -188,7 +188,7 @@ export default function WorkspaceLayout({
                 <div
                   ref={contentRef}
                   tabIndex={-1}
-                  className={`flex-1 focus:outline-none min-h-0 ${
+                  className={`flex-1 focus:outline-hidden min-h-0 ${
                     isFullBleed
                       ? 'flex flex-col overflow-hidden p-0'
                       : 'overflow-y-auto overscroll-y-contain p-4 sm:p-6'

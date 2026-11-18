@@ -9,7 +9,7 @@ export interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
 
 const roundedMap: Record<SkeletonRounded, string> = {
   none: 'rounded-none',
-  sm: 'rounded-sm',
+  sm: 'rounded-xs',
   md: 'rounded',
   lg: 'rounded-lg',
   full: 'rounded-full',

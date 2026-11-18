@@ -347,7 +347,7 @@ export function MemoryVaultExplorer({
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search memories, skills, notes, or entities…"
                       aria-label="Search memories, skills, notes"
-                      className="w-full pl-9 pr-3 py-2 rounded-xl border border-border/60 bg-surface-50 text-xs text-text placeholder:text-text-dim focus:outline-none focus:border-action transition-colors"
+                      className="w-full pl-9 pr-3 py-2 rounded-xl border border-border/60 bg-surface-50 text-xs text-text placeholder:text-text-dim focus:outline-hidden focus:border-action transition-colors"
                     />
                   </div>
 

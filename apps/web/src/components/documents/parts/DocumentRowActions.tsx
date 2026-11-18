@@ -92,7 +92,7 @@ export const DocumentRowActions: React.FC<DocumentRowActionsProps> = ({ doc, han
 
       <Link
         href={`/workspace/${handlers.workspaceId}/${handlers.basePath}/${doc.id}`}
-        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-200 hover:text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-100"
+        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-200 hover:text-text focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-100"
         title="Open the document detail page"
         aria-label={`Detail for ${fileName}`}
       >
@@ -101,7 +101,7 @@ export const DocumentRowActions: React.FC<DocumentRowActionsProps> = ({ doc, han
 
       <Link
         href={`/workspace/${handlers.workspaceId}/chat?docId=${doc.id}&docName=${encodeURIComponent(fileName)}`}
-        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-200 hover:text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-100"
+        className="inline-flex h-7 w-7 items-center justify-center rounded-md text-text-secondary transition-colors hover:bg-surface-200 hover:text-text focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-100"
         title="Chat with this document"
         aria-label={`Chat with ${fileName}`}
       >

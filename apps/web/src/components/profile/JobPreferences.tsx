@@ -130,7 +130,7 @@ export default function JobPreferences({
               value={jobTypes}
               onChange={(e) => setJobTypes(e.target.value)}
               placeholder="Full-time, Contract, Senior Engineer"
-              className="w-full px-3 py-2 text-sm bg-surface-200 border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
+              className="w-full px-3 py-2 text-sm bg-surface-200 border border-border rounded-lg text-text focus:outline-hidden focus:border-primary/50"
             />
           </div>
 
@@ -143,7 +143,7 @@ export default function JobPreferences({
               value={industries}
               onChange={(e) => setIndustries(e.target.value)}
               placeholder="AI/ML, FinTech, Developer Tools"
-              className="w-full px-3 py-2 text-sm bg-surface-200 border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
+              className="w-full px-3 py-2 text-sm bg-surface-200 border border-border rounded-lg text-text focus:outline-hidden focus:border-primary/50"
             />
           </div>
 
@@ -154,7 +154,7 @@ export default function JobPreferences({
             <select
               value={remotePref}
               onChange={(e) => setRemotePref(e.target.value)}
-              className="w-full px-3 py-2 text-sm bg-surface-200 border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
+              className="w-full px-3 py-2 text-sm bg-surface-200 border border-border rounded-lg text-text focus:outline-hidden focus:border-primary/50"
             >
               <option value="Remote">Remote</option>
               <option value="Hybrid">Hybrid</option>
@@ -172,7 +172,7 @@ export default function JobPreferences({
               value={dealbreakers}
               onChange={(e) => setDealbreakers(e.target.value)}
               placeholder="No crypto, No on-call, Relocation required"
-              className="w-full px-3 py-2 text-sm bg-surface-200 border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
+              className="w-full px-3 py-2 text-sm bg-surface-200 border border-border rounded-lg text-text focus:outline-hidden focus:border-primary/50"
             />
           </div>
 

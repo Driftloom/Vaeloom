@@ -601,7 +601,7 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
               placeholder="Search & highlight nodes..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="rounded-lg border border-border bg-surface-100 px-3 py-1.5 text-xs text-text outline-none focus:ring-1 focus:ring-accent w-48 font-sans"
+              className="rounded-lg border border-border bg-surface-100 px-3 py-1.5 text-xs text-text outline-hidden focus:ring-1 focus:ring-accent w-48 font-sans"
             />
             {search && (
               <button
@@ -927,7 +927,7 @@ export function GraphViewer({ workspaceId }: { workspaceId: string }) {
           </svg>
 
           {/* Canvas Status Indicator (bottom-left) */}
-          <div className="absolute bottom-3 left-3 flex items-center gap-2 rounded-full border border-border bg-surface/90 backdrop-blur-sm px-3 py-1 text-xs text-text-secondary font-mono shadow-sm">
+          <div className="absolute bottom-3 left-3 flex items-center gap-2 rounded-full border border-border bg-surface/90 backdrop-blur-sm px-3 py-1 text-xs text-text-secondary font-mono shadow-xs">
             <span>{Math.round(transform.k * 100)}% zoom</span>
             <span>•</span>
             <span>

@@ -82,7 +82,7 @@ export function DataTable<T>({
                     <button
                       type="button"
                       onClick={() => handleHeaderClick(col)}
-                      className={`inline-flex items-center gap-1.5 uppercase tracking-wider text-left rounded hover:text-text focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${MIN_TOUCH_TARGET}`}
+                      className={`inline-flex items-center gap-1.5 uppercase tracking-wider text-left rounded hover:text-text focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface ${MIN_TOUCH_TARGET}`}
                     >
                       <span>{col.header}</span>
                       <span className="flex flex-col text-2xs leading-none" aria-hidden="true">

@@ -381,7 +381,7 @@ export default function SettingsPage() {
                       </div>
                       <select
                         aria-label={`Autonomy level for ${agent.name}`}
-                        className="bg-background border border-border text-text rounded-md px-3 py-1.5 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-primary self-start sm:self-center"
+                        className="bg-background border border-border text-text rounded-md px-3 py-1.5 text-xs font-mono focus:outline-hidden focus:ring-1 focus:ring-primary self-start sm:self-center"
                         value={getAutonomy(agent)}
                         onChange={(e) => handleAutonomyChange(agent.id, e.target.value)}
                         disabled={savingId === agent.id}

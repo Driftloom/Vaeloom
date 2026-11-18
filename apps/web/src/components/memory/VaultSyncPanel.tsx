@@ -869,7 +869,7 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
               value={formVaultPath}
               onChange={(e) => setFormVaultPath(e.target.value)}
               placeholder="e.g. ~/Documents/VaeloomVault or C:\Notes\Vault"
-              className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface-100 text-text font-mono focus:outline-none focus:ring-1 focus:ring-accent"
+              className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface-100 text-text font-mono focus:outline-hidden focus:ring-1 focus:ring-accent"
             />
             <p className="text-[11px] text-text-muted mt-1">
               Optional, and informational only. The vaultsync client owns its real local path; this
@@ -890,7 +890,7 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
               value={formRemoteUrl}
               onChange={(e) => setFormRemoteUrl(e.target.value)}
               placeholder="e.g. git@github.com:username/private-notes.git or https://github.com/..."
-              className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface-100 text-text font-mono focus:outline-none focus:ring-1 focus:ring-accent"
+              className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface-100 text-text font-mono focus:outline-hidden focus:ring-1 focus:ring-accent"
             />
             <p className="text-[11px] text-text-muted mt-1">
               Optional private Git repository for cross-device synchronization.
@@ -911,7 +911,7 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
                 value={formBranch}
                 onChange={(e) => setFormBranch(e.target.value)}
                 placeholder="main"
-                className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface-100 text-text font-mono focus:outline-none focus:ring-1 focus:ring-accent"
+                className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface-100 text-text font-mono focus:outline-hidden focus:ring-1 focus:ring-accent"
                 required
               />
             </div>
@@ -944,7 +944,7 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
                 max={300}
                 value={debounceSeconds}
                 onChange={(e) => setDebounceSeconds(Number(e.target.value))}
-                className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface-100 text-text font-mono focus:outline-none focus:ring-1 focus:ring-accent"
+                className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface-100 text-text font-mono focus:outline-hidden focus:ring-1 focus:ring-accent"
               />
             </div>
             <div>
@@ -961,7 +961,7 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
                 max={60}
                 value={rebaseIntervalMinutes}
                 onChange={(e) => setRebounceIntervalMinutes(Number(e.target.value))}
-                className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface-100 text-text font-mono focus:outline-none focus:ring-1 focus:ring-accent"
+                className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface-100 text-text font-mono focus:outline-hidden focus:ring-1 focus:ring-accent"
               />
             </div>
           </div>
@@ -1034,7 +1034,7 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
                 placeholder="e.g. Distributed-Consensus.md"
                 value={customNoteTitle}
                 onChange={(e) => setCustomNoteTitle(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface-100 text-text font-mono focus:outline-none focus:ring-1 focus:ring-accent"
+                className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface-100 text-text font-mono focus:outline-hidden focus:ring-1 focus:ring-accent"
               />
             </div>
             <div>
@@ -1050,7 +1050,7 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
                 placeholder="# Distributed Consensus..."
                 value={customNoteContent}
                 onChange={(e) => setCustomNoteContent(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface-100 text-text font-mono focus:outline-none focus:ring-1 focus:ring-accent"
+                className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface-100 text-text font-mono focus:outline-hidden focus:ring-1 focus:ring-accent"
               />
             </div>
             <div>
@@ -1065,7 +1065,7 @@ export function VaultSyncPanel({ workspaceId }: VaultSyncPanelProps) {
                 type="text"
                 value={customNoteTags}
                 onChange={(e) => setCustomNoteTags(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface-100 text-text font-mono focus:outline-none focus:ring-1 focus:ring-accent"
+                className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface-100 text-text font-mono focus:outline-hidden focus:ring-1 focus:ring-accent"
               />
             </div>
           </div>

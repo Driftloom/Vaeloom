@@ -194,7 +194,7 @@ export const SkillPlaygroundDrawer: React.FC<SkillPlaygroundDrawerProps> = ({
         aria-label={`Skill Diagnostic Playground: ${selectedSkill.item.name}`}
         aria-modal="true"
         tabIndex={-1}
-        className="relative z-10 h-full w-full sm:max-w-md lg:max-w-xl bg-surface border-l border-border shadow-elevation-modal flex flex-col focus:outline-none"
+        className="relative z-10 h-full w-full sm:max-w-md lg:max-w-xl bg-surface border-l border-border shadow-elevation-modal flex flex-col focus:outline-hidden"
       >
         {/* Header */}
         <div className="p-4 border-b border-border bg-surface shrink-0 flex items-center justify-between">
@@ -213,7 +213,7 @@ export const SkillPlaygroundDrawer: React.FC<SkillPlaygroundDrawerProps> = ({
             type="button"
             aria-label="Close playground"
             onClick={onClose}
-            className={`inline-flex items-center justify-center p-1.5 text-text-muted hover:text-text rounded-control hover:bg-surface-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${MIN_TOUCH_TARGET}`}
+            className={`inline-flex items-center justify-center p-1.5 text-text-muted hover:text-text rounded-control hover:bg-surface-200 focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent ${MIN_TOUCH_TARGET}`}
           >
             <XIcon size={18} />
           </button>

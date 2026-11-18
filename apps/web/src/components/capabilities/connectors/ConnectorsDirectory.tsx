@@ -115,7 +115,7 @@ export function ConnectorsDirectory({
             type="button"
             aria-pressed={selectedFilter === filter.id}
             onClick={() => onFilterChange(filter.id)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 whitespace-nowrap cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-150 whitespace-nowrap cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${
               selectedFilter === filter.id
                 ? 'bg-action text-action-fg shadow-xs font-semibold'
                 : 'bg-surface-elevated hover:bg-surface-hover text-text-secondary hover:text-text border border-border'

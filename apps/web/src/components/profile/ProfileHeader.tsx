@@ -253,7 +253,7 @@ function ImportProfileModal({ workspaceId, onImported, onClose }: ImportProfileM
                   value={linkedinUrl}
                   onChange={(e) => setLinkedinUrl(e.target.value)}
                   placeholder="https://www.linkedin.com/in/your-profile"
-                  className="w-full bg-background border border-border rounded-lg px-3 py-2.5 text-sm text-text placeholder-text-dim focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="w-full bg-background border border-border rounded-lg px-3 py-2.5 text-sm text-text placeholder-text-dim focus:outline-hidden focus:ring-1 focus:ring-primary"
                 />
               </div>
               <div className="p-3 rounded-lg bg-warning/10 border border-warning/20 text-warning text-xs">
@@ -473,7 +473,7 @@ export default function ProfileHeader({ profile, workspaceId, onUpdate }: Profil
                     type="text"
                     value={displayName}
                     onChange={(e) => setDisplayName(e.target.value)}
-                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-text focus:outline-hidden focus:ring-1 focus:ring-primary"
                     placeholder="e.g. Alex Morgan"
                   />
                 </div>
@@ -485,7 +485,7 @@ export default function ProfileHeader({ profile, workspaceId, onUpdate }: Profil
                     type="text"
                     value={headline}
                     onChange={(e) => setHeadline(e.target.value)}
-                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-text focus:outline-hidden focus:ring-1 focus:ring-primary"
                     placeholder="e.g. Staff AI Systems Engineer"
                   />
                 </div>
@@ -497,7 +497,7 @@ export default function ProfileHeader({ profile, workspaceId, onUpdate }: Profil
                     type="text"
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
-                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-text focus:outline-hidden focus:ring-1 focus:ring-primary"
                     placeholder="e.g. San Francisco, CA (Remote)"
                   />
                 </div>

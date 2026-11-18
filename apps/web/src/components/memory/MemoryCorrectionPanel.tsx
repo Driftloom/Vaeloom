@@ -223,7 +223,7 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
               onClick={() => setStatusFilter(s)}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium capitalize transition ${
                 statusFilter === s
-                  ? 'bg-accent text-accent-fg shadow-sm'
+                  ? 'bg-accent text-accent-fg shadow-xs'
                   : 'bg-surface-100 text-text-secondary hover:bg-surface-hover border border-border'
               }`}
             >
@@ -367,7 +367,7 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
                 type="text"
                 value={draftTitle}
                 onChange={(e) => setDraftTitle(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface-100 text-text font-mono focus:outline-none focus:ring-1 focus:ring-accent"
+                className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface-100 text-text font-mono focus:outline-hidden focus:ring-1 focus:ring-accent"
               />
             </div>
 
@@ -383,7 +383,7 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
                 rows={3}
                 value={draftSummary}
                 onChange={(e) => setDraftSummary(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface-100 text-text focus:outline-none focus:ring-1 focus:ring-accent"
+                className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface-100 text-text focus:outline-hidden focus:ring-1 focus:ring-accent"
               />
             </div>
 
@@ -406,7 +406,7 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
                 rows={4}
                 value={draftContent}
                 onChange={(e) => setDraftContent(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface-100 text-text font-mono focus:outline-none focus:ring-1 focus:ring-accent"
+                className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface-100 text-text font-mono focus:outline-hidden focus:ring-1 focus:ring-accent"
               />
             </div>
 
@@ -419,7 +419,7 @@ export function MemoryCorrectionPanel({ workspaceId }: MemoryCorrectionPanelProp
                 placeholder="e.g., Promoted to Principal Architect; Corrected graduation year"
                 value={draftReason}
                 onChange={(e) => setDraftReason(e.target.value)}
-                className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface-100 text-text focus:outline-none focus:ring-1 focus:ring-accent"
+                className="w-full px-3 py-2 text-xs rounded-md border border-border bg-surface-100 text-text focus:outline-hidden focus:ring-1 focus:ring-accent"
               />
               <p className="text-[11px] text-text-muted mt-0.5">
                 Preserved immutably in provenance ledger alongside cryptographic lineage.

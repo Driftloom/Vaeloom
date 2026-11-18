@@ -356,7 +356,7 @@ export const AgentDetailPane: React.FC<AgentDetailPaneProps> = ({
               <div className="flex items-center gap-2.5 flex-wrap shrink-0">
                 <Link
                   href={`/workspace/${workspaceId}/chat?agent=${selectedAgent.name}`}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-action hover:bg-action-hover active:bg-action-active text-action-fg font-medium text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-action hover:bg-action-hover active:bg-action-active text-action-fg font-medium text-sm transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
                 >
                   <span>Chat with Agent</span>
                   <svg
@@ -377,7 +377,7 @@ export const AgentDetailPane: React.FC<AgentDetailPaneProps> = ({
 
                 <Link
                   href={`/workspace/${workspaceId}/capabilities/agents/${encodeURIComponent(selectedAgent.name)}`}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-surface-elevated hover:bg-surface text-text font-medium text-sm transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-surface-elevated hover:bg-surface text-text font-medium text-sm transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
                 >
                   <span>Open Full Page ↗</span>
                 </Link>

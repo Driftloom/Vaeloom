@@ -12,7 +12,7 @@ export interface AuditChecksListProps {
 }
 
 const TOGGLE_FOCUS =
-  'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-100';
+  'focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-100';
 
 export const AuditChecksList: React.FC<AuditChecksListProps> = ({ checks, failedChecks }) => {
   const [checkFilter, setCheckFilter] = useState<CheckFilter>('all');
@@ -44,7 +44,7 @@ export const AuditChecksList: React.FC<AuditChecksListProps> = ({ checks, failed
               onClick={() => setCheckFilter(tab)}
               className={`px-2.5 py-1 rounded-md font-medium capitalize transition-colors ${TOGGLE_FOCUS} ${
                 checkFilter === tab
-                  ? 'bg-surface text-text shadow-sm'
+                  ? 'bg-surface text-text shadow-xs'
                   : 'text-text-muted hover:text-text'
               }`}
             >

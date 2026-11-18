@@ -313,7 +313,7 @@ export default function AgentDetailPage() {
                 void handleRunTest();
               }
             }}
-            className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm text-text placeholder:text-text-dim focus:outline-none focus:border-primary"
+            className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm text-text placeholder:text-text-dim focus:outline-hidden focus:border-primary"
           />
           <Button
             onClick={() => void handleRunTest()}

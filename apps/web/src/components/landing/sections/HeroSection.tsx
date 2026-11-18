@@ -192,7 +192,7 @@ export default function HeroSection() {
             <motion.div
               animate={shouldReduceMotion ? {} : { y: [0, 6, 0] }}
               transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
-              className="h-8 w-px bg-gradient-to-b from-transparent via-text-muted to-transparent"
+              className="h-8 w-px bg-linear-to-b from-transparent via-text-muted to-transparent"
             />
           </div>
         </motion.div>

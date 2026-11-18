@@ -176,7 +176,7 @@ export default function ScreeningQuestionsCard({
                 value={newQuestion}
                 onChange={(e) => setNewQuestion(e.target.value)}
                 placeholder="e.g. Do you have experience managing distributed engineering teams?"
-                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
+                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary/50"
               />
             </div>
             <div>
@@ -184,7 +184,7 @@ export default function ScreeningQuestionsCard({
               <select
                 value={newCategory}
                 onChange={(e) => setNewCategory(e.target.value)}
-                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
+                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary/50"
               >
                 <option value="general">General</option>
                 <option value="experience">Experience & Skills</option>
@@ -205,7 +205,7 @@ export default function ScreeningQuestionsCard({
               value={newAnswer}
               onChange={(e) => setNewAnswer(e.target.value)}
               placeholder="Your pre-approved answer for agents to auto-fill..."
-              className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary/50 resize-y"
+              className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary/50 resize-y"
             />
           </div>
 
@@ -268,7 +268,7 @@ export default function ScreeningQuestionsCard({
                 rows={2}
                 value={q.answer}
                 onChange={(e) => handleAnswerChange(q.id, e.target.value)}
-                className="w-full px-3 py-1.5 text-xs bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary/50 resize-y"
+                className="w-full px-3 py-1.5 text-xs bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary/50 resize-y"
               />
             </div>
           </div>
@@ -279,7 +279,7 @@ export default function ScreeningQuestionsCard({
         <button
           onClick={handleSaveAll}
           disabled={saving}
-          className="px-5 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-fg hover:bg-primary-hover disabled:opacity-50 transition-colors shadow-sm"
+          className="px-5 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-fg hover:bg-primary-hover disabled:opacity-50 transition-colors shadow-xs"
         >
           {saving ? 'Saving Answers...' : 'Save Question Bank'}
         </button>

@@ -34,7 +34,7 @@ const CONNECTOR_OPTIONS = [
     badge: 'Docs',
     badgeColor: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
     icon: (
-      <svg className="w-5 h-5 text-amber-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+      <svg className="w-5 h-5 text-amber-500 shrink-0" viewBox="0 0 24 24" fill="currentColor">
         <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z" />
       </svg>
     ),
@@ -47,7 +47,7 @@ const CONNECTOR_OPTIONS = [
     badge: 'Email',
     badgeColor: 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300',
     icon: (
-      <svg className="w-5 h-5 text-rose-500 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+      <svg className="w-5 h-5 text-rose-500 shrink-0" viewBox="0 0 24 24" fill="currentColor">
         <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" />
       </svg>
     ),
@@ -60,7 +60,7 @@ const CONNECTOR_OPTIONS = [
     badge: 'Code',
     badgeColor: 'bg-surface-200 text-text border border-border',
     icon: (
-      <svg className="w-5 h-5 text-text flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+      <svg className="w-5 h-5 text-text shrink-0" viewBox="0 0 24 24" fill="currentColor">
         <path
           fillRule="evenodd"
           clipRule="evenodd"
@@ -77,7 +77,7 @@ const CONNECTOR_OPTIONS = [
     badge: 'Network',
     badgeColor: 'bg-info/15 text-info border border-info/30',
     icon: (
-      <svg className="w-5 h-5 text-info flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+      <svg className="w-5 h-5 text-info shrink-0" viewBox="0 0 24 24" fill="currentColor">
         <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.28 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.75M6.46 8.76a1.45 1.45 0 1 0 0-2.9 1.45 1.45 0 0 0 0 2.9M5.08 18.5h2.77v-8.37H5.08v8.37z" />
       </svg>
     ),
@@ -275,7 +275,7 @@ export function OnboardingWizard() {
     : [];
 
   return (
-    <div className="mx-auto max-w-2xl rounded-2xl border border-border bg-surface p-8 shadow-sm">
+    <div className="mx-auto max-w-2xl rounded-2xl border border-border bg-surface p-8 shadow-xs">
       {/* Stepper Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
@@ -285,7 +285,7 @@ export function OnboardingWizard() {
                 <div
                   className={`flex h-9 w-9 items-center justify-center rounded-full text-sm font-semibold transition-colors ${
                     idx === currentStepIndex
-                      ? 'bg-action text-action-fg shadow-sm'
+                      ? 'bg-action text-action-fg shadow-xs'
                       : idx < currentStepIndex
                         ? 'bg-success text-white'
                         : 'border border-border bg-surface text-text-muted'
@@ -322,7 +322,7 @@ export function OnboardingWizard() {
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
                   placeholder="e.g. Alex Doe"
-                  className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text focus:border-action focus:outline-none"
+                  className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text focus:border-action focus:outline-hidden"
                 />
               </div>
               <div>
@@ -334,7 +334,7 @@ export function OnboardingWizard() {
                   value={jobTitle}
                   onChange={(e) => setJobTitle(e.target.value)}
                   placeholder="e.g. Staff Software Engineer"
-                  className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text focus:border-action focus:outline-none"
+                  className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text focus:border-action focus:outline-hidden"
                 />
               </div>
             </>
@@ -348,7 +348,7 @@ export function OnboardingWizard() {
                 value={workspaceName}
                 onChange={(e) => setWorkspaceName(e.target.value)}
                 placeholder="e.g. Engineering & Career"
-                className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text focus:border-action focus:outline-none"
+                className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text focus:border-action focus:outline-hidden"
               />
               <p className="mt-2 text-xs text-text-muted">
                 Your workspace isolates your documents, agent workflows, and integration secrets.
@@ -420,7 +420,7 @@ export function OnboardingWizard() {
                   onChange={(e) => setSkills(e.target.value)}
                   rows={3}
                   placeholder="Python, Next.js, Distributed Systems, Machine Learning..."
-                  className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text focus:border-action focus:outline-none"
+                  className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text focus:border-action focus:outline-hidden"
                 />
                 {skillList.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1.5">
@@ -547,7 +547,7 @@ export function OnboardingWizard() {
           type="button"
           onClick={handleNext}
           disabled={submitting}
-          className="rounded-lg bg-action px-6 py-2 text-sm font-semibold text-action-fg hover:bg-action-hover disabled:opacity-50 shadow-sm transition-all"
+          className="rounded-lg bg-action px-6 py-2 text-sm font-semibold text-action-fg hover:bg-action-hover disabled:opacity-50 shadow-xs transition-all"
         >
           {submitting
             ? 'Saving...'

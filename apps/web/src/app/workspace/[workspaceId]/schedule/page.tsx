@@ -326,7 +326,7 @@ export default function SchedulePage() {
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Search title or type…"
           aria-label="Search events"
-          className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm outline-none focus:border-primary w-48"
+          className="rounded-full border border-border bg-surface px-3 py-1.5 text-sm outline-hidden focus:border-primary w-48"
         />
         <select
           value={filterSource}
@@ -601,7 +601,7 @@ export default function SchedulePage() {
               }}
               aria-invalid={createTitleError ? true : undefined}
               aria-describedby={createTitleError ? 'ev-title-error' : undefined}
-              className={`mt-1 w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary ${
+              className={`mt-1 w-full rounded-lg border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary ${
                 createTitleError ? 'border-error' : 'border-border'
               }`}
               placeholder="Interview with Acme"
@@ -625,7 +625,7 @@ export default function SchedulePage() {
               }}
               aria-invalid={createDateError ? true : undefined}
               aria-describedby={createDateError ? 'ev-date-error' : undefined}
-              className={`mt-1 w-full rounded-lg border bg-background px-3 py-2 text-sm outline-none focus:border-primary ${
+              className={`mt-1 w-full rounded-lg border bg-background px-3 py-2 text-sm outline-hidden focus:border-primary ${
                 createDateError ? 'border-error' : 'border-border'
               }`}
             />

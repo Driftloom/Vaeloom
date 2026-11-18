@@ -178,7 +178,7 @@ export default function ApplicationsPage() {
           return (
             <div
               key={col.id}
-              className="flex-shrink-0 w-80 flex flex-col bg-surface-hover/50 rounded-lg p-4 border border-border"
+              className="shrink-0 w-80 flex flex-col bg-surface-hover/50 rounded-lg p-4 border border-border"
             >
               <h2 className="font-display font-medium text-text mb-4 flex justify-between text-lg">
                 {col.title}

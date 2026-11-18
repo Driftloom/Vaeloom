@@ -281,7 +281,7 @@ export function ChatThreadRail({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search conversations"
-              className="w-full rounded-lg border border-border/50 bg-surface-50 px-2.5 py-1.5 text-xs text-text transition-colors placeholder:text-text-dim focus:border-accent focus:outline-none"
+              className="w-full rounded-lg border border-border/50 bg-surface-50 px-2.5 py-1.5 text-xs text-text transition-colors placeholder:text-text-dim focus:border-accent focus:outline-hidden"
             />
           </div>
         )}
@@ -367,7 +367,7 @@ export function ChatThreadRail({
                                   cancelRename();
                                 }
                               }}
-                              className="w-full rounded-lg border border-border/50 bg-surface-50 px-2 py-1.5 text-xs text-text focus:border-accent focus:outline-none"
+                              className="w-full rounded-lg border border-border/50 bg-surface-50 px-2 py-1.5 text-xs text-text focus:border-accent focus:outline-hidden"
                             />
                             <div className="mt-2 flex justify-end gap-1">
                               <button

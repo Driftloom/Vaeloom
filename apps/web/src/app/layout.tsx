@@ -177,7 +177,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     <main
                       id="main-content"
                       tabIndex={-1}
-                      className="focus:outline-none min-h-0 h-full w-full"
+                      className="focus:outline-hidden min-h-0 h-full w-full"
                     >
                       {children}
                     </main>

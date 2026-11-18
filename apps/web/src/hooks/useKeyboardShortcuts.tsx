@@ -135,7 +135,7 @@ export function KeyboardShortcutsModal() {
         <button
           ref={closeRef}
           onClick={() => setShowModal(false)}
-          className="mt-4 shrink-0 w-full px-3 py-1.5 text-sm text-text bg-surface-hover border border-border rounded hover:bg-background transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-background"
+          className="mt-4 shrink-0 w-full px-3 py-1.5 text-sm text-text bg-surface-hover border border-border rounded hover:bg-background transition-colors focus:outline-hidden focus:ring-2 focus:ring-primary focus:ring-offset-background"
         >
           Close
         </button>

@@ -39,7 +39,7 @@ export const SourceCitation: React.FC<SourceCitationProps> = ({
         type="button"
         onClick={onClick || (() => url && window.open(url, '_blank', 'noopener,noreferrer'))}
         aria-describedby={snippet ? snippetId : undefined}
-        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono bg-surface-200 text-text-secondary border border-border-subtle hover:border-primary hover:text-text transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent ${MIN_TOUCH_TARGET}`}
+        className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-mono bg-surface-200 text-text-secondary border border-border-subtle hover:border-primary hover:text-text transition-colors focus:outline-hidden focus-visible:ring-1 focus-visible:ring-accent ${MIN_TOUCH_TARGET}`}
       >
         <TypeIcon size={10} className="text-text-muted" />
         <span>

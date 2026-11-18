@@ -105,7 +105,7 @@ export const AgentAutonomySelector: React.FC<AgentAutonomySelectorProps> = ({
             // on focus, with title covering mouse users.
             aria-describedby={hintId}
             title={option.hint}
-            className={`px-2 py-1 rounded-md transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-elevated disabled:opacity-60 ${
+            className={`px-2 py-1 rounded-md transition-colors cursor-pointer focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-elevated disabled:opacity-60 ${
               isActive
                 ? 'bg-primary/10 text-primary font-semibold shadow-xs'
                 : 'text-text-secondary hover:text-text'

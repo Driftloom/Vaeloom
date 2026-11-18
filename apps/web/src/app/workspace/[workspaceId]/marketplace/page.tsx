@@ -258,7 +258,7 @@ function MarketplaceContent() {
               onClick={() => setCategory(cat)}
               className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
                 category === cat
-                  ? 'bg-action text-action-fg shadow-sm'
+                  ? 'bg-action text-action-fg shadow-xs'
                   : 'bg-surface hover:bg-surface-hover text-text-muted hover:text-text border border-border'
               }`}
             >

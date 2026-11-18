@@ -236,7 +236,7 @@ export function PillBadge({
 /* ------------------------------------------------------------------ */
 
 const BTN_BASE =
-  'inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50';
+  'inline-flex items-center justify-center gap-2 rounded-xl text-sm font-semibold transition-all duration-200 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50';
 
 const BTN_VARIANTS = {
   primary:
@@ -431,7 +431,7 @@ export function LogoMark({ size = 'md' }: { size?: 'md' | 'lg' }) {
   return (
     <span
       aria-hidden="true"
-      className={`inline-flex items-center justify-center bg-gradient-to-br from-primary-500 to-accent-400 font-display font-bold text-white shadow-glow ${box} ${letter}`}
+      className={`inline-flex items-center justify-center bg-linear-to-br from-primary-500 to-accent-400 font-display font-bold text-white shadow-glow ${box} ${letter}`}
     >
       V
     </span>

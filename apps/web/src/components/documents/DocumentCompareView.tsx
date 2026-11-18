@@ -33,7 +33,7 @@ type DiffDisplayMode = 'unified' | 'side-by-side';
 
 /** Visible keyboard indicator; matches the ui-kit Button/IconButton contract. */
 const TOGGLE_FOCUS =
-  'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-100';
+  'focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-surface-100';
 
 type DiffLineKind = 'added' | 'removed' | 'hunk' | 'unchanged';
 
@@ -378,7 +378,7 @@ export const DocumentCompareView: React.FC<DocumentCompareViewProps> = ({
         aria-pressed={active}
         onClick={() => setDiffMode(mode)}
         className={`px-3 py-1 rounded-md font-medium transition-colors ${TOGGLE_FOCUS} ${
-          active ? 'bg-surface text-text shadow-sm' : 'text-text-muted hover:text-text'
+          active ? 'bg-surface text-text shadow-xs' : 'text-text-muted hover:text-text'
         }`}
       >
         {label}

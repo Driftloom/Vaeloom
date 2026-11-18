@@ -103,7 +103,7 @@ export function ConnectorSection() {
               />
             </svg>
 
-            <div className="rounded-xl border border-border-strong bg-gradient-to-br from-primary-600/20 to-transparent p-4 text-center shadow-glow-lg">
+            <div className="rounded-xl border border-border-strong bg-linear-to-br from-primary-600/20 to-transparent p-4 text-center shadow-glow-lg">
               <p className="font-mono text-xs uppercase tracking-widest text-text-muted">
                 Destination
               </p>
@@ -334,7 +334,7 @@ export function CareerSection() {
                       {String(i + 1).padStart(2, '0')}
                     </span>
                     {i < CAREER.stages.length - 1 ? (
-                      <span className="mt-1 w-px flex-1 bg-gradient-to-b from-primary-400/50 to-transparent" />
+                      <span className="mt-1 w-px flex-1 bg-linear-to-b from-primary-400/50 to-transparent" />
                     ) : null}
                   </div>
                   <div>

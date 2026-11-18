@@ -33,7 +33,7 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={toggleTheme}
-      className="p-2 rounded-md text-text-muted hover:text-text hover:bg-surface-200 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-focus-ring"
+      className="p-2 rounded-md text-text-muted hover:text-text hover:bg-surface-200 transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-focus-ring"
       aria-label={nextThemeTitle}
       title={nextThemeTitle}
     >

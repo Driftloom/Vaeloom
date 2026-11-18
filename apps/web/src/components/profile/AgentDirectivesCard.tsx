@@ -154,7 +154,7 @@ export default function AgentDirectivesCard({
                   onClick={() => setAutonomyMode(mode.id)}
                   className={`cursor-pointer p-4 rounded-xl border transition-all flex flex-col justify-between ${
                     selected
-                      ? 'bg-primary/10 border-primary shadow-sm'
+                      ? 'bg-primary/10 border-primary shadow-xs'
                       : 'bg-surface-200 border-border hover:border-border-hover'
                   }`}
                 >
@@ -245,7 +245,7 @@ export default function AgentDirectivesCard({
               <select
                 value={currency}
                 onChange={(e) => setCurrency(e.target.value)}
-                className="w-full px-2.5 py-1 text-xs bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
+                className="w-full px-2.5 py-1 text-xs bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary/50"
               >
                 {currencies.map((c) => (
                   <option key={c.code} value={c.code}>
@@ -266,7 +266,7 @@ export default function AgentDirectivesCard({
                 value={minBaseSalary}
                 onChange={(e) => setMinBaseSalary(e.target.value)}
                 placeholder="e.g. 140000"
-                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
+                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary/50"
               />
               <span className="text-2xs text-text-dim mt-0.5 block">
                 Reject jobs below this floor
@@ -281,7 +281,7 @@ export default function AgentDirectivesCard({
                 value={targetBaseSalary}
                 onChange={(e) => setTargetBaseSalary(e.target.value)}
                 placeholder="e.g. 185000"
-                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
+                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary/50"
               />
               <span className="text-2xs text-text-dim mt-0.5 block">
                 Auto-fills salary questions
@@ -296,7 +296,7 @@ export default function AgentDirectivesCard({
                 value={targetTotalComp}
                 onChange={(e) => setTargetTotalComp(e.target.value)}
                 placeholder="e.g. 240000"
-                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
+                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary/50"
               />
               <span className="text-2xs text-text-dim mt-0.5 block">Base + Bonus + Equity</span>
             </div>
@@ -310,7 +310,7 @@ export default function AgentDirectivesCard({
             <select
               value={noticePeriod}
               onChange={(e) => setNoticePeriod(e.target.value)}
-              className="w-full px-2.5 py-1.5 text-xs bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
+              className="w-full px-2.5 py-1.5 text-xs bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary/50"
             >
               <option value="Immediately">Immediately (No notice)</option>
               <option value="2 weeks">2 weeks</option>
@@ -327,7 +327,7 @@ export default function AgentDirectivesCard({
             <select
               value={relocation}
               onChange={(e) => setRelocation(e.target.value)}
-              className="w-full px-2.5 py-1.5 text-xs bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
+              className="w-full px-2.5 py-1.5 text-xs bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary/50"
             >
               <option value="Remote only">Remote only</option>
               <option value="Willing to relocate with assistance">
@@ -345,7 +345,7 @@ export default function AgentDirectivesCard({
             <select
               value={travel}
               onChange={(e) => setTravel(e.target.value)}
-              className="w-full px-2.5 py-1.5 text-xs bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
+              className="w-full px-2.5 py-1.5 text-xs bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary/50"
             >
               <option value="0%">0% (No travel)</option>
               <option value="Up to 10%">Up to 10% (Occasional offsites)</option>
@@ -362,7 +362,7 @@ export default function AgentDirectivesCard({
             <select
               value={coverLetterPolicy}
               onChange={(e) => setCoverLetterPolicy(e.target.value)}
-              className="w-full px-2.5 py-1.5 text-xs bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
+              className="w-full px-2.5 py-1.5 text-xs bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary/50"
             >
               <option value="when_required">Generate only when strictly required</option>
               <option value="always">Always generate tailored cover letter</option>
@@ -375,7 +375,7 @@ export default function AgentDirectivesCard({
           <button
             type="submit"
             disabled={saving}
-            className="px-5 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-fg hover:bg-primary-hover disabled:opacity-50 transition-colors shadow-sm"
+            className="px-5 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-fg hover:bg-primary-hover disabled:opacity-50 transition-colors shadow-xs"
           >
             {saving ? 'Saving Guardrails...' : 'Save Agent Directives'}
           </button>

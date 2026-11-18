@@ -232,7 +232,7 @@ export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
               id="provider-select"
               value={selectedProvider}
               onChange={(e) => setSelectedProvider(e.target.value as ProviderId)}
-              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-text focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full bg-background border border-border rounded-lg px-3 py-2 text-sm text-text focus:outline-hidden focus:ring-1 focus:ring-primary"
             >
               {PROVIDERS.map((p) => (
                 <option key={p.id} value={p.id}>
@@ -276,7 +276,7 @@ export function ProviderKeysSection({ workspaceId }: { workspaceId?: string }) {
                 value={apiKeyInput}
                 onChange={(e) => setApiKeyInput(e.target.value)}
                 placeholder={providerMeta(selectedProvider)?.placeholder}
-                className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm font-mono text-text placeholder:text-text-dim focus:outline-none focus:ring-1 focus:ring-primary"
+                className="flex-1 bg-background border border-border rounded-lg px-3 py-2 text-sm font-mono text-text placeholder:text-text-dim focus:outline-hidden focus:ring-1 focus:ring-primary"
                 autoComplete="off"
                 spellCheck={false}
               />

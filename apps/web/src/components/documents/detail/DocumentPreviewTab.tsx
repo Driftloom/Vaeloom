@@ -84,7 +84,7 @@ export const DocumentPreviewTab: React.FC<DocumentPreviewTabProps> = ({
                 href={blobUrl}
                 download={fileName}
                 aria-label={`Download ${fileName}`}
-                className="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium bg-action text-action-fg hover:bg-action-hover transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                className="inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium bg-action text-action-fg hover:bg-action-hover transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent"
               >
                 <DownloadIcon size={16} />
                 Download File ({fileName})

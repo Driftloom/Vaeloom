@@ -172,7 +172,7 @@ export default function EducationSection({
                   value={institution}
                   onChange={(e) => setInstitution(e.target.value)}
                   placeholder="e.g. Stanford University, IIT Bombay"
-                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary"
                 />
               </div>
               <div>
@@ -185,7 +185,7 @@ export default function EducationSection({
                   value={degree}
                   onChange={(e) => setDegree(e.target.value)}
                   placeholder="e.g. Bachelor of Science, Master of Science"
-                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary"
                 />
               </div>
             </div>
@@ -199,7 +199,7 @@ export default function EducationSection({
                 value={fieldOfStudy}
                 onChange={(e) => setFieldOfStudy(e.target.value)}
                 placeholder="e.g. Computer Science, Electrical Engineering"
-                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary"
               />
             </div>
 
@@ -211,7 +211,7 @@ export default function EducationSection({
                   value={startYear}
                   onChange={(e) => setStartYear(e.target.value)}
                   placeholder="e.g. 2018"
-                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary"
                 />
               </div>
               <div>
@@ -223,7 +223,7 @@ export default function EducationSection({
                   value={graduationYear}
                   onChange={(e) => setGraduationYear(e.target.value)}
                   placeholder="e.g. 2022"
-                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary"
                 />
               </div>
               <div>
@@ -235,7 +235,7 @@ export default function EducationSection({
                   value={gpa}
                   onChange={(e) => setGpa(e.target.value)}
                   placeholder="e.g. 3.9 / 4.0"
-                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+                  className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary"
                 />
               </div>
             </div>
@@ -262,7 +262,7 @@ export default function EducationSection({
                 value={honorsText}
                 onChange={(e) => setHonorsText(e.target.value)}
                 placeholder="e.g. Summa Cum Laude, Dean's List, ACM ICPC Regional Finalist"
-                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary"
+                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary"
               />
             </div>
 

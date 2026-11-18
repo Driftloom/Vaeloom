@@ -18,7 +18,7 @@ export const Input: React.FC<InputProps> = ({
   const inputId = id || label?.toLowerCase().replace(/\s+/g, '-');
 
   const baseClasses =
-    'block w-full rounded-lg border bg-surface-100 px-3 py-2 text-sm text-text shadow-sm transition-colors placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed';
+    'block w-full rounded-lg border bg-surface-100 px-3 py-2 text-sm text-text shadow-xs transition-colors placeholder:text-text-muted focus:outline-hidden focus:ring-2 focus:ring-offset-0 disabled:opacity-50 disabled:cursor-not-allowed';
   const normalClasses = 'border-border focus:border-accent focus:ring-accent/20';
   const errorClasses = 'border-error focus:border-error focus:ring-error/20';
 

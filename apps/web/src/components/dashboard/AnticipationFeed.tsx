@@ -130,7 +130,7 @@ export function AnticipationFeed({ workspaceId }: AnticipationFeedProps) {
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5 pb-4 border-b border-border">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-action text-action-fg font-medium shadow-sm">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-action text-action-fg font-medium shadow-xs">
             ⚡
           </div>
           <div>
@@ -191,7 +191,7 @@ export function AnticipationFeed({ workspaceId }: AnticipationFeedProps) {
             return (
               <div
                 key={prop.id}
-                className="group relative rounded-xl border border-border bg-surface-100 p-4 shadow-sm hover:border-border-strong transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                className="group relative rounded-xl border border-border bg-surface-100 p-4 shadow-xs hover:border-border-strong transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
               >
                 <div className="space-y-1.5 flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">

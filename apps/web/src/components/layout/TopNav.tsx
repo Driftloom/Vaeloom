@@ -111,7 +111,7 @@ export function TopNav({
           onClick={onMenuClick}
           aria-label="Toggle navigation"
           title={sidebarCollapsed ? 'Expand sidebar (Ctrl+B)' : 'Collapse sidebar (Ctrl+B)'}
-          className="p-1.5 -ml-1 rounded-md text-text-muted hover:text-text hover:bg-surface-200 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-accent shrink-0"
+          className="p-1.5 -ml-1 rounded-md text-text-muted hover:text-text hover:bg-surface-200 transition-colors focus:outline-hidden focus-visible:ring-1 focus-visible:ring-accent shrink-0"
         >
           <MenuIcon size={18} />
         </button>
@@ -241,7 +241,7 @@ export function TopNav({
         <button
           type="button"
           onClick={onOpenCommandCenter}
-          className="w-full min-w-0 flex items-center justify-between gap-2 sm:gap-3 px-3 py-1.5 rounded-md border border-border-subtle bg-surface-100 hover:border-border-strong text-xs text-text-muted hover:text-text-secondary transition-all shadow-sm group"
+          className="w-full min-w-0 flex items-center justify-between gap-2 sm:gap-3 px-3 py-1.5 rounded-md border border-border-subtle bg-surface-100 hover:border-border-strong text-xs text-text-muted hover:text-text-secondary transition-all shadow-xs group"
           aria-label="Open Command Center (⌘K)"
         >
           <div className="flex items-center gap-2 min-w-0">
@@ -367,7 +367,7 @@ export function TopNav({
           <button
             type="button"
             onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="flex items-center gap-2 p-1 sm:px-2 sm:py-1 rounded-lg hover:bg-surface-200 border border-transparent hover:border-border-subtle transition-all focus:outline-none focus-visible:ring-1 focus-visible:ring-accent cursor-pointer"
+            className="flex items-center gap-2 p-1 sm:px-2 sm:py-1 rounded-lg hover:bg-surface-200 border border-transparent hover:border-border-subtle transition-all focus:outline-hidden focus-visible:ring-1 focus-visible:ring-accent cursor-pointer"
             title={user?.email ?? 'User account'}
             aria-label="User account menu"
             aria-expanded={dropdownOpen}

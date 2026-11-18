@@ -299,7 +299,7 @@ export default function AgentsPage() {
       </div>
 
       {/* Hero Banner with Executive Telemetry */}
-      <section className="relative overflow-hidden rounded-2xl border border-border bg-gradient-to-r from-surface-100 via-surface to-surface-200 p-6 sm:p-8 shadow-sm">
+      <section className="relative overflow-hidden rounded-2xl border border-border bg-linear-to-r from-surface-100 via-surface to-surface-200 p-6 sm:p-8 shadow-xs">
         <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="max-w-2xl">
@@ -382,7 +382,7 @@ export default function AgentsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search agents, skills, tools..."
-            className="w-full bg-background border border-border rounded-lg pl-9 pr-3 py-1.5 text-sm text-text placeholder:text-text-dim focus:outline-none focus:border-primary transition-colors"
+            className="w-full bg-background border border-border rounded-lg pl-9 pr-3 py-1.5 text-sm text-text placeholder:text-text-dim focus:outline-hidden focus:border-primary transition-colors"
           />
         </div>
       </div>

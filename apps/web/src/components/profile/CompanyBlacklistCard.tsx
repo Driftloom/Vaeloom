@@ -130,7 +130,7 @@ export default function CompanyBlacklistCard({
                 value={companyName}
                 onChange={(e) => setCompanyName(e.target.value)}
                 placeholder="e.g. Acme Corp, Google"
-                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
+                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary/50"
               />
             </div>
             <div>
@@ -142,7 +142,7 @@ export default function CompanyBlacklistCard({
                 value={domain}
                 onChange={(e) => setDomain(e.target.value)}
                 placeholder="e.g. acmeworks.com"
-                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
+                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary/50"
               />
             </div>
             <div>
@@ -152,7 +152,7 @@ export default function CompanyBlacklistCard({
               <select
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-none focus:border-primary/50"
+                className="w-full px-3 py-1.5 text-sm bg-surface border border-border rounded-lg text-text focus:outline-hidden focus:border-primary/50"
               >
                 <option value="Current Employer">Current Employer</option>
                 <option value="Direct Competitor">Direct Competitor</option>

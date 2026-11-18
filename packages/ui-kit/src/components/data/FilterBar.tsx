@@ -93,7 +93,7 @@ export function FilterBar({
                 <button
                   type="button"
                   onClick={() => onRemoveTag(tag.id)}
-                  className={`inline-flex items-center justify-center rounded hover:text-text focus:outline-none focus-visible:ring-1 focus-visible:ring-accent ${MIN_TOUCH_TARGET} -mr-1`}
+                  className={`inline-flex items-center justify-center rounded hover:text-text focus:outline-hidden focus-visible:ring-1 focus-visible:ring-accent ${MIN_TOUCH_TARGET} -mr-1`}
                   aria-label={`Remove filter ${tag.label}`}
                 >
                   <XIcon size={12} />

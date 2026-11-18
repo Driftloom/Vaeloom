@@ -108,7 +108,7 @@ export function CapabilityDetailLayout({
               <div>
                 <Link
                   href={backHref}
-                  className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-lg"
+                  className="focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-lg"
                 >
                   <Button variant="secondary" size="sm">
                     {backLabel ?? 'Back'}
@@ -127,7 +127,7 @@ export function CapabilityDetailLayout({
             <div className="p-4 space-y-4">
               <Link
                 href={backHref}
-                className="focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-lg"
+                className="focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 rounded-lg"
               >
                 <Button variant="secondary" size="sm">
                   {backLabel ?? 'Back'}

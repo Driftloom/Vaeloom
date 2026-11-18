@@ -204,7 +204,7 @@ export default function CognitionPage() {
               {/* Main Briefing Column */}
               <div className="lg:col-span-2 space-y-6">
                 {/* Headlines */}
-                <div className="bg-card rounded-xl border border-border p-6 shadow-sm space-y-4">
+                <div className="bg-card rounded-xl border border-border p-6 shadow-xs space-y-4">
                   <div className="flex items-center justify-between border-b border-border/40 pb-3">
                     <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
                       <svg
@@ -249,7 +249,7 @@ export default function CognitionPage() {
                 </div>
 
                 {/* Key Accomplishments */}
-                <div className="bg-card rounded-xl border border-border p-6 shadow-sm space-y-4">
+                <div className="bg-card rounded-xl border border-border p-6 shadow-xs space-y-4">
                   <h2 className="text-base font-semibold text-foreground flex items-center gap-2">
                     <svg
                       className="w-5 h-5 text-ai-verified"
@@ -283,7 +283,7 @@ export default function CognitionPage() {
               {/* Priorities & Blockers Sidebar */}
               <div className="space-y-6">
                 {/* Recommended Priorities */}
-                <div className="bg-card rounded-xl border border-border p-5 shadow-sm space-y-3">
+                <div className="bg-card rounded-xl border border-border p-5 shadow-xs space-y-3">
                   <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                     <svg
                       className="w-4 h-4 text-primary"
@@ -314,7 +314,7 @@ export default function CognitionPage() {
                 </div>
 
                 {/* Blockers & Risks */}
-                <div className="bg-card rounded-xl border border-border p-5 shadow-sm space-y-3">
+                <div className="bg-card rounded-xl border border-border p-5 shadow-xs space-y-3">
                   <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
                     <svg
                       className="w-4 h-4 text-ai-blocked"
@@ -367,7 +367,7 @@ export default function CognitionPage() {
           ) : realityGap ? (
             <div className="space-y-6">
               {/* Scorecard */}
-              <div className="bg-card rounded-xl border border-border p-6 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="bg-card rounded-xl border border-border p-6 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-base font-semibold text-foreground">
                     Alignment Score: {realityGap.overallScore}/100
@@ -389,7 +389,7 @@ export default function CognitionPage() {
                   {realityGap.gaps?.map((gap, i) => (
                     <div
                       key={i}
-                      className="bg-card rounded-xl border border-border p-4 shadow-sm space-y-2"
+                      className="bg-card rounded-xl border border-border p-4 shadow-xs space-y-2"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-semibold text-xs text-foreground">
@@ -442,7 +442,7 @@ export default function CognitionPage() {
                 id="scale-tier-filter"
                 value={selectedTier}
                 onChange={(e) => setSelectedTier(e.target.value)}
-                className="bg-background border border-border rounded px-2.5 py-1 text-xs text-foreground focus:outline-none"
+                className="bg-background border border-border rounded px-2.5 py-1 text-xs text-foreground focus:outline-hidden"
               >
                 <option value="ALL">All Tiers</option>
                 <option value="SUB_DAILY">Sub-Daily (Intra-day)</option>
@@ -484,7 +484,7 @@ export default function CognitionPage() {
             <form
               id="scale-node-form"
               onSubmit={handleCreateNode}
-              className="bg-card rounded-xl border border-border p-5 space-y-4 shadow-sm"
+              className="bg-card rounded-xl border border-border p-5 space-y-4 shadow-xs"
             >
               <h3 className="text-sm font-semibold text-foreground">Create SCALE Memory Node</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -502,7 +502,7 @@ export default function CognitionPage() {
                     value={newTitle}
                     onChange={(e) => setNewTitle(e.target.value)}
                     placeholder="e.g. Distributed System Refactoring Progress"
-                    className="w-full rounded bg-background border border-border px-3 py-1.5 text-xs text-foreground focus:outline-none"
+                    className="w-full rounded bg-background border border-border px-3 py-1.5 text-xs text-foreground focus:outline-hidden"
                   />
                 </div>
                 <div>
@@ -516,7 +516,7 @@ export default function CognitionPage() {
                     id="scale-node-tier"
                     value={newTier}
                     onChange={(e) => setNewTier(e.target.value as ScaleTier)}
-                    className="w-full rounded bg-background border border-border px-3 py-1.5 text-xs text-foreground focus:outline-none"
+                    className="w-full rounded bg-background border border-border px-3 py-1.5 text-xs text-foreground focus:outline-hidden"
                   >
                     <option value="DAILY">Daily</option>
                     <option value="WEEKLY">Weekly</option>
@@ -540,7 +540,7 @@ export default function CognitionPage() {
                   value={newSummary}
                   onChange={(e) => setNewSummary(e.target.value)}
                   placeholder="Key decisions, architectural milestones, and active learnings..."
-                  className="w-full rounded bg-background border border-border p-2.5 text-xs text-foreground focus:outline-none"
+                  className="w-full rounded bg-background border border-border p-2.5 text-xs text-foreground focus:outline-hidden"
                 />
               </div>
               <div className="flex justify-end gap-2">
@@ -567,7 +567,7 @@ export default function CognitionPage() {
               {scaleData.nodes.map((node) => (
                 <div
                   key={node.id}
-                  className="bg-card rounded-xl border border-border p-4 shadow-sm space-y-3 flex flex-col justify-between"
+                  className="bg-card rounded-xl border border-border p-4 shadow-xs space-y-3 flex flex-col justify-between"
                 >
                   <div>
                     <div className="flex items-center justify-between gap-2 border-b border-border/40 pb-2 mb-2">

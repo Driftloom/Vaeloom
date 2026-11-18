@@ -134,7 +134,7 @@ export const SkillIntegrationBar: React.FC<SkillIntegrationBarProps> = ({ row, w
           {requiresMemory && (
             <Link
               href={`/workspace/${workspaceId}/memory`}
-              className={`inline-flex items-center gap-1 text-2xs font-medium text-text-secondary hover:text-primary px-2.5 py-1 rounded-control border border-border hover:border-primary/40 bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${MIN_TOUCH_TARGET}`}
+              className={`inline-flex items-center gap-1 text-2xs font-medium text-text-secondary hover:text-primary px-2.5 py-1 rounded-control border border-border hover:border-primary/40 bg-surface transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${MIN_TOUCH_TARGET}`}
             >
               <BrainIcon size={12} className="shrink-0" />
               <span>Vault Grounding</span>
@@ -144,7 +144,7 @@ export const SkillIntegrationBar: React.FC<SkillIntegrationBarProps> = ({ row, w
           {isDocumentSkill && (
             <Link
               href={`/workspace/${workspaceId}/files`}
-              className={`inline-flex items-center gap-1 text-2xs font-medium text-text-secondary hover:text-primary px-2.5 py-1 rounded-control border border-border hover:border-primary/40 bg-surface transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${MIN_TOUCH_TARGET}`}
+              className={`inline-flex items-center gap-1 text-2xs font-medium text-text-secondary hover:text-primary px-2.5 py-1 rounded-control border border-border hover:border-primary/40 bg-surface transition-colors focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 ${MIN_TOUCH_TARGET}`}
             >
               <FileTextIcon size={12} className="shrink-0" />
               <span>Documents Hub</span>

@@ -44,7 +44,7 @@ export interface DocumentFolderTreeProps {
 }
 
 const ROW_FOCUS =
-  'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-surface-100';
+  'focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-surface-100';
 
 const ACTIONS_VISIBILITY =
   'flex items-center gap-0.5 shrink-0 ml-1 opacity-0 transition-opacity pointer-events-none ' +

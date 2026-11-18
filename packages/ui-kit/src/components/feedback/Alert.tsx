@@ -78,7 +78,7 @@ export const Alert: React.FC<AlertProps> = ({
           type="button"
           aria-label="Dismiss alert"
           onClick={onClose}
-          className={`inline-flex items-center justify-center shrink-0 text-current opacity-60 hover:opacity-100 rounded focus:outline-none focus-visible:ring-1 focus-visible:ring-current ${MIN_TOUCH_TARGET}`}
+          className={`inline-flex items-center justify-center shrink-0 text-current opacity-60 hover:opacity-100 rounded focus:outline-hidden focus-visible:ring-1 focus-visible:ring-current ${MIN_TOUCH_TARGET}`}
         >
           <XIcon size={14} />
         </button>
