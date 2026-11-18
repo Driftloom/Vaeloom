@@ -73,7 +73,12 @@ updates:
           - 'swc*'
 
   - package-ecosystem: 'docker'
-    directory: '/'
+    directory: '/apps/api'
+    schedule:
+      interval: 'weekly'
+
+  - package-ecosystem: 'docker'
+    directory: '/apps/web'
     schedule:
       interval: 'weekly'
 
