@@ -1,11 +1,11 @@
-FROM python:3.12-slim AS builder
+FROM python:3.15-slim AS builder
 WORKDIR /app
 COPY pyproject.toml ./
 COPY src/ src/
 RUN pip install --no-cache-dir setuptools wheel \
  && pip install --no-cache-dir . --no-build-isolation
 
-FROM python:3.12-slim AS runner
+FROM python:3.15-slim AS runner
 WORKDIR /app
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 RUN apt-get update && apt-get install -y --no-install-recommends curl tesseract-ocr && rm -rf /var/lib/apt/lists/*
