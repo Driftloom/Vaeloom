@@ -1,4 +1,4 @@
-FROM node:20-alpine AS builder
+FROM node:26-alpine AS builder
 
 RUN apk add --no-cache libc6-compat
 
@@ -28,7 +28,7 @@ ENV NODE_OPTIONS="--max-old-space-size=4096"
 
 RUN cd apps/web && pnpm next build --no-lint
 
-FROM node:20-alpine AS runner
+FROM node:26-alpine AS runner
 
 RUN apk add --no-cache libc6-compat
 
