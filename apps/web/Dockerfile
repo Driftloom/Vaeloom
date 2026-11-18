@@ -2,7 +2,10 @@ FROM node:26-alpine AS builder
 
 RUN apk add --no-cache libc6-compat
 
-RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
+# Node 26 no longer ships Corepack, so install the pinned pnpm directly.
+# The version must stay in step with the one CI uses so both resolve the
+# committed lockfile identically.
+RUN npm install -g pnpm@9.12.0
 
 WORKDIR /app
 
