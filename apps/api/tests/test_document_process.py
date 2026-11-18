@@ -310,25 +310,44 @@ class TestProcessDocument:
         )
         assert res.status_code == 403, res.text
 
-    async def test_process_does_not_duplicate_versions_on_a_noop_retry(
+    async def test_reprocess_reuses_the_version_for_identical_content(
         self, client: AsyncClient, pipeline_on_test_db, db_session
     ):
-        """Document the pipeline's real behaviour: a repeat call adds a VERSION row.
+        """A no-op reprocess must not mint a version or duplicate its chunks.
 
-        Dedup resolves to the existing document, and the pipeline then appends the
-        next version_number for the same content. The Document row count is what
-        the idempotency claim rests on; the version growth is recorded here so the
-        difference is not mistaken for an accident.
+        The pipeline resolves to the existing document and reuses the
+        DocumentVersion whose checksum matches the content it just parsed. The
+        upload's v1 is that version, and its chunks are keyed by
+        (version, chunk_index), so repeated processing leaves exactly one
+        version row and one set of chunks.
         """
+        from api.models.schema import DocumentChunk
+
         headers = await _auth(client, "process_versions@vaeloom.test")
         ws_id = await _workspace(client, headers)
         doc_id = await _upload(client, headers, ws_id, "version_growth.txt", b"stable bytes")
 
-        for _ in range(2):
-            res = await client.post(
-                f"/api/v1/documents/{doc_id}/process?workspace_id={ws_id}", headers=headers
-            )
-            assert res.status_code == 200, res.text
+        res = await client.post(
+            f"/api/v1/documents/{doc_id}/process?workspace_id={ws_id}", headers=headers
+        )
+        assert res.status_code == 200, res.text
+
+        async def _count_chunks() -> int:
+            return (
+                await db_session.execute(
+                    select(func.count(DocumentChunk.id)).where(
+                        DocumentChunk.document_id == uuid.UUID(doc_id)
+                    )
+                )
+            ).scalar_one()
+
+        chunks_after_first = await _count_chunks()
+        assert chunks_after_first > 0
+
+        res = await client.post(
+            f"/api/v1/documents/{doc_id}/process?workspace_id={ws_id}", headers=headers
+        )
+        assert res.status_code == 200, res.text
 
         versions = (
             await db_session.execute(
@@ -337,5 +356,51 @@ class TestProcessDocument:
                 )
             )
         ).scalar_one()
-        # 1 from upload, + 1 per process call.
-        assert versions == 3
+        assert versions == 1, "no-op reprocess appended a duplicate version"
+        assert await _count_chunks() == chunks_after_first, "reprocess duplicated chunks"
+
+    async def test_upload_ingests_after_commit_without_duplicating_the_document(
+        self, client: AsyncClient, pipeline_on_test_db, db_session, monkeypatch
+    ):
+        """Regression: ingestion used to be scheduled before the upload's commit.
+
+        `run_pipeline` opens its own session, so its dedup lookup could not see
+        the uncommitted upload and inserted a second Document with the same
+        path. The route now schedules ingestion as a post-response task, after
+        the commit, and addresses the row by id.
+        """
+        from api.models.schema import DocumentChunk
+
+        # The route keeps the existing PYTEST_CURRENT_TEST guard so ordinary
+        # upload fixtures stay fast; this is the test that exercises it.
+        monkeypatch.delenv("PYTEST_CURRENT_TEST", raising=False)
+
+        headers = await _auth(client, "upload_ingest@vaeloom.test")
+        ws_id = await _workspace(client, headers)
+        body = ("Ingested after commit. " * 40).encode()
+        doc_id = await _upload(client, headers, ws_id, "single_row.txt", body)
+
+        docs = (
+            await db_session.execute(
+                select(Document).where(Document.workspace_id == uuid.UUID(ws_id))
+            )
+        ).scalars().all()
+        assert [str(d.id) for d in docs] == [doc_id], "upload created a duplicate document"
+
+        versions = (
+            await db_session.execute(
+                select(func.count(DocumentVersion.id)).where(
+                    DocumentVersion.document_id == uuid.UUID(doc_id)
+                )
+            )
+        ).scalar_one()
+        assert versions == 1
+
+        chunks = (
+            await db_session.execute(
+                select(func.count(DocumentChunk.id)).where(
+                    DocumentChunk.document_id == uuid.UUID(doc_id)
+                )
+            )
+        ).scalar_one()
+        assert chunks > 0, "post-commit ingestion did not index the upload"

@@ -1,7 +1,9 @@
+import os
 import uuid
 
 from fastapi import (
     APIRouter,
+    BackgroundTasks,
     Body,
     Depends,
     File,
@@ -54,6 +56,7 @@ from ..services.document_service import (
     DocumentActionNotFound,
     DocumentNotFound,
     document_service,
+    run_pipeline_for_document,
 )
 from ..services.document_stats_service import workspace_document_stats
 from ..services.folder_service import folder_service
@@ -171,6 +174,7 @@ _MAX_BULOAD_FILES = 50
 # member could otherwise fill object storage at the default allowance.
 @rate_limit(max_requests=30, window_seconds=60)
 async def upload_document(
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
     workspace_id: str | None = Query(None),
     folder_id: str | None = Query(None),
@@ -220,6 +224,17 @@ async def upload_document(
         pass
     await db.commit()
     await db.refresh(doc)
+
+    # Schedule ingestion only after the commit: run_pipeline opens its own
+    # session, and a dedup lookup from there cannot see an uncommitted row —
+    # which used to insert a second Document for the same upload.
+    if not os.environ.get("PYTEST_CURRENT_TEST"):
+        background_tasks.add_task(
+            run_pipeline_for_document,
+            str(doc.id),
+            workspace_id,
+            _user_id(current_user),
+        )
 
     # Optional background ingest workflow (Trigger.dev / BullMQ / Temporal — fail-open)
     try:
@@ -346,6 +361,7 @@ async def get_document_stats(
 # ceiling is a size guard, not a throughput guard.
 @rate_limit(max_requests=5, window_seconds=300)
 async def bulk_upload_documents(
+    background_tasks: BackgroundTasks,
     files: list[UploadFile] = File(...),
     workspace_id: str = Query(...),
     folder_id: str | None = Query(default=None),
@@ -373,6 +389,17 @@ async def bulk_upload_documents(
         tenant_id=current_user.get("tenant_id"),
         db=db,
     )
+    # Commit before any background ingestion: the pipeline's own session must
+    # see the rows it is about to parse (the same pre-commit race as upload).
+    await db.commit()
+    if not os.environ.get("PYTEST_CURRENT_TEST"):
+        for item in res.get("succeeded", []):
+            background_tasks.add_task(
+                run_pipeline_for_document,
+                str(item["id"]),
+                workspace_id,
+                _user_id(current_user),
+            )
     return BulkUploadResponse(**res)
 
 
