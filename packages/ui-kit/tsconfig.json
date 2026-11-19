@@ -4,7 +4,7 @@
     "jsx": "preserve",
     "rootDir": "./src",
     "outDir": "./dist",
-    "baseUrl": ".",
+    "types": ["node", "jest"],
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "paths": {

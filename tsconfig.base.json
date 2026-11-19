@@ -24,7 +24,6 @@
     "isolatedModules": true,
     "incremental": true,
     "jsx": "preserve",
-    "baseUrl": ".",
     "paths": {
       "@vaeloom/shared-types": ["packages/shared-types/src"],
       "@vaeloom/plugin-sdk": ["packages/plugin-sdk/src"],

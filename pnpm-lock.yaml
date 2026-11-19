@@ -270,6 +270,9 @@ importers:
       '@types/jest':
         specifier: ^29.5.14
         version: 29.5.14
+      '@types/node':
+        specifier: ^26.6.6
+        version: 26.6.6
       '@vaeloom/eslint-config':
         specifier: workspace:*
         version: link:../eslint-config
