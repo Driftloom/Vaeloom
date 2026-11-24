@@ -101,7 +101,13 @@ cd apps/api && uv run --project apps/api python -m pytest -q -o addopts=""  # se
 # or: python -m pytest -q -o addopts="-n auto --dist loadfile"  # fast, ~2-3min, needs 32GB
 ```
 
-## Test Accounts
+## Test Accounts (local/e2e only)
+
+Deterministic fixtures, not credentials to any deployed environment. Both seed
+paths refuse to create them against a non-local `DATABASE__URL` unless
+`ALLOW_REMOTE_SEED=1` is set explicitly. Override the passwords with
+`DEMO_PASSWORD` / `TEST_PASSWORD` (and the emails with `DEMO_EMAIL` /
+`TEST_EMAIL`) when a shared environment needs different values.
 
 | Email                | Password        | Notes                                                |
 | -------------------- | --------------- | ---------------------------------------------------- |

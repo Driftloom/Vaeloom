@@ -171,12 +171,15 @@ managed by `uv`. Always run commands through `uv run --project apps/api`.
 `apps/web/next.config.js:20` sets `output: 'standalone'` only when
 `CI === 'true'` **and** platform isn't win32 — local builds stay fast.
 
-**Test accounts**:
+**Test accounts (local/e2e fixtures only — never seeded into a deployed DB)**:
 
 - `audit@vaeloom.test` / `AuditPass123!` (auto-seeded for e2e through
   `apps/web/e2e/api-launcher.py`)
 - `demo@vaeloom.app` / `demo1234` (demo DB seed; present only on seeded DBs)
 - Or sign up locally at `http://localhost:3000/signup`.
+- Both seed paths refuse a non-local `DATABASE__URL` unless
+  `ALLOW_REMOTE_SEED=1`. Passwords are overridable with `DEMO_PASSWORD` /
+  `TEST_PASSWORD`; emails with `DEMO_EMAIL` / `TEST_EMAIL`.
 
 ---
 

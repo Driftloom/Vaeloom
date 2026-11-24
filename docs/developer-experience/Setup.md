@@ -141,7 +141,9 @@ cd apps/api
 alembic upgrade head
 # This creates tables: users, workspaces, documents, memory_records, etc.
 
-# Optional: Seed test data
+# Optional: Seed test data (local databases only; DEMO_PASSWORD overrides the
+# fixture password, and a non-local DATABASE__URL is refused unless
+# ALLOW_REMOTE_SEED=1)
 python scripts/seed.py
 ```
 

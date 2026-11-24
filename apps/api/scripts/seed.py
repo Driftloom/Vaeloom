@@ -15,12 +15,15 @@ Requires: DATABASE__URL env var (defaults to sqlite+aiosqlite:///./dev.db)
 """
 
 import asyncio
-import hashlib
 import json
+import os
 import uuid
 from datetime import datetime, timezone
+from urllib.parse import parse_qsl, urlsplit
 
+import bcrypt
 from sqlalchemy import text
+from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -41,17 +44,119 @@ from api.models.schema import (
     Workspace,
 )
 
+DEMO_EMAIL = os.environ.get("DEMO_EMAIL", "demo@vaeloom.app").strip().lower()
+# Local default, overridable per environment. The account only ever exists in a
+# database this script seeds; see the non-local guard in seed().
+DEMO_PASSWORD = os.environ.get("DEMO_PASSWORD", "demo1234")
+# bcrypt is what AuthService.verify_password calls. A SHA-256 digest here (the
+# previous value) could never be verified by the login path, so the documented
+# demo credential was unusable on a seed.py-created database.
+DEMO_PASSWORD_HASH = bcrypt.hashpw(DEMO_PASSWORD.encode(), bcrypt.gensalt()).decode()
 
-DEMO_EMAIL = "demo@vaeloom.app"
-DEMO_PASSWORD = "demo1234"
-# Simple hash for dev seed (not bcrypt — avoids extra dep in seed context)
-DEMO_PASSWORD_HASH = hashlib.sha256(DEMO_PASSWORD.encode()).hexdigest()
+
+LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+
+
+def _is_local_endpoint(h: str) -> bool:
+    """Helper to check if a single host endpoint is local (loopback or unix socket)."""
+    h = h.strip().lower()
+    if not h:
+        return False
+    if h.startswith("/"):
+        return True
+    if h.startswith("[") and "]" in h:
+        h = h[1 : h.index("]")]
+    elif h.count(":") > 1:
+        pass  # Bare IPv6 literal
+    elif ":" in h:
+        h = h.split(":", 1)[0]
+    return h in LOCAL_HOSTS
+
+
+def _query_values(query_dict: dict, key: str) -> list[str]:
+    """Helper to read single- or multi-valued entries from SQLAlchemy URL.query."""
+    val = query_dict.get(key)
+    if val is None:
+        return []
+    if isinstance(val, (list, tuple)):
+        return [str(v) for v in val]
+    return [str(val)]
+
+
+def get_non_local_endpoint(url: str, _depth: int = 0) -> str | None:
+    """Returns None if local, or a safe description of the non-local target."""
+    if _depth > 2:
+        return "excessive dsn recursion"
+    if not url or url.startswith("sqlite"):
+        return None
+
+    try:
+        sa_url = make_url(url)
+        if sa_url.get_backend_name() == "sqlite":
+            return None
+        authority_host = (sa_url.host or "").lower()
+    except Exception:
+        return "unparseable database url"
+
+    if authority_host and authority_host not in LOCAL_HOSTS:
+        return f"authority host '{authority_host}'"
+
+    # Evaluate query parameters using SQLAlchemy URL.query (matching engine semantics)
+    for dsn_val in _query_values(sa_url.query, "dsn"):
+        nested = get_non_local_endpoint(dsn_val, _depth + 1)
+        if nested:
+            return f"dsn parameter ({nested})"
+
+    query_hosts = []
+    for host_val in _query_values(sa_url.query, "host"):
+        for part in host_val.split(","):
+            part = part.strip().lower()
+            if part:
+                query_hosts.append(part)
+
+    for h in query_hosts:
+        if not _is_local_endpoint(h):
+            return f"query host '{h}'"
+
+    if not authority_host and not query_hosts:
+        pghost = os.environ.get("PGHOST", "").strip()
+        if pghost:
+            for part in pghost.split(","):
+                if not _is_local_endpoint(part):
+                    return f"PGHOST '{part.strip().lower()}'"
+
+    return None
+
+
+def is_local_database(url: str, _depth: int = 0) -> bool:
+    """True for SQLite and loopback database targets.
+
+    Mirrors the Alembic remote-DDL guard (`apps/api/alembic/env.py`): a seed run
+    must not create a known-password demo account on a shared or cloud database.
+    Evaluates the authority host, query host parameters, nested dsn parameters,
+    and the PGHOST fallback.
+    """
+    return get_non_local_endpoint(url, _depth) is None
 
 
 async def seed() -> None:
-    import os
-
-    db_url = os.environ.get("DATABASE__URL", "sqlite+aiosqlite:///./dev.db")
+    db_url = (
+        os.environ.get("DATABASE__URL")
+        or os.environ.get("DATABASE_URL")
+        or "sqlite+aiosqlite:///./dev.db"
+    )
+    non_local = get_non_local_endpoint(db_url)
+    if non_local and os.environ.get("ALLOW_REMOTE_SEED", "").lower() not in (
+        "1",
+        "true",
+        "yes",
+    ):
+        raise SystemExit(
+            "REFUSED: seed.py creates the demo account with a documented default password. "
+            f"Target database has non-local {non_local}. "
+            "Point DATABASE__URL at SQLite/localhost, or set ALLOW_REMOTE_SEED=1 for a "
+            "disposable environment and DEMO_PASSWORD=<unique value>."
+        )
     engine = create_async_engine(db_url, echo=False)
     async_session = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -66,11 +171,23 @@ async def seed() -> None:
     async with async_session() as db:
         # ─── Demo User ───
         result = await db.execute(
-            text("SELECT id FROM users WHERE email = :email"), {"email": DEMO_EMAIL}
+            text("SELECT id, password_hash, auth_provider FROM users WHERE email = :email"),
+            {"email": DEMO_EMAIL},
         )
         row = result.fetchone()
         if row:
             user_id = row[0]
+            password_hash = row[1]
+            auth_provider = row[2]
+            # Databases seeded before the bcrypt fix still hold a SHA-256 digest
+            # that bcrypt.checkpw cannot parse; heal them on the next seed run,
+            # but only for email-authenticated accounts (avoid attaching passwords to SAML/OAuth users).
+            if auth_provider == "email" and not str(password_hash or "").startswith("$2"):
+                await db.execute(
+                    text("UPDATE users SET password_hash = :pw_hash WHERE id = :id"),
+                    {"pw_hash": DEMO_PASSWORD_HASH, "id": str(user_id)},
+                )
+                print(f"  Repaired legacy password hash for {DEMO_EMAIL}")
             print(f"  User already exists: {DEMO_EMAIL} ({user_id})")
         else:
             user_id = uuid.uuid4()

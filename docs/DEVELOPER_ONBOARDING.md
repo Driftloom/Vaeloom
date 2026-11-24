@@ -91,8 +91,9 @@ cd apps/web && pnpm next dev
 redirect; it formerly ran Nx across all 25 packages and hung). Use
 `pnpm dev:web` (`make dev-web` is fastest) or `pnpm dev:be`.
 
-Frontend at `http://localhost:3000`. Test account: `demo@vaeloom.app` /
-`demo1234` (seeded demo DB; sign up if missing).
+Frontend at `http://localhost:3000`. Test account (local DB only):
+`demo@vaeloom.app` / `demo1234` (seeded demo DB; sign up if missing). Override
+with `DEMO_EMAIL` / `DEMO_PASSWORD` if you need a different fixture.
 
 ## Running Tests
 
