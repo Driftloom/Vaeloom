@@ -1,8 +1,10 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 
+// Defaults match e2e/api-launcher.py. Override both sides together for a
+// shared environment; the launcher reads the same TEST_* variables.
 export const TEST_USER = {
-  email: 'audit@vaeloom.test',
-  password: 'AuditPass123!',
+  email: (process.env['TEST_EMAIL'] ?? 'audit@vaeloom.test').trim().toLowerCase(),
+  password: process.env['TEST_PASSWORD'] ?? 'AuditPass123!',
 };
 
 /**
@@ -12,8 +14,8 @@ export const TEST_USER = {
  * from the same session is not a cross-account probe.
  */
 export const SECOND_USER = {
-  email: 'demo@vaeloom.app',
-  password: 'demo1234',
+  email: (process.env['DEMO_EMAIL'] ?? 'demo@vaeloom.app').trim().toLowerCase(),
+  password: process.env['DEMO_PASSWORD'] ?? 'demo1234',
 };
 
 /** UI login against the real backend; resolves to the workspace id. */

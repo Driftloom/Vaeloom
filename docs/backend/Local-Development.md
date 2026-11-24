@@ -71,8 +71,9 @@ uv run --project apps/api playwright install chromium
   Request bodies stay snake_case. Any new API client needs the same transform.
 - **CSRF flow**: `GET /csrf-token` → send `X-CSRF-Token` header on mutations.
   `/api/v1/auth/*` and `/csrf-token` are exempt (`SKIP_PREFIXES`, `SKIP_PATHS`);
-  without the header elsewhere you get 403. Test account: `demo@vaeloom.app` /
-  `demo1234` (seeded demo DB; sign up if missing).
+  without the header elsewhere you get 403. Test account (local DB only):
+  `demo@vaeloom.app` / `demo1234` (seeded demo DB; sign up if missing).
+  Override with `DEMO_EMAIL` / `DEMO_PASSWORD` for a different fixture.
 
 ## 5. Tests
 

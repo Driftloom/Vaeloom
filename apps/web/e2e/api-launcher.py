@@ -12,6 +12,7 @@ import os
 import sqlite3
 import sys
 from pathlib import Path
+from urllib.parse import parse_qsl, urlsplit
 
 _api_src = str(Path(__file__).resolve().parents[2] / "apps" / "api" / "src")
 if _api_src not in sys.path:
@@ -119,10 +120,109 @@ def ensure_sqlite_tables() -> None:
 # A fresh checkout has no dev.db; Playwright specs log in as this account.
 # Runs INSIDE the wrapped lifespan so /health only turns OK once the user
 # exists — no race between Playwright readiness and the first login.
+# Defaults keep the zero-config local/CI path working. Every value can be
+# overridden per environment, so a shared deployment never has to reuse the
+# published fixture password.
 E2E_USERS = [
-    ("audit@vaeloom.test", "AuditPass123!", "E2E Audit"),
-    ("demo@vaeloom.app", "demo1234", "Demo User"),
+    (
+        os.environ.get("TEST_EMAIL", "audit@vaeloom.test").strip().lower(),
+        os.environ.get("TEST_PASSWORD", "AuditPass123!"),
+        "E2E Audit",
+    ),
+    (
+        os.environ.get("DEMO_EMAIL", "demo@vaeloom.app").strip().lower(),
+        os.environ.get("DEMO_PASSWORD", "demo1234"),
+        "Demo User",
+    ),
 ]
+
+
+LOCAL_HOSTS = frozenset({"localhost", "127.0.0.1", "::1"})
+
+
+def _is_local_endpoint(h: str) -> bool:
+    """Helper to check if a single host endpoint is local (loopback or unix socket)."""
+    h = h.strip().lower()
+    if not h:
+        return False
+    if h.startswith("/"):
+        return True
+    if h.startswith("[") and "]" in h:
+        h = h[1 : h.index("]")]
+    elif h.count(":") > 1:
+        pass  # Bare IPv6 literal
+    elif ":" in h:
+        h = h.split(":", 1)[0]
+    return h in LOCAL_HOSTS
+
+
+def _query_values(query_dict: dict, key: str) -> list[str]:
+    """Helper to read single- or multi-valued entries from SQLAlchemy URL.query."""
+    val = query_dict.get(key)
+    if val is None:
+        return []
+    if isinstance(val, (list, tuple)):
+        return [str(v) for v in val]
+    return [str(val)]
+
+
+def get_non_local_endpoint(url: str, _depth: int = 0) -> str | None:
+    """Returns None if local, or a safe description of the non-local target."""
+    if _depth > 2:
+        return "excessive dsn recursion"
+    if not url or url.startswith("sqlite"):
+        return None
+
+    try:
+        from sqlalchemy.engine import make_url
+
+        sa_url = make_url(url)
+        if sa_url.get_backend_name() == "sqlite":
+            return None
+        authority_host = (sa_url.host or "").lower()
+    except Exception:
+        return "unparseable database url"
+
+    if authority_host and authority_host not in LOCAL_HOSTS:
+        return f"authority host '{authority_host}'"
+
+    # Evaluate query parameters using SQLAlchemy URL.query (matching engine semantics)
+    for dsn_val in _query_values(sa_url.query, "dsn"):
+        nested = get_non_local_endpoint(dsn_val, _depth + 1)
+        if nested:
+            return f"dsn parameter ({nested})"
+
+    query_hosts = []
+    for host_val in _query_values(sa_url.query, "host"):
+        for part in host_val.split(","):
+            part = part.strip().lower()
+            if part:
+                query_hosts.append(part)
+
+    for h in query_hosts:
+        if not _is_local_endpoint(h):
+            return f"query host '{h}'"
+
+    if not authority_host and not query_hosts:
+        pghost = os.environ.get("PGHOST", "").strip()
+        if pghost:
+            for part in pghost.split(","):
+                if not _is_local_endpoint(part):
+                    return f"PGHOST '{part.strip().lower()}'"
+
+    return None
+
+
+def is_local_database(url: str, _depth: int = 0) -> bool:
+    """True for SQLite and loopback database targets.
+
+    The accounts above carry documented default passwords. Seeding them into a
+    shared or cloud database would publish working credentials, so this mirrors
+    the Alembic remote-DDL guard (`apps/api/alembic/env.py`).
+    Evaluates the authority host, query host parameters, nested dsn parameters,
+    and the PGHOST fallback.
+    """
+    return get_non_local_endpoint(url, _depth) is None
 
 
 async def _seed_memory_type_packs() -> None:
@@ -151,6 +251,29 @@ async def _seed_memory_type_packs() -> None:
 
 
 async def _seed_e2e_user() -> None:
+    try:
+        from api.config import settings
+
+        settings_url = getattr(settings, "database__url", None)
+    except Exception:
+        settings_url = None
+
+    db_url = (
+        os.environ.get("DATABASE__URL")
+        or os.environ.get("DATABASE_URL")
+        or settings_url
+        or "sqlite+aiosqlite:///./dev.db"
+    )
+    non_local = get_non_local_endpoint(db_url)
+    allow_remote = os.environ.get("ALLOW_REMOTE_SEED", "").lower() in ("1", "true", "yes")
+    if non_local and not allow_remote:
+        print(
+            "[api-launcher] refusing to seed e2e credentials into non-local database "
+            f"({non_local}); skipping (ALLOW_REMOTE_SEED is unset)",
+            flush=True,
+        )
+        return
+
     from fastapi import HTTPException
 
     from api.database import async_session_factory
